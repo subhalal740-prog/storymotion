@@ -1,0 +1,1610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Rig Studio — Production Build v3.0</title>
+<style>
+  :root{
+    --bg:#0b0b0d; --card1:#16161a; --card2:#0f0f12; --line:rgba(255,255,255,.05);
+    --txt:#e8e8ec; --mut:#6b7280; --dim:#4b5563; --ok:#00e676; --warn:#ffcc00; --bad:#ff4d4d; --acc:#2563eb;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:radial-gradient(1100px 520px at 50% -140px,#15151b,#0b0b0d 62%);
+    color:var(--txt); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    padding:18px 14px 60px; -webkit-font-smoothing:antialiased;
+    image-rendering:auto;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+  .brand{font-size:12px;letter-spacing:2.2px;font-weight:800;color:#9ca3af}
+  .brand span{color:var(--ok)}
+  .steps{display:flex;gap:4px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:999px;padding:4px}
+  .step{font-size:11px;font-weight:800;letter-spacing:.5px;color:var(--mut);padding:8px 13px;border-radius:999px;
+        border:0;background:transparent;cursor:pointer;transition:.22s;font-family:inherit}
+  .step.on{background:linear-gradient(145deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 4px 14px rgba(37,99,235,.35)}
+  .step.done{color:var(--ok)}
+  .step:disabled{opacity:.4;cursor:not-allowed}
+.backbtn{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;
+    text-decoration:none;font-size:11px;font-weight:800;letter-spacing:.8px;font-family:inherit;
+    color:#9ca3af;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);transition:.18s}
+  .backbtn:hover{color:#fff;background:rgba(255,255,255,.10)}
+  .hud{font-size:10.5px;letter-spacing:.4px;color:var(--dim);font-variant-numeric:tabular-nums}
+  .hud b{color:#9ca3af;font-weight:700}
+  .card{background:linear-gradient(145deg,var(--card1),var(--card2));border:1px solid var(--line);border-radius:14px;
+        padding:16px;box-shadow:0 8px 32px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.05);position:relative;overflow:hidden}
+  .card h3{margin:0 0 2px;font-size:11px;letter-spacing:1.7px;font-weight:800;color:var(--mut);text-transform:uppercase}
+  .grid2{display:grid;grid-template-columns:1fr;gap:14px}
+  @media(min-width:880px){ .grid2.two{grid-template-columns:minmax(0,1fr) 340px} }
+  .pill{font-size:10.5px;font-weight:800;letter-spacing:1px;padding:6px 11px;border-radius:999px;
+        border:1px solid rgba(255,255,255,.07);color:var(--mut);background:rgba(255,255,255,.03);transition:all .3s}
+  .btn{font-family:inherit;font-size:12px;font-weight:700;letter-spacing:.3px;padding:9px 14px;border-radius:10px;cursor:pointer;
+       border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#d1d5db;transition:.18s}
+  .btn:hover{background:rgba(255,255,255,.08);color:#fff}
+  .btn:disabled{opacity:.35;cursor:not-allowed}
+  .btn.primary{background:linear-gradient(145deg,#2563eb,#1d4ed8);border-color:transparent;color:#fff;
+       box-shadow:0 4px 14px rgba(37,99,235,.35), inset 0 1px 0 rgba(255,255,255,.15)}
+  .btn.ghost{background:transparent}
+  .btn.tiny{padding:5px 9px;font-size:10.5px;border-radius:8px}
+  .checker{background:repeating-conic-gradient(#1a1a1f 0 25%, #202027 0 50%) 0 0/14px 14px;border:1px solid #26262c;border-radius:12px}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .kv{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--mut);padding:3px 0}
+  .kv b{color:#c9cdd4;font-weight:700;font-variant-numeric:tabular-nums}
+  /* layers */
+  .layer{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:10px;border:1px solid #232329;
+         background:rgba(255,255,255,.022);cursor:grab;user-select:none;transition:background .15s,border-color .15s}
+  .layer:hover{background:rgba(255,255,255,.05)}
+  .layer.drag{opacity:.45;border-color:rgba(37,99,235,.7);background:rgba(37,99,235,.12)}
+  .layer .thumb{width:28px;height:28px;border-radius:6px;flex:0 0 28px;display:grid;place-items:center;
+        background:repeating-conic-gradient(#1a1a1f 0 25%, #202027 0 50%) 0 0/8px 8px;border:1px solid #26262c;overflow:hidden}
+  .layer .name{font-size:11.5px;font-weight:700;letter-spacing:.4px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .layer .z{font-size:9.5px;font-weight:800;color:var(--ok);background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.18);
+        border-radius:5px;padding:1px 5px;font-variant-numeric:tabular-nums}
+  .layer .acts{display:flex;gap:3px;opacity:.5;transition:.15s}
+  .layer:hover .acts{opacity:1}
+  .grab{color:#4b5563;font-size:11px;letter-spacing:-1px}
+  /* studio */
+  #studioWrap{position:relative;display:grid;place-items:center;padding:10px;border-radius:14px}
+  #studio{display:block;max-width:100%;height:auto;touch-action:none;cursor:crosshair}
+  /* ===== QUICK POSE (premium white) ===== */
+  .qpWrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+  .qpTitle{font-size:10.5px;letter-spacing:1.6px;font-weight:800;color:var(--mut);margin-bottom:8px}
+  .qpRow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+  @media (max-width:520px){
+    .qpRow{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+    .qp{font-size:12px;padding:12px 4px;border-radius:12px}
+    .qpTitle{font-size:9.5px;letter-spacing:1.2px;margin-bottom:6px}
+    .qpWrap{margin-top:10px;padding-top:10px}
+  }
+  .qp{background:#ffffff;color:#121212;border:1px solid rgba(255,255,255,.8);border-radius:14px;
+      font:700 13px/1 inherit;font-family:inherit;padding:12px 8px;cursor:pointer;text-align:center;
+      box-shadow:0 1px 2px rgba(0,0,0,.30),0 8px 18px -6px rgba(0,0,0,.45);
+      transition:transform .16s,box-shadow .16s,background .16s,color .16s}
+  .qp:hover{background:#f8fafc;transform:translateY(-1px)}
+  .qp:active{transform:translateY(1px) scale(.995)}
+  .qp.on{background:linear-gradient(135deg,#ffffff,#e2e8f0);color:#0f172a;
+      border-color:rgba(226,232,240,.95);
+      text-shadow:0 0 12px rgba(148,163,184,.9),0 1px 0 rgba(255,255,255,.95);
+      box-shadow:0 2px 4px rgba(15,23,42,.16),0 12px 26px -8px rgba(226,232,240,.55),inset 0 1px 0 #fff;
+      transform:translateY(-1px)}
+  /* ===== TANG POSITION SETTINGS — instant bottom sheet ===== */
+  .ppWrap{position:fixed;left:0;right:0;bottom:0;z-index:9000;display:none;padding:10px}
+  .ppWrap.open{display:block;animation:ppUp .22s ease-out}
+  @keyframes ppUp{from{transform:translateY(18px);opacity:0}to{transform:translateY(0);opacity:1}}
+  .ppSheet{max-width:560px;margin:0 auto;background:rgba(18,18,22,.97);border:1px solid rgba(255,255,255,.10);
+    border-radius:18px;padding:12px 13px calc(12px + env(safe-area-inset-bottom));
+    box-shadow:0 -10px 40px rgba(0,0,0,.65), inset 0 1px 0 rgba(255,255,255,.06);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .ppHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+  .ppTitle{font-size:11px;font-weight:800;letter-spacing:1.5px;color:#e8e8ec}
+  .ppTitle span{color:#00e676}
+  .ppX{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);color:#9ca3af;
+    width:30px;height:30px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;line-height:1}
+  .ppX:hover{color:#fff;background:rgba(255,255,255,.12)}
+  .ppRow{margin-bottom:9px}
+  .ppLab{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;letter-spacing:.8px;
+    color:#8b8b96;font-weight:700;margin-bottom:6px;text-transform:uppercase}
+  .ppLab b{color:#fff;font-size:11.5px;letter-spacing:0}
+  .ppRange{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;cursor:pointer}
+  .ppRange::-webkit-slider-runnable-track{height:6px;border-radius:999px;
+    background:linear-gradient(90deg,#e2e8f0,#ffffff);opacity:.9}
+  .ppRange::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8px;border-radius:50%;
+    background:#ffffff;border:1px solid rgba(0,0,0,.25);box-shadow:0 2px 8px rgba(0,0,0,.55)}
+  .ppRange::-moz-range-track{height:6px;border-radius:999px;background:#e2e8f0}
+  .ppRange::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:#fff}
+  .ppFoot{display:flex;gap:8px;align-items:center;margin-top:2px}
+  .ppBtn{flex:1;background:#ffffff;color:#121212;border:1px solid rgba(255,255,255,.8);border-radius:14px;
+    font:700 13px/1 inherit;font-family:inherit;padding:12px 8px;cursor:pointer;
+    box-shadow:0 1px 2px rgba(0,0,0,.3),0 8px 18px -6px rgba(0,0,0,.45)}
+  .ppBtn.ghost{background:transparent;color:#c9c9d1;border:1px solid rgba(255,255,255,.14);box-shadow:none}
+  .ppSw{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:#8b8b96;
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:9px 11px;cursor:pointer;
+    white-space:nowrap}
+  .ppSw.on{color:#00e676;border-color:rgba(0,230,118,.35);background:rgba(0,230,118,.08)}
+  @media (max-width:520px){
+    .ppWrap{padding:8px}
+    .ppLab{font-size:9.5px}
+    .ppRange{height:30px}
+    .ppRange::-webkit-slider-thumb{width:24px;height:24px;margin-top:-9px}
+  }
+  /* ===== mobile scroll fix: 120px bottom pad + canvas gesture ===== */
+  #mobilePad{display:none;height:120px;width:100%}
+  /* ===== Netlify badge hidden ===== */
+  #nl-badge-frame,#netlify-badge-frame,#netlify-badge,#nl-hud-frame,
+  [id^="nl-badge"],[id^="netlify-badge"],[class*="netlify-badge"],[data-netlify-badge]{
+    display:none!important;visibility:hidden!important;opacity:0!important;
+    width:0!important;height:0!important;pointer-events:none!important}
+
+  @media (max-width:820px){
+    html,body{height:auto!important;min-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important}
+    body{padding-bottom:calc(16px + env(safe-area-inset-bottom))!important}
+    /* canvas par ungli rakh ke neeche kheencho -> page scroll ho (ring ghumane ke liye horizontal drag) */
+    #studio{touch-action:pan-y!important;max-height:40vh!important}
+    #studioWrap{touch-action:pan-y!important;max-height:40vh!important;overflow:hidden!important}
+    #mobilePad{display:block}
+  }
+  /* chhoti screen (height<700): developer HUD line hata do — buttons jagah bache */
+  @media (max-height:700px){ #hud{display:none!important} #pg3 .kv{display:none!important} }
+  .hist{max-height:150px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+  .hist .it{font-size:10.5px;color:var(--mut);padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.03);
+        border:1px solid transparent;display:flex;justify-content:space-between;gap:6px}
+  .hist .it.cur{color:#c9cdd4;border-color:rgba(37,99,235,.5);background:rgba(37,99,235,.12)}
+  .hist .it.undone{opacity:.4;text-decoration:line-through}
+  .tag{font-size:9px;letter-spacing:.8px;color:var(--dim)}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,14px);background:#141419;border:1px solid rgba(255,255,255,.1);
+        color:#e5e7eb;font-size:12px;padding:10px 16px;border-radius:10px;opacity:0;pointer-events:none;transition:.25s;z-index:50}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+  .hidden{display:none!important}
+  .note{font-size:11px;color:var(--mut);line-height:1.65;margin:10px 0 0}
+  .sw{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:#9ca3af;cursor:pointer;user-select:none}
+  .sw input{appearance:none;width:30px;height:17px;border-radius:99px;background:#26262c;position:relative;transition:.2s;cursor:pointer;border:0}
+  .sw input:checked{background:rgba(0,230,118,.35)}
+  .sw input:before{content:'';position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#8b8f98;transition:.2s}
+  .sw input:checked:before{left:15px;background:var(--ok)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ================= TOP BAR ================= -->
+  <header class="top">
+    <a id="backBtn" class="backbtn" href="tool.html" title="Wapas tool par">&#8592; BACK</a>
+    <div class="brand">RIG&nbsp;STUDIO <span>v3.0</span> · PRODUCTION BUILD</div>
+    <div class="steps" id="steps">
+      <button class="step on" data-page="1">1 · CHECKPOST</button>
+      <button class="step" data-page="2" disabled>2 · AUTO-CUT &amp; LAYERS</button>
+      <button class="step" data-page="3" disabled>3 · POSING STUDIO</button>
+    </div>
+    <div class="hud" id="hud">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
+  </header>
+
+  <!-- ================= PAGE 1 · CHECKPOST ================= -->
+  <section id="pg1">
+    <div class="card" id="gateCard" style="max-width:460px;margin:0 auto;transition:border-color .35s">
+      <div id="gateGlow" style="position:absolute;top:-40px;right:-40px;width:100px;height:100px;border-radius:50%;filter:blur(24px);
+           background:radial-gradient(circle, rgba(107,114,128,.12) 0%, transparent 70%)"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative">
+        <h3 style="margin:0">AI INPUT CHECKPOST</h3>
+        <div class="pill" id="trafficLight" style="color:var(--mut)">⚪ STANDBY</div>
+      </div>
+      <p id="gateMsg" style="margin:14px 0 0;font-size:12.5px;line-height:1.65;color:#8b8f98;position:relative">
+        Transparent PNG character sheet upload karo — baaki matrix khud sambhal lega.
+      </p>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:16px">
+        <label for="fileInput" class="btn primary" style="display:inline-block">📎 Choose file</label>
+        <span id="fileName" style="font-size:11.5px;color:var(--mut)">no image selected</span>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" style="display:none">
+      <div class="kv" style="margin-top:12px"><span>scan</span><b id="scanMeta">—</b></div>
+      <div class="kv"><span>rules</span><b>bg · arms · legs · frame</b></div>
+    </div>
+    <p class="note" style="text-align:center">Green milte hi Auto-Cut khud chalega. Red par sab kuch lock rahega.</p>
+  </section>
+
+  <!-- ================= PAGE 2 · AUTO-CUT & LAYERS ================= -->
+  <section id="pg2" class="hidden">
+    <div class="grid2 two">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <h3>✂️ Sub-Pixel Auto-Cut</h3>
+          <div class="pill" id="aaPill" style="color:var(--ok);background:rgba(0,230,118,.08);border-color:rgba(0,230,118,.2)">AA · HIGH</div>
+        </div>
+        <div id="cutStackWrap" class="checker" style="margin-top:12px;padding:12px;display:grid;place-items:center">
+          <canvas id="cutStack" style="display:block;max-width:100%;height:auto"></canvas>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
+          <label class="sw"><input type="checkbox" id="aaToggle" checked> Sub-pixel AA</label>
+          <button class="btn tiny ghost" id="zoom2x">Zoom 2×</button>
+          <span id="aaStat" class="tag" style="margin-left:auto">—</span>
+        </div>
+        <div class="kv" style="margin-top:10px"><span>pieces</span><b id="cutMeta">—</b></div>
+        <div class="kv"><span>coverage</span><b id="covMeta">—</b></div>
+        <div class="kv"><span>cut time</span><b id="msMeta">—</b></div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <h3>🧱 Layer Manager</h3>
+          <span class="tag" id="zMeta">back → front</span>
+        </div>
+        <div id="layerList" style="display:flex;flex-direction:column;gap:6px;margin-top:12px"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">
+          <button class="btn tiny" id="btnFront">⤒ Bring to Front</button>
+          <button class="btn tiny" id="btnBack">⤓ Send to Back</button>
+          <button class="btn tiny ghost" id="btnAddCloth">＋ Clothing layer</button>
+          <input type="file" id="clothInput" accept="image/*" style="display:none">
+        </div>
+        <p class="note">Row ko <b>drag</b> karo ya select karke Front/Back dabao. Z backend me turant recompute hota hai.</p>
+        <button class="btn primary" id="toStudio" style="width:100%;margin-top:14px">Posing Studio kholo →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PAGE 3 · POSING STUDIO ================= -->
+  <section id="pg3" class="hidden">
+    <div class="grid2 two">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <h3>🎛️ Posing Studio</h3>
+          <div style="display:flex;gap:6px">
+            <button class="btn tiny" id="btnUndo" title="Ctrl+Z">↶ Undo</button>
+            <button class="btn tiny" id="btnRedo" title="Ctrl+Shift+Z">↷ Redo</button>
+            <button class="btn tiny ghost" id="btnReset">⟲ Reset</button>
+          </div>
+        </div>
+        <div id="studioWrap" class="checker" style="margin-top:12px">
+          <canvas id="studio"></canvas>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
+          <span class="tag">Ring pakad ke ghumao</span>
+          <label class="sw" style="margin-left:auto"><input type="checkbox" id="ringToggle" checked> Rings</label>
+          <label class="sw"><input type="checkbox" id="studioAA" checked> AA</label>
+        </div>
+        <div class="kv" style="margin-top:10px"><span>scale</span><b id="scaleMeta">—</b></div>
+        <div class="kv"><span>state</span><b id="stateMeta">—</b></div>
+        <div class="qpWrap">
+          <div class="qpTitle">⚡ QUICK POSE</div>
+          <div class="qpRow" id="qpRow">
+            <button class="qp" data-pose="idle">Idle</button>
+            <button class="qp" data-pose="walk">Walk</button>
+            <button class="qp" data-pose="run">Run</button>
+            <button class="qp" data-pose="sit">Sit</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <h3>🗂️ State Controller</h3>
+          <span class="tag" id="histMeta">—</span>
+        </div>
+        <div class="hist" id="histList" style="margin-top:10px"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">
+          <button class="btn tiny" id="btnSnap">💾 Save snapshot</button>
+          <button class="btn tiny" id="btnLoad">📂 Load snapshot</button>
+          <button class="btn tiny ghost" id="btnExport">⇩ JSON</button>
+        </div>
+        <p class="note" id="snapNote">Snapshot browser me (localStorage) save hota hai — page band karne par bhi rehta hai.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== TANG POSITION SETTINGS — instant panel ===== -->
+  <div class="ppWrap" id="ppWrap" role="dialog" aria-label="Tang position settings">
+    <div class="ppSheet">
+      <div class="ppHead">
+        <div class="ppTitle">≡ TANG POSITION <span>SETTINGS</span></div>
+        <button class="ppX" id="ppClose" aria-label="Close">✕</button>
+      </div>
+      <div class="ppRow">
+        <div class="ppLab"><span>Pairon ki doori (spread)</span><b id="ppSpreadVal">50%</b></div>
+        <input class="ppRange" id="ppSpread" type="range" min="0" max="100" value="50" step="1">
+      </div>
+      <div class="ppRow">
+        <div class="ppLab"><span>Speed</span><b id="ppSpeedVal">1.0×</b></div>
+        <input class="ppRange" id="ppSpeed" type="range" min="20" max="240" value="100" step="5">
+      </div>
+      <div class="ppFoot">
+        <button class="ppSw on" id="ppMirror">⇄ MIRROR ON</button>
+        <button class="ppBtn ghost" id="ppStop">❙❙ STOP</button>
+        <button class="ppBtn" id="ppDone">Done</button>
+      </div>
+    </div>
+  </div>
+  <div id="mobilePad" aria-hidden="true"></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+/* =====================================================================================
+   RIG STUDIO v3.0 — production build
+   Modules:
+     00 UTIL        · helpers
+     01 MEMORY      · pillar 3 — canvas / URL / frame-buffer lifecycle + GC
+     02 GATE        · checkpost rules (row-gap + head-width method)
+     03 CUT         · pillar 1 — segmentation + sub-pixel AA (supersample)
+     04 LAYERS      · pillar 2 — dynamic z-index reorder manager
+     05 POSE        · pillar 4 — snapshot / undo / redo state controller
+     06 STUDIO      · canvas render + rotation rings
+     07 APP         · wiring
+   ===================================================================================== */
+(function () {
+  'use strict';
+
+  /* ------------------------------------------------------------------ 00 · UTIL */
+  const U = {
+    $: (id) => document.getElementById(id),
+    clamp: (v, a, b) => Math.min(b, Math.max(a, v)),
+    rgba(hex, a) {
+      const h = hex.replace('#', '');
+      return 'rgba(' + parseInt(h.slice(0, 2), 16) + ',' + parseInt(h.slice(2, 4), 16) + ',' +
+             parseInt(h.slice(4, 6), 16) + ',' + a + ')';
+    },
+    mb(bytes) { return +(bytes / 1048576).toFixed(2); },
+    toast(msg) {
+      const t = U.$('toast');
+      t.textContent = msg; t.classList.add('on');
+      clearTimeout(U._tt); U._tt = setTimeout(() => t.classList.remove('on'), 1900);
+    },
+    deg(rad) { return rad * 180 / Math.PI; }
+  };
+
+  /* ---------------------------------------------------------- 01 · MEMORY (pillar 3)
+     Har dynamically banaya gaya canvas yahan register hota hai. New upload /
+     page hide par sab release: width=height=1 (backing store free), DOM node
+     hata, blob URL revoke. Isse repeated uploads par heap grow nahi karta.   */
+  const Memory = (function () {
+    const canvases = new Set();
+    const urls = new Set();
+    let freedBytes = 0, purges = 0, lastFreed = 0;
+
+    function makeCanvas(w, h) {
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h));
+      canvases.add(c);
+      return c;
+    }
+    function trackCanvas(c) { if (c) canvases.add(c); return c; }
+    function trackURL(u) { if (u) urls.add(u); return u; }
+    function bytesOf(c) { return (c.width * c.height * 4) || 0; }
+
+    function release(c) {                       /* ek canvas ka backing store chhodo */
+      if (!c) return 0;
+      const b = bytesOf(c);
+      try { c.width = 1; c.height = 1; } catch (e) {}
+      try { if (c.parentNode) c.parentNode.removeChild(c); } catch (e) {}
+      if (canvases.delete(c)) freedBytes += b;
+      return b;
+    }
+
+    function purgeAll(reason) {                 /* full GC sweep */
+      let freed = 0;
+      canvases.forEach((c) => { freed += release(c); });
+      canvases.clear();
+      urls.forEach((u) => { try { URL.revokeObjectURL(u); } catch (e) {} });
+      urls.clear();
+      purges++; lastFreed = freed;
+      if (reason) console.info('[Memory] purge:', reason, U.mb(freed) + ' MB freed');
+      return freed;
+    }
+
+    function stats() {
+      let b = 0; canvases.forEach((c) => { b += bytesOf(c); });
+      return {
+        canvases: canvases.size, bytes: b, mb: U.mb(b), urls: urls.size,
+        purges: purges, lastFreedMB: U.mb(lastFreed),
+        heapMB: (performance.memory ? U.mb(performance.memory.usedJSHeapSize) : null)
+      };
+    }
+
+    window.addEventListener('pagehide', () => purgeAll('pagehide'));
+    return { makeCanvas, trackCanvas, trackURL, release, purgeAll, stats };
+  })();
+
+  /* ---------------------------------------------------------------- 02 · GATE
+     Rules (strict): transparent bg · arms separated · legs separated · frame ok */
+  const Gate = (function () {
+    const A_MIN = 20;
+
+    function run(data, W, H) {
+      const d = data.data;
+      let bMinX = W, bMaxX = -1, bMinY = H, bMaxY = -1, opaque = 0;
+
+      for (let i = 3; i < d.length; i += 4) if (d[i] > A_MIN) opaque++;
+
+      function rowRuns(y) {
+        let count = 0, widest = 0, run = 0, inside = false, first = -1, last = -1;
+        const base = y * W * 4;
+        for (let x = 0; x < W; x++) {
+          const on = d[base + x * 4 + 3] > A_MIN;
+          if (on) {
+            if (first < 0) first = x; last = x;
+            if (!inside) { count++; inside = true; run = 0; }
+            run++; if (run > widest) widest = run;
+          } else inside = false;
+        }
+        return { count: count, widest: widest, span: last >= 0 ? last - first + 1 : 0 };
+      }
+
+      for (let y = 0; y < H; y++) {
+        const r = rowRuns(y);
+        if (!r.count) continue;
+        const base = y * W * 4;
+        for (let x = 0; x < W; x++) if (d[base + x * 4 + 3] > A_MIN) {
+          if (x < bMinX) bMinX = x; if (x > bMaxX) bMaxX = x;
+          if (y < bMinY) bMinY = y; bMaxY = y;
+        }
+      }
+      if (bMaxX < 0) return { ok: false, light: 'REJECTED', msg: 'Image is empty — no character found.', metrics: {} };
+
+      const total = W * H;
+      const transparent = 1 - opaque / total;
+
+      /* RULE 1 — transparent background */
+      if (transparent < 0.30) {
+        return { ok: false, light: 'REJECTED', metrics: { transparent: +transparent.toFixed(4), opaque },
+                 msg: 'Background is not transparent (PNG alpha missing). Take it back — not my job.' };
+      }
+
+      const bodyH = bMaxY - bMinY + 1;
+      const headSpans = [];
+      for (let y = bMinY + Math.floor(bodyH * 0.03); y <= bMinY + Math.floor(bodyH * 0.16); y++) {
+        const r = rowRuns(y); if (r.span) headSpans.push(r.span);
+      }
+      headSpans.sort((a, b) => a - b);
+      const headW = headSpans.length ? headSpans[Math.floor(headSpans.length / 2)] : 0;
+
+      /* RULE 2 — arms fused to the body (chest rows: 1 run, wider than head×1.45) */
+      let fused = 0, chestRows = 0;
+      for (let y = bMinY + Math.floor(bodyH * 0.30); y <= bMinY + Math.floor(bodyH * 0.50); y++) {
+        const r = rowRuns(y); if (!r.count) continue;
+        chestRows++;
+        if (r.count === 1 && headW && r.span > headW * 1.45) fused++;
+      }
+      if (chestRows && fused / chestRows > 0.50) {
+        return { ok: false, light: 'REJECTED', metrics: { fused, chestRows, headW },
+                 msg: 'Arms are touching the body. Bring a proper T-Pose — not my job.' };
+      }
+
+      /* RULE 3 — legs joined (warning, pass with caution) */
+      let legRows = 0, legSplit = 0;
+      for (let y = bMinY + Math.floor(bodyH * 0.72); y <= bMinY + Math.floor(bodyH * 0.95); y++) {
+        const r = rowRuns(y); if (!r.count) continue;
+        legRows++; if (r.count >= 2) legSplit++;
+      }
+      if (legRows && legSplit / legRows < 0.55) {
+        return { ok: true, light: 'WARNING', metrics: { legSplit, legRows, transparent: +transparent.toFixed(4) },
+                 msg: 'Legs are joined — auto-cut bounds may stick together.' };
+      }
+
+      return { ok: true, light: 'READY', msg: 'All parameters perfect. Processing matrix started.',
+               metrics: { transparent: +transparent.toFixed(4), headW, bbox: [bMinX, bMinY, bMaxX, bMaxY] } };
+    }
+    return { run };
+  })();
+
+  /* ----------------------------------------------------------------- 03 · CUT (pillar 1)
+     Segmentation + sub-pixel: har piece 2× supersample se cut hota hai, phir
+     imageSmoothingQuality='high' ke saath downscale — edges par partial alpha
+     (anti-aliasing) milta hai, jaggies nahi.                                  */
+  const Cut = (function () {
+    const A_MIN = 20, SS = 2;
+
+    /* TRUE sub-pixel AA: 2x2 area coverage (sub-pixel sampling) -> bilinear
+       upsample -> halka 3-tap smoothing. Sirf EDGE pixels ka alpha kam hota
+       hai (andar ki taraf feather), isliye koi dark halo nahi banta.
+       (Note: Chromium ka drawImage alpha ko blend nahi karta — isliye khud.) */
+    function applyAA(cv, outerMask) {
+      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      const w = cv.width, h = cv.height;
+      if (w < 3 || h < 3) return cv;
+      const img = ctx.getImageData(0, 0, w, h);
+      const d = img.data;
+      const A = new Float32Array(w * h);
+      for (let i = 0; i < w * h; i++) A[i] = d[i * 4 + 3];
+
+      /* 1 — 2x2 area average = sub-pixel coverage */
+      const cw = Math.max(1, w >> 1), ch = Math.max(1, h >> 1);
+      const S = new Float32Array(cw * ch);
+      for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+        let sum = 0;
+        for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
+          const sx = Math.min(w - 1, x * 2 + dx), sy = Math.min(h - 1, y * 2 + dy);
+          sum += A[sy * w + sx];
+        }
+        S[y * cw + x] = sum / 4;
+      }
+
+      /* 2 — bilinear upsample wapas full resolution par */
+      const B = new Float32Array(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const fx = Math.min(cw - 1, Math.max(0, (x + 0.5) / 2 - 0.5));
+        const fy = Math.min(ch - 1, Math.max(0, (y + 0.5) / 2 - 0.5));
+        const x0 = Math.floor(fx), y0 = Math.floor(fy);
+        const x1 = Math.min(cw - 1, x0 + 1), y1 = Math.min(ch - 1, y0 + 1);
+        const tx = fx - x0, ty = fy - y0;
+        B[y * w + x] =
+          S[y0 * cw + x0] * (1 - tx) * (1 - ty) + S[y0 * cw + x1] * tx * (1 - ty) +
+          S[y1 * cw + x0] * (1 - tx) * ty + S[y1 * cw + x1] * tx * ty;
+      }
+
+      /* 3 — 3-tap separable smoothing (stair-steps girte hain) */
+      const T = new Float32Array(w * h), O = new Float32Array(w * h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        const l = x > 0 ? B[i - 1] : B[i], r = x < w - 1 ? B[i + 1] : B[i];
+        T[i] = 0.25 * l + 0.5 * B[i] + 0.25 * r;
+      }
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        const u = y > 0 ? T[i - w] : T[i], dn = y < h - 1 ? T[i + w] : T[i];
+        O[i] = 0.25 * u + 0.5 * T[i] + 0.25 * dn;
+      }
+
+      /* 4 — write back: bahar (alpha 0) ko chhedo mat, andar ke edge ko soften.
+         outerMask diya ho to SIRF bahari silhouette soften hota hai — pieces ke
+         beech ka seam (torso | arm) 100% opaque rehta hai, warna fit par line dikhti. */
+      for (let i = 0; i < w * h; i++) {
+        const a0 = A[i];
+        if (a0 <= 0) { d[i * 4 + 3] = 0; continue; }
+        if (outerMask && !outerMask[i]) { d[i * 4 + 3] = Math.round(a0); continue; }
+        if (a0 >= 250 && O[i] > 205) { d[i * 4 + 3] = 255; continue; }
+        const v = Math.min(a0, Math.round(O[i]));
+        d[i * 4 + 3] = v < 4 ? 0 : v;
+      }
+      ctx.putImageData(img, 0, 0);
+      return cv;
+    }
+
+    function edgeStats(cv) {                     /* kitne pixels partial-alpha hain */
+      const c = cv.getContext('2d', { willReadFrequently: true });
+      const d = c.getImageData(0, 0, cv.width, cv.height).data;
+      let semi = 0, solid = 0;
+      for (let i = 3; i < d.length; i += 4) { if (d[i] > 8 && d[i] < 248) semi++; else if (d[i] >= 248) solid++; }
+      return { semi: semi, solid: solid, ratio: semi + solid ? +(semi / (semi + solid) * 100).toFixed(2) : 0 };
+    }
+
+    function run(imgData, W, H) {
+      const t0 = performance.now();
+      const d = imgData.data;
+      const rows = new Array(H);
+      let bMinX = W, bMaxX = -1, bMinY = -1, bMaxY = -1;
+
+      for (let y = 0; y < H; y++) {
+        const runs = []; let inRun = false, st = 0;
+        const base = y * W * 4;
+        for (let x = 0; x < W; x++) {
+          const on = d[base + x * 4 + 3] > A_MIN;
+          if (on) { if (!inRun) { inRun = true; st = x; } }
+          else if (inRun) { inRun = false; runs.push([st, x - 1]); }
+        }
+        if (inRun) runs.push([st, W - 1]);
+        rows[y] = runs;
+        if (runs.length) {
+          if (bMinY < 0) bMinY = y;
+          bMaxY = y;
+          if (runs[0][0] < bMinX) bMinX = runs[0][0];
+          if (runs[runs.length - 1][1] > bMaxX) bMaxX = runs[runs.length - 1][1];
+        }
+      }
+      if (bMaxX < 0) return null;
+
+      const bodyH = bMaxY - bMinY + 1, cx = (bMinX + bMaxX) / 2;
+
+      /* landmarks */
+      const hs = [];
+      for (let y = bMinY + Math.floor(bodyH * 0.03); y <= bMinY + Math.floor(bodyH * 0.16); y++)
+        if (rows[y] && rows[y].length) hs.push(rows[y][rows[y].length - 1][1] - rows[y][0][0] + 1);
+      hs.sort((a, b) => a - b);
+      const headW = hs.length ? hs[Math.floor(hs.length / 2)] : 0;
+
+      let neckY = -1;
+      const nb0 = bMinY + Math.floor(bodyH * 0.09), nb1 = bMinY + Math.floor(bodyH * 0.34);
+      for (let y = nb0; y <= nb1; y++) if (rows[y] && rows[y].length === 0) { neckY = y; break; }
+      if (neckY < 0) {
+        let minSpan = Infinity;
+        for (let y = nb0; y <= nb1; y++) {
+          const r = rows[y]; if (!r || !r.length) continue;
+          const sp = r[r.length - 1][1] - r[0][0] + 1;
+          if (sp < minSpan) { minSpan = sp; neckY = y; }
+        }
+        if (neckY < 0 || (headW && minSpan > headW * 0.95)) neckY = bMinY + Math.floor(bodyH * 0.19);
+      }
+
+      let crotchY = -1;
+      for (let y = bMinY + Math.floor(bodyH * 0.42); y <= bMaxY; y++) {
+        const r = rows[y]; if (!r || r.length < 2) continue;
+        let mid = false;
+        for (let i = 0; i < r.length - 1; i++) if (r[i][1] < cx && cx < r[i + 1][0]) { mid = true; break; }
+        if (!mid) continue;
+        let good = 0, tot = 0;
+        for (let k = y; k <= Math.min(bMaxY, y + Math.floor(bodyH * 0.08)); k++) {
+          tot++; const rk = rows[k] || []; let g = false;
+          for (let i = 0; i < rk.length - 1; i++) if (rk[i][1] < cx && cx < rk[i + 1][0]) { g = true; break; }
+          if (g) good++;
+        }
+        if (tot && good / tot >= 0.7) { crotchY = y; break; }
+      }
+      if (crotchY < 0) crotchY = bMinY + Math.floor(bodyH * 0.60);
+
+      const tw = [];
+      for (let y = Math.floor(crotchY - bodyH * 0.22); y <= Math.floor(crotchY - bodyH * 0.08); y++) {
+        const r = rows[y]; if (!r || !r.length) continue;
+        let c = null;
+        for (const rr of r) if (rr[0] <= cx && cx <= rr[1]) { c = rr; break; }
+        if (!c) { let best = 1e9; for (const rr of r) { const m = Math.abs((rr[0] + rr[1]) / 2 - cx); if (m < best) { best = m; c = rr; } } }
+        if (c) tw.push(c[1] - c[0] + 1);
+      }
+      tw.sort((a, b) => a - b);
+      const torsoHalf = (tw.length ? tw[Math.floor(tw.length / 2)] : (bMaxX - bMinX + 1) * 0.4) / 2;
+
+      /* pixel -> piece id  (1 head, 2 torso, 3 armL, 4 armR, 5 legL, 6 legR) */
+      const ID = { head: 1, torso: 2, armL: 3, armR: 4, legL: 5, legR: 6 };
+      const lab = new Uint8Array(W * H);
+      let bodyPx = 0;
+
+      for (let y = bMinY; y <= bMaxY; y++) {
+        const r = rows[y]; if (!r || !r.length) continue;
+        if (y < neckY) {
+          for (const [a, b] of r) for (let x = a; x <= b; x++) { lab[y * W + x] = ID.head; bodyPx++; }
+          continue;
+        }
+        if (y >= crotchY) {
+          let gi = -1;
+          for (let i = 0; i < r.length - 1; i++) if (r[i][1] < cx && cx < r[i + 1][0]) { gi = i; break; }
+          for (let j = 0; j < r.length; j++) {
+            const [a, b] = r[j];
+            let id;
+            if (gi < 0) id = (a + b) / 2 < cx ? ID.legL : ID.legR;
+            else if (j < gi) id = ID.armL;
+            else if (j > gi + 1) id = ID.armR;
+            else id = (j === gi) ? ID.legL : ID.legR;
+            for (let x = a; x <= b; x++) { lab[y * W + x] = id; bodyPx++; }
+          }
+          continue;
+        }
+        let central = null;
+        for (const rr of r) if (rr[0] <= cx && cx <= rr[1]) { central = rr; break; }
+        const slack = torsoHalf * 1.15;
+        for (const [a, b] of r) {
+          const isCentral = central && a === central[0] && b === central[1];
+          for (let x = a; x <= b; x++) {
+            lab[y * W + x] = (isCentral && Math.abs(x - cx) <= slack) ? ID.torso : (x < cx ? ID.armL : ID.armR);
+            bodyPx++;
+          }
+        }
+      }
+
+      /* per-piece canvases */
+      const keys = ['head', 'torso', 'armL', 'armR', 'legL', 'legR'];
+      const LABEL = { head: 'HEAD', torso: 'TORSO', armL: 'ARM L', armR: 'ARM R', legL: 'LEG L', legR: 'LEG R' };
+      const Z0 = { legL: 1, legR: 1, armL: 2, armR: 2, torso: 3, head: 4 };
+      const P = {};
+      for (const k of keys) P[k] = { id: k, label: LABEL[k], z: Z0[k], x0: W, y0: H, x1: -1, y1: -1, px: 0 };
+
+      for (let y = bMinY; y <= bMaxY; y++) for (let x = bMinX; x <= bMaxX; x++) {
+        const v = lab[y * W + x]; if (!v) continue;
+        const p = P[keys[v - 1]];
+        if (x < p.x0) p.x0 = x; if (x > p.x1) p.x1 = x;
+        if (y < p.y0) p.y0 = y; if (y > p.y1) p.y1 = y;
+        p.px++;
+      }
+
+      const out = [];
+      for (const k of keys) {
+        const p = P[k];
+        if (!p.px) continue;
+        p.w = p.x1 - p.x0 + 1; p.h = p.y1 - p.y0 + 1;
+
+        /* canvas me 1px padding — edge bleed ke liye jagah */
+        const PAD = 1, cw = p.w + PAD * 2, chh = p.h + PAD * 2, N = cw * chh;
+        const raw = Memory.makeCanvas(cw, chh);
+        const rc = raw.getContext('2d', { willReadFrequently: true });
+        const img = rc.createImageData(cw, chh);
+        const own = new Uint8Array(N);
+
+        for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) {
+          const sx = p.x0 + x, sy = p.y0 + y;
+          if (lab[sy * W + sx] !== ID[k]) continue;
+          const si = (sy * W + sx) * 4, di = ((y + PAD) * cw + (x + PAD)) * 4;
+          img.data[di] = d[si]; img.data[di + 1] = d[si + 1];
+          img.data[di + 2] = d[si + 2]; img.data[di + 3] = d[si + 3];
+          own[(y + PAD) * cw + (x + PAD)] = 1;
+        }
+
+        /* EDGE BLEED — piece ke kinare ka rang 1px bahar extend karo. Pieces
+           ab 1px overlap karte hain, isliye scaled/rotated draw par beech me
+           safed ya kaali "boundary line" nahi dikhti.                          */
+        const srcPx = new Uint8ClampedArray(img.data);
+        for (let y = 0; y < chh; y++) for (let x = 0; x < cw; x++) {
+          const i = y * cw + x;
+          if (own[i]) continue;
+          const nb = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]];
+          for (let n = 0; n < 4; n++) {
+            const nx = nb[n][0], ny = nb[n][1];
+            if (nx < 0 || ny < 0 || nx >= cw || ny >= chh) continue;
+            const j = ny * cw + nx;
+            if (!own[j]) continue;
+            img.data[i * 4] = srcPx[j * 4]; img.data[i * 4 + 1] = srcPx[j * 4 + 1];
+            img.data[i * 4 + 2] = srcPx[j * 4 + 2]; img.data[i * 4 + 3] = srcPx[j * 4 + 3];
+            break;
+          }
+        }
+
+        /* outer mask — sirf ASLI bahari silhouette AA hoga (bleed ke baad) */
+        const outer = new Uint8Array(N);
+        for (let y = 0; y < chh; y++) for (let x = 0; x < cw; x++) {
+          const i = y * cw + x;
+          if (img.data[i * 4 + 3] === 0) continue;
+          const nb2 = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]];
+          for (let n = 0; n < 4; n++) {
+            const nx = nb2[n][0], ny = nb2[n][1];
+            if (nx < 0 || ny < 0 || nx >= cw || ny >= chh) { outer[i] = 1; break; }
+            if (img.data[(ny * cw + nx) * 4 + 3] === 0) { outer[i] = 1; break; }
+          }
+        }
+        rc.putImageData(img, 0, 0);
+
+        const aa = applyAA(raw, outer);           /* pillar 1: sub-pixel edges */
+        if (aa !== raw) Memory.release(raw);
+
+        /* pivot — shoulder / hip / neck */
+        let pivot;
+        if (k === 'head') pivot = { x: p.x0 + p.w / 2, y: p.y1 };
+        else if (k === 'torso') pivot = { x: p.x0 + p.w / 2, y: p.y1 };
+        else if (k === 'armL') pivot = { x: p.x1, y: p.y0 + p.h * 0.12 };
+        else if (k === 'armR') pivot = { x: p.x0, y: p.y0 + p.h * 0.12 };
+        else pivot = { x: p.x0 + p.w / 2, y: p.y0 };
+
+        out.push({
+          id: k, label: LABEL[k], z: p.z, x: p.x0, y: p.y0, w: p.w, h: p.h, px: p.px,
+          ox: p.x0 - PAD, oy: p.y0 - PAD, ow: p.w + PAD * 2, oh: p.h + PAD * 2,
+          canvas: aa, pivot: pivot, kind: 'piece'
+        });
+      }
+
+      return {
+        pieces: out.sort((a, b) => a.z - b.z),
+        bbox: { x: bMinX, y: bMinY, w: bMaxX - bMinX + 1, h: bMaxY - bMinY + 1 },
+        meta: {
+          w: W, h: H, bodyH: bodyH, headW: headW, neckY: neckY, crotchY: crotchY,
+          torsoHalf: Math.round(torsoHalf), bodyPx: bodyPx,
+          cutPx: out.reduce((a, p) => a + p.px, 0),
+          coverage: +(out.reduce((a, p) => a + p.px, 0) / bodyPx * 100).toFixed(2),
+          ms: Math.round(performance.now() - t0)
+        }
+      };
+    }
+
+    return { run, edgeStats, applyAA };
+  })();
+
+  /* -------------------------------------------------------------- 04 · LAYERS (pillar 2) */
+  const Layers = (function () {
+    let items = [];                    /* back → front */
+    let selected = null;
+    let onChange = () => {};
+
+    function load(list) {
+      items = list.map((p) => Object.assign({}, p));
+      normalize();
+      selected = items.length ? items[items.length - 1].id : null;
+      onChange();
+    }
+    function normalize() { items.forEach((it, i) => { it.z = i + 1; }); }
+    function all() { return items; }
+    function byId(id) { return items.find((x) => x.id === id) || null; }
+    function order() { return items.slice(); }
+
+    function moveTo(id, index) {
+      const from = items.findIndex((x) => x.id === id);
+      if (from < 0) return false;
+      index = U.clamp(index, 0, items.length - 1);
+      if (index === from) return false;
+      const [it] = items.splice(from, 1);
+      items.splice(index, 0, it);
+      normalize(); onChange();
+      return true;
+    }
+    function front(id) { return moveTo(id, items.length - 1); }
+    function back(id) { return moveTo(id, 0); }
+    function add(item) { items.push(item); normalize(); selected = item.id; onChange(); }
+    function resetOrder() {
+      items.sort((a, b) => {
+        const base = { legL: 1, legR: 1, armL: 2, armR: 2, torso: 3, head: 4 };
+        return (base[a.id] || a.baseZ || 0) - (base[b.id] || b.baseZ || 0);
+      });
+      normalize(); onChange();
+    }
+    function idsInOrder() { return items.map((x) => x.id); }
+    function setOrder(ids) {
+      const map = new Map(items.map((x) => [x.id, x]));
+      const next = [];
+      ids.forEach((id) => { if (map.has(id)) { next.push(map.get(id)); map.delete(id); } });
+      map.forEach((v) => next.push(v));
+      items = next; normalize(); onChange();
+    }
+    function setOnChange(fn) { onChange = fn; }
+    function select(id) { selected = id; onChange(); }
+    function getSelected() { return selected; }
+    function removeKind(kind) { items = items.filter((x) => x.kind !== kind); normalize(); onChange(); }
+    return { load, all, byId, order, moveTo, front, back, add, resetOrder, idsInOrder, setOrder,
+             setOnChange, select, getSelected, removeKind };
+  })();
+
+  /* ---------------------------------------------------------- 05 · POSE (pillar 4)
+     Snapshot-based state controller. Har change JSON snapshot banata hai ->
+     undo / redo / reset / localStorage save / export.                        */
+  const Pose = (function () {
+    const RING_IDS = ['head', 'torso', 'armL', 'armR', 'legL', 'legR'];
+    let rotation = {};
+    RING_IDS.forEach((k) => { rotation[k] = 0; });
+
+    let hist = [], idx = -1, limit = 80;
+    let onChange = () => {};
+
+    function capture() {
+      return { v: 1, rotation: Object.assign({}, rotation), order: Layers.idsInOrder() };
+    }
+    function apply(snap, renderIt) {
+      rotation = Object.assign({}, snap.rotation || {});
+      RING_IDS.forEach((k) => { if (typeof rotation[k] !== 'number') rotation[k] = 0; });
+      if (snap.order) Layers.setOrder(snap.order);
+      if (renderIt !== false) onChange();
+    }
+    function push(label) {
+      const snap = capture();
+      const prev = idx >= 0 ? hist[idx].snap : null;
+      if (prev && JSON.stringify(prev) === JSON.stringify(snap)) return;
+      hist = hist.slice(0, idx + 1);
+      hist.push({ label: label || 'change', snap: snap });
+      if (hist.length > limit) { hist.shift(); }
+      idx = hist.length - 1;
+      onChange();
+    }
+    function init() { hist = []; idx = -1; RING_IDS.forEach((k) => rotation[k] = 0); push('init'); }
+    function undo() { if (idx > 0) { idx--; apply(hist[idx].snap); return true; } return false; }
+    function redo() { if (idx < hist.length - 1) { idx++; apply(hist[idx].snap); return true; } return false; }
+    function reset(render) {
+      RING_IDS.forEach((k) => { rotation[k] = 0; });
+      Layers.resetOrder();
+      push('reset');
+      if (render) onChange();
+    }
+    /* ---- MIRROR SYSTEM: left/right symmetric balance (legs + arms) ---- */
+    let mirrorOn = true;
+    const MIRROR = { armL: 'armR', armR: 'armL', legL: 'legR', legR: 'legL' };
+    function setAngle(id, rad) {
+      rotation[id] = rad;
+      if (mirrorOn && MIRROR[id]) rotation[MIRROR[id]] = -rad;   /* perfect mirror */
+    }
+    function setPair(map) { Object.keys(map).forEach((k) => { rotation[k] = map[k] || 0; }); }
+    function setMirror(on) { mirrorOn = !!on; }
+    function isMirror() { return mirrorOn; }
+    function get(id) { return rotation[id] || 0; }
+    function getRotation() { return Object.assign({}, rotation); }
+    function history() { return { list: hist.map((h) => ({ label: h.label })), idx: idx }; }
+    function setOnChange(fn) { onChange = fn; }
+    function save(key) {
+      try {
+        localStorage.setItem(key || 'rigstudio.snapshot', JSON.stringify(capture()));
+        return true;
+      } catch (e) { return false; }
+    }
+    function load(key) {
+      try {
+        const raw = localStorage.getItem(key || 'rigstudio.snapshot');
+        if (!raw) return false;
+        apply(JSON.parse(raw));
+        push('load snapshot');
+        return true;
+      } catch (e) { return false; }
+    }
+    function exportJSON() { return JSON.stringify(capture(), null, 2); }
+    function importJSON(txt) {
+      try { apply(JSON.parse(txt)); push('import'); return true; } catch (e) { return false; }
+    }
+    return { RING_IDS, init, push, undo, redo, reset, setAngle, setPair, setMirror, isMirror, get, getRotation, capture,
+             history, setOnChange, save, load, exportJSON, importJSON };
+  })();
+
+  /* --------------------------------------------------------------- 06 · STUDIO
+     Composite render + rotation rings. Sub-pixel: fractional scale + high
+     smoothing quality, so rotated edges stay clean.                          */
+  const Studio = (function () {
+    let cv, ctx, bbox = null, scale = 1, baseScale = 1, zoom = 1;
+    let ringsOn = true, aaOn = true;
+    let drag = null;
+
+    function bind(canvas) { cv = canvas; ctx = cv.getContext('2d'); }
+
+    function layout() {
+      if (!bbox) return;
+      const wide = window.innerWidth >= 821;
+      const wrapEl = cv.parentElement;
+      const availW = Math.min(460, ((wrapEl && wrapEl.clientWidth) || 460) - 20);
+      /* mobile: viewport ki 40vh se zyada nahi + zoom max 50% (character poora frame me) */
+      const shortScreen = window.innerHeight < 700;
+      const maxH = wide ? 520
+        : Math.max(150, Math.round(window.innerHeight * (shortScreen ? 0.34 : 0.40)));
+      baseScale = Math.min(availW / bbox.w, maxH / bbox.h);
+      if (!wide) baseScale = Math.min(baseScale, 0.50);
+      scale = baseScale * zoom;
+      cv.width = Math.max(1, Math.round(bbox.w * scale));
+      cv.height = Math.max(1, Math.round(bbox.h * scale));
+    }
+
+    function toScreen(x, y) { return { x: (x - bbox.x) * scale, y: (y - bbox.y) * scale }; }
+
+    function render() {
+      if (!ctx || !bbox) return;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      ctx.imageSmoothingEnabled = aaOn;
+      ctx.imageSmoothingQuality = 'high';
+
+      const list = Layers.order();
+      for (const p of list) {
+        if (p.visible === false) continue;
+        const rot = Pose.get(p.id) || 0;
+        ctx.save();
+        const dx = (p.ox !== undefined ? p.ox : p.x), dy = (p.oy !== undefined ? p.oy : p.y);
+        const dw = (p.ow !== undefined ? p.ow : p.w), dh = (p.oh !== undefined ? p.oh : p.h);
+        if (p.kind === 'cloth' || !p.pivot) {
+          ctx.drawImage(p.canvas, (dx - bbox.x) * scale, (dy - bbox.y) * scale, dw * scale, dh * scale);
+        } else {
+          const pv = toScreen(p.pivot.x, p.pivot.y);
+          ctx.translate(pv.x, pv.y);
+          ctx.rotate(rot);
+          ctx.drawImage(p.canvas, (dx - bbox.x) * scale - pv.x, (dy - bbox.y) * scale - pv.y,
+                        dw * scale, dh * scale);
+        }
+        ctx.restore();
+      }
+      if (ringsOn) drawRings();
+    }
+
+    function drawRings() {
+      const list = Layers.order();
+      for (const p of list) {
+        if (!p.pivot || p.kind === 'cloth') continue;
+        const pv = toScreen(p.pivot.x, p.pivot.y);
+        const rot = Pose.get(p.id) || 0;
+        ctx.save();
+        ctx.translate(pv.x, pv.y);
+        ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,.35)'; ctx.fill();
+        ctx.lineWidth = 2; ctx.strokeStyle = 'rgba(0,230,118,.9)'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI * 2); ctx.fillStyle = '#00e676'; ctx.fill();
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -22); ctx.strokeStyle = 'rgba(0,230,118,.55)';
+        ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.restore();
+        if (Math.abs(rot) > 0.001) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(0,230,118,.95)';
+          ctx.font = '10px ui-monospace, monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(Math.round(U.deg(rot)) + '°', pv.x, pv.y + 26);
+          ctx.restore();
+        }
+      }
+    }
+
+    function hit(x, y) {
+      const list = Layers.order();
+      let best = null, bestD = 18;
+      for (const p of list) {
+        if (!p.pivot || p.kind === 'cloth') continue;
+        const pv = toScreen(p.pivot.x, p.pivot.y);
+        const d = Math.hypot(x - pv.x, y - pv.y);
+        if (d < bestD) { bestD = d; best = p; }
+      }
+      return best;
+    }
+
+    function pointerPos(e) {
+      const r = cv.getBoundingClientRect();
+      return { x: (e.clientX - r.left) * (cv.width / r.width), y: (e.clientY - r.top) * (cv.height / r.height) };
+    }
+
+    function attach() {
+      cv.addEventListener('pointerdown', (e) => {
+        if (!bbox) return;
+        const p = pointerPos(e);
+        const target = hit(p.x, p.y);
+        if (!target) return;
+        const pv = toScreen(target.pivot.x, target.pivot.y);
+        drag = { id: target.id, start: Math.atan2(p.y - pv.y, p.x - pv.x) - Pose.get(target.id), pivot: pv };
+        cv.setPointerCapture(e.pointerId);
+        e.preventDefault();
+      });
+      cv.addEventListener('pointermove', (e) => {
+        if (!drag) return;
+        const p = pointerPos(e);
+        const a = Math.atan2(p.y - drag.pivot.y, p.x - drag.pivot.x) - drag.start;
+        Pose.setAngle(drag.id, a);
+        render();
+      });
+      cv.addEventListener('pointerup', (e) => {
+        if (!drag) return;
+        const id = drag.id; drag = null;
+        Pose.push('rotate ' + id);
+        render();
+      });
+      cv.addEventListener('pointercancel', () => { drag = null; });
+    }
+
+    function setScene(b, z) { bbox = b; zoom = z || 1; layout(); render(); }
+    function setZoom(z) { zoom = z; layout(); render(); }
+    function setRings(v) { ringsOn = v; render(); }
+    function setAA(v) { aaOn = v; render(); }
+    function info() { return { scale: +scale.toFixed(4), baseScale: +baseScale.toFixed(4), zoom, w: cv.width, h: cv.height, aa: aaOn, smooth: ctx.imageSmoothingQuality }; }
+
+    return { bind, attach, layout, setScene, setZoom, setRings, setAA, render, info };
+  })();
+
+  /* ----------------------------------------------------------------- 07 · APP */
+  const App = {
+    image: null, imgData: null, W: 0, H: 0, cut: null, page: 1
+  };
+
+  let autoTimer = null;
+
+  function goPage(n) {
+    if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }   /* user ki navigation jeetegi */
+    [1, 2, 3].forEach((i) => {
+      U.$('pg' + i).classList.toggle('hidden', i !== n);
+      const b = document.querySelector('.step[data-page="' + i + '"]');
+      b.classList.toggle('on', i === n);
+      b.classList.toggle('done', i < n || (i === 1 && App.cut));
+    });
+    App.page = n;
+    if (n === 3) { Studio.render(); }
+  }
+
+  function enableSteps() {
+    document.querySelector('.step[data-page="2"]').disabled = !App.cut;
+    document.querySelector('.step[data-page="3"]').disabled = !App.cut;
+  }
+
+  function hud() {
+    const s = Memory.stats();
+    U.$('hud').innerHTML = 'MEM: <b>' + s.canvases + '</b> canvases · <b>' + s.mb.toFixed(2) +
+      '</b> MB · purges <b>' + s.purges + '</b>' + (s.heapMB !== null ? ' · heap <b>' + s.heapMB + '</b> MB' : '');
+  }
+
+  function setLight(kind, msg, meta) {
+    const tl = U.$('trafficLight'), card = U.$('gateCard'), glow = U.$('gateGlow'), m = U.$('gateMsg');
+    const map = {
+      standby: ['⚪ STANDBY', '#6b7280', ''],
+      scanning: ['🔵 SCANNING…', '#4dabf7', 'rgba(77,171,247,.10)'],
+      ready: ['🟢 READY TO RIG', '#00e676', 'rgba(0,230,118,.10)'],
+      warning: ['🟡 POSE WARNING', '#ffcc00', 'rgba(255,204,0,.10)'],
+      rejected: ['🔴 REJECTED', '#ff4d4d', 'rgba(255,77,77,.10)'],
+      failed: ['🔴 SCAN FAILED', '#ff4d4d', 'rgba(255,77,77,.10)']
+    };
+    const [txt, col, bg] = map[kind] || map.standby;
+    tl.textContent = txt; tl.style.color = col;
+    tl.style.background = bg || 'rgba(255,255,255,.03)';
+    tl.style.borderColor = U.rgba(col, 0.25);
+    card.style.borderColor = U.rgba(col, 0.2);
+    glow.style.background = 'radial-gradient(circle, ' + U.rgba(col, 0.15) + ' 0%, transparent 70%)';
+    m.innerHTML = msg;
+    if (meta !== undefined) U.$('scanMeta').textContent = meta;
+  }
+
+  /* ---------------- PAGE 2 render ---------------- */
+  function renderCut() {
+    if (!App.cut) return;
+    const { pieces, bbox, meta } = App.cut;
+
+    /* stack preview */
+    const st = U.$('cutStack');
+    const pad = 10;
+    const sc = Math.min(300 / bbox.w, 320 / bbox.h);
+    st.width = Math.round(bbox.w * sc) + pad * 2;
+    st.height = Math.round(bbox.h * sc) + pad * 2;
+    const c = st.getContext('2d');
+    c.clearRect(0, 0, st.width, st.height);
+    c.imageSmoothingEnabled = U.$('aaToggle').checked;
+    c.imageSmoothingQuality = 'high';
+    Layers.order().forEach((p) => {
+      const dx = p.ox !== undefined ? p.ox : p.x, dy = p.oy !== undefined ? p.oy : p.y;
+      const dw = p.ow !== undefined ? p.ow : p.w, dh = p.oh !== undefined ? p.oh : p.h;
+      c.drawImage(p.canvas, pad + (dx - bbox.x) * sc, pad + (dy - bbox.y) * sc, dw * sc, dh * sc);
+    });
+
+    U.$('cutMeta').textContent = pieces.length + ' pieces · ' + bbox.w + '×' + bbox.h;
+    U.$('covMeta').textContent = meta.coverage + '%  (' + meta.cutPx + ' px)';
+    U.$('msMeta').textContent = meta.ms + ' ms';
+
+    /* AA stats */
+    let semi = 0, solid = 0;
+    pieces.forEach((p) => { const e = Cut.edgeStats(p.canvas); semi += e.semi; solid += e.solid; });
+    U.$('aaStat').textContent = 'AA edge px: ' + semi + ' semi / ' + solid + ' solid';
+
+    renderLayers();
+  }
+
+  function renderLayers() {
+    const list = U.$('layerList');
+    list.innerHTML = '';
+    const items = Layers.order().slice().reverse();     /* top = front */
+    items.forEach((p) => {
+      const row = document.createElement('div');
+      row.className = 'layer';
+      row.dataset.id = p.id;
+      row.draggable = true;
+
+      const g = document.createElement('span'); g.className = 'grab'; g.textContent = '⠿';
+      const th = document.createElement('div'); th.className = 'thumb';
+      const tc = Memory.trackCanvas(document.createElement('canvas'));
+      tc.width = p.w; tc.height = p.h;
+      const tctx = tc.getContext('2d');
+      tctx.imageSmoothingEnabled = true; tctx.imageSmoothingQuality = 'high';
+      tctx.drawImage(p.canvas, 0, 0);
+      tc.style.width = Math.min(26, 26 * (p.w / p.h)) + 'px';
+      tc.style.height = '26px';
+      th.appendChild(tc);
+
+      const nm = document.createElement('span'); nm.className = 'name'; nm.textContent = p.label;
+      const z = document.createElement('span'); z.className = 'z'; z.textContent = 'Z' + p.z;
+
+      const acts = document.createElement('div'); acts.className = 'acts';
+      const bf = document.createElement('button'); bf.className = 'btn tiny ghost'; bf.textContent = '⤒'; bf.title = 'Bring to Front';
+      const bb = document.createElement('button'); bb.className = 'btn tiny ghost'; bb.textContent = '⤓'; bb.title = 'Send to Back';
+      bf.onclick = (e) => { e.stopPropagation(); Layers.front(p.id); App.markLayers(); };
+      bb.onclick = (e) => { e.stopPropagation(); Layers.back(p.id); App.markLayers(); };
+      acts.appendChild(bf); acts.appendChild(bb);
+
+      row.appendChild(g); row.appendChild(th); row.appendChild(nm); row.appendChild(z); row.appendChild(acts);
+      row.onclick = () => { Layers.select(p.id); renderLayers(); };
+      list.appendChild(row);
+    });
+    U.$('zMeta').textContent = 'back → front · ' + items.length + ' layers';
+  }
+
+  /* drag & drop (HTML5) — pointer fallback ke saath */
+  (function bindDnD() {
+    let dragId = null;
+    const list = U.$('layerList');
+    list.addEventListener('dragstart', (e) => {
+      const row = e.target.closest('.layer'); if (!row) return;
+      dragId = row.dataset.id; row.classList.add('drag');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', dragId); } catch (err) {}
+    });
+    list.addEventListener('dragend', () => {
+      dragId = null;
+      [...list.children].forEach((r) => r.classList.remove('drag'));
+    });
+    list.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const row = e.target.closest('.layer'); if (!row) return;
+      if (!dragId || row.dataset.id === dragId) return;
+      const items = Layers.order().slice().reverse();          /* top = front */
+      const fromIdx = items.findIndex((x) => x.id === dragId);
+      const overIdx = items.findIndex((x) => x.id === row.dataset.id);
+      if (fromIdx < 0 || overIdx < 0) return;
+      /* top = front => backend index = len-1-top */
+      const backendIdx = items.length - 1 - overIdx;
+      Layers.moveTo(dragId, backendIdx);
+      renderLayers();
+      renderCutStackOnly();
+    });
+    list.addEventListener('drop', (e) => { e.preventDefault(); App.markLayers(); });
+  })();
+
+  function renderCutStackOnly() {
+    if (!App.cut) return;
+    const st = U.$('cutStack'), { bbox } = App.cut;
+    const pad = 10, sc = Math.min(300 / bbox.w, 320 / bbox.h);
+    const c = st.getContext('2d');
+    c.clearRect(0, 0, st.width, st.height);
+    c.imageSmoothingEnabled = U.$('aaToggle').checked;
+    c.imageSmoothingQuality = 'high';
+    Layers.order().forEach((p) => {
+      const dx = p.ox !== undefined ? p.ox : p.x, dy = p.oy !== undefined ? p.oy : p.y;
+      const dw = p.ow !== undefined ? p.ow : p.w, dh = p.oh !== undefined ? p.oh : p.h;
+      c.drawImage(p.canvas, pad + (dx - bbox.x) * sc, pad + (dy - bbox.y) * sc, dw * sc, dh * sc);
+    });
+    Studio.render();
+  }
+
+  /* ---------------- history UI ---------------- */
+  function renderHistory() {
+    const h = Pose.history();
+    const box = U.$('histList');
+    box.innerHTML = '';
+    h.list.forEach((it, i) => {
+      const d = document.createElement('div');
+      d.className = 'it' + (i === h.idx ? ' cur' : '') + (i > h.idx ? ' undone' : '');
+      const l = document.createElement('span'); l.textContent = (i + 1) + '. ' + it.label;
+      const r = document.createElement('span'); r.className = 'tag'; r.textContent = i === h.idx ? 'current' : '';
+      d.appendChild(l); d.appendChild(r);
+      box.appendChild(d);
+    });
+    U.$('histMeta').textContent = h.list.length + ' states · @' + (h.idx + 1);
+    U.$('btnUndo').disabled = h.idx <= 0;
+    U.$('btnRedo').disabled = h.idx >= h.list.length - 1;
+    const rot = Pose.getRotation();
+    U.$('stateMeta').textContent = Object.keys(rot).filter((k) => Math.abs(rot[k]) > 0.001).length + ' rotated';
+    const si = Studio.info();
+    U.$('scaleMeta').textContent = (si.scale * 100).toFixed(1) + '%  ·  ' + si.w + '×' + si.h + ' px';
+  }
+
+  /* ---------------- scan pipeline ---------------- */
+  async function handleFile(file) {
+    if (!file) return;
+    U.$('fileName').textContent = file.name + ' · ' + Math.round(file.size / 1024) + ' KB';
+    setLight('scanning', 'Image padhi ja rahi hai…');
+
+    /* PILLAR 3: har new upload par pichhla sab kuch free */
+    Studio.setScene(null, 1);
+    if (App.cut) Memory.purgeAll('new upload');
+    Layers.load([]);
+    U.$('layerList').innerHTML = '';
+    App.cut = null; App.imgData = null; enableSteps(); hud();
+
+    const url = Memory.trackURL(URL.createObjectURL(file));
+    const img = new Image();
+    img.decoding = 'sync';
+    const loaded = new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('image load failed')); });
+    img.src = url;
+    try { await loaded; } catch (e) {
+      setLight('failed', '❌ File image ke roop me khul nahi rahi — doosri PNG chuno.');
+      Memory.purgeAll('load failed'); hud();
+      return;
+    }
+
+    const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+    const work = Memory.makeCanvas(W, H);
+    const wc = work.getContext('2d', { willReadFrequently: true });
+    wc.imageSmoothingEnabled = true; wc.imageSmoothingQuality = 'high';
+    wc.drawImage(img, 0, 0, W, H);
+    let data;
+    try { data = wc.getImageData(0, 0, W, H); }
+    catch (e) {
+      setLight('failed', '❌ Canvas tainted — same-origin image chuno.');
+      Memory.release(work); Memory.purgeAll('tainted'); hud(); return;
+    }
+    Memory.release(work);
+    App.imgData = data; App.W = W; App.H = H;
+
+    const res = Gate.run(data, W, H);
+    const kind = res.light === 'READY' ? 'ready' : res.light === 'WARNING' ? 'warning' : 'rejected';
+    setLight(kind, res.msg, W + '×' + H + ' · ' + JSON.stringify(res.metrics));
+
+    if (!res.ok) { Memory.purgeAll('gate failed'); hud(); return; }
+
+    /* AUTO-CUT */
+    const cut = Cut.run(data, W, H);
+    if (!cut) { setLight('failed', 'Cut fail ho gaya.'); return; }
+    App.cut = cut;
+    Layers.load(cut.pieces);
+    Layers.setOnChange(() => { renderLayers(); Studio.render(); });
+    renderCut();
+    Studio.setScene(cut.bbox, 1);
+    Pose.init();
+    renderHistory();
+    enableSteps(); hud();
+
+    setLight(kind, res.msg + (res.light === 'WARNING' ? ' (cut allowed)' : ' · 6 pieces cut in ' + cut.meta.ms + ' ms'),
+             W + '×' + H + ' · ' + cut.pieces.length + ' pieces · ' + cut.meta.coverage + '% coverage');
+    if (res.light === 'READY') {
+      if (autoTimer) clearTimeout(autoTimer);
+      autoTimer = setTimeout(() => { autoTimer = null; if (App.page === 1) goPage(2); }, 380);
+    }
+  }
+
+  /* ---------------- wiring ---------------- */
+  App.markLayers = function () { renderLayers(); renderCutStackOnly(); Pose.push('layer order'); renderHistory(); };
+
+  U.$('fileInput').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    handleFile(f);
+  });
+
+  document.querySelectorAll('.step').forEach((b) => {
+    b.addEventListener('click', () => goPage(+b.dataset.page));
+  });
+
+  U.$('aaToggle').addEventListener('change', (e) => {
+    const on = e.target.checked;
+    U.$('aaPill').textContent = on ? 'AA · HIGH' : 'AA · OFF';
+    U.$('aaPill').style.color = on ? 'var(--ok)' : 'var(--mut)';
+    U.$('aaPill').style.background = on ? 'rgba(0,230,118,.08)' : 'rgba(255,255,255,.03)';
+    U.$('aaPill').style.borderColor = on ? 'rgba(0,230,118,.2)' : 'rgba(255,255,255,.07)';
+    Studio.setAA(on);
+    renderCutStackOnly();
+  });
+
+  U.$('zoom2x').addEventListener('click', () => {
+    const btn = U.$('zoom2x');
+    const next = btn.dataset.z === '2' ? 1 : 2;
+    btn.dataset.z = next;
+    btn.textContent = next === 2 ? 'Zoom 1×' : 'Zoom 2×';
+    Studio.setZoom(next);
+    if (App.page !== 3) goPage(3);
+  });
+
+  U.$('btnFront').addEventListener('click', () => {
+    const id = Layers.getSelected(); if (!id) return;
+    Layers.front(id); App.markLayers(); U.toast('Bring to Front: ' + id);
+  });
+  U.$('btnBack').addEventListener('click', () => {
+    const id = Layers.getSelected(); if (!id) return;
+    Layers.back(id); App.markLayers(); U.toast('Send to Back: ' + id);
+  });
+
+  U.$('btnAddCloth').addEventListener('click', () => U.$('clothInput').click());
+  U.$('clothInput').addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0]; e.target.value = '';
+    if (!f || !App.cut) return;
+    const url = Memory.trackURL(URL.createObjectURL(f));
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; }).catch(() => {});
+    if (!img.naturalWidth) { U.toast('Clothing image load nahi hui'); return; }
+    const b = App.cut.bbox;
+    const cv = Memory.makeCanvas(b.w, b.h);
+    const c = cv.getContext('2d');
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    c.drawImage(img, 0, 0, b.w, b.h);
+    Layers.add({ id: 'cloth' + Date.now(), label: 'CLOTHING', kind: 'cloth', z: 99,
+                 x: b.x, y: b.y, w: b.w, h: b.h, px: b.w * b.h, canvas: cv, pivot: null, baseZ: 99 });
+    renderLayers(); renderCutStackOnly(); Pose.push('add clothing'); renderHistory(); hud();
+    U.toast('Clothing layer add ho gayi (front)');
+  });
+
+  U.$('toStudio').addEventListener('click', () => goPage(3));
+  U.$('btnUndo').addEventListener('click', () => { Pose.undo(); renderHistory(); });
+  U.$('btnRedo').addEventListener('click', () => { Pose.redo(); renderHistory(); });
+  U.$('btnReset').addEventListener('click', () => { Pose.reset(true); renderHistory(); U.toast('Pose reset'); });
+  U.$('btnSnap').addEventListener('click', () => {
+    const ok = Pose.save();
+    U.toast(ok ? 'Snapshot saved (localStorage)' : 'Save fail — storage full?');
+    U.$('snapNote').textContent = ok ? 'Snapshot saved: ' + new Date().toLocaleTimeString() : 'Save failed';
+  });
+  U.$('btnLoad').addEventListener('click', () => {
+    const ok = Pose.load();
+    renderHistory();
+    U.toast(ok ? 'Snapshot loaded' : 'Koi snapshot nahi mila');
+  });
+  U.$('btnExport').addEventListener('click', () => {
+    const blob = new Blob([Pose.exportJSON()], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'rig-pose.json'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    U.toast('pose JSON exported');
+  });
+
+  U.$('ringToggle').addEventListener('change', (e) => Studio.setRings(e.target.checked));
+  U.$('studioAA').addEventListener('change', (e) => Studio.setAA(e.target.checked));
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault();
+      if (e.shiftKey) Pose.redo(); else Pose.undo();
+      renderHistory();
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); Pose.redo(); renderHistory(); }
+  });
+
+  /* pose change -> render both canvases */
+  Pose.setOnChange(() => { Studio.render(); renderHistory(); });
+
+  /* back button — inline handler nahi, proper listener (history-aware) */
+  (function () {
+    const a = U.$('backBtn');
+    if (!a) return;
+    a.addEventListener('click', (e) => {
+      try {
+        const sameOrigin = document.referrer && document.referrer.indexOf(location.host) >= 0;
+        if (sameOrigin && history.length > 1) { e.preventDefault(); history.back(); }
+      } catch (err) { /* href fallback chalta rahega */ }
+    });
+  })();
+
+  /* memory HUD ticker */
+  setInterval(hud, 900);
+
+  /* boot */
+  Studio.bind(U.$('studio'));
+  Studio.attach();
+  Layers.setOnChange(() => { renderLayers(); Studio.render(); });
+  setLight('standby', 'Transparent PNG character sheet upload karo — baaki matrix khud sambhal lega.', '—');
+  hud();
+
+  /* ---- test hooks ---- */
+  window.RIG = {
+    App, Memory, Gate, Cut, Layers, Pose, Studio,
+    goPage,
+    stats: () => ({ memory: Memory.stats(), cut: App.cut && App.cut.meta,
+                    layers: Layers.idsInOrder(), pose: Pose.getRotation(), history: Pose.history(),
+                    studio: Studio.info(), page: App.page })
+  };
+})();
+</script>
+<script>
+/* ===== QUICK POSE presets — RIG.Pose ke upar, history me push hota hai ===== */
+(function () {
+  const PRESETS = {
+    idle: { head: 0.00, torso: 0.00, armL:  0.00, armR:  0.00, legL:  0.00, legR:  0.00 },
+    walk: { head: 0.00, torso: 0.03, armL:  0.36, armR: -0.36, legL: -0.12, legR:  0.12 },
+    run:  { head: 0.04, torso: 0.09, armL:  0.72, armR: -0.72, legL: -0.22, legR:  0.22 },
+    sit:  { head: 0.00, torso: 0.04, armL:  0.10, armR: -0.10, legL:  0.20, legR: -0.20 }
+  };
+  let current = null;
+
+  function mark(name) {
+    current = name;
+    document.querySelectorAll('#qpRow .qp').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.pose === name);
+    });
+  }
+
+  function apply(name) {
+    if (!window.RIG || !RIG.Pose || !PRESETS[name]) return;
+    const p = PRESETS[name];
+    RIG.Pose.RING_IDS.forEach(function (k) { RIG.Pose.setAngle(k, p[k] || 0); });
+    RIG.Pose.push('pose: ' + name);
+    mark(name);
+    try {
+      const st = document.getElementById('stateMeta');
+      if (st) st.textContent = 'pose: ' + name;
+    } catch (e) {}
+  }
+
+  document.addEventListener('click', function (e) {
+    const b = e.target && e.target.closest ? e.target.closest('#qpRow .qp') : null;
+    if (!b) return;
+    e.preventDefault();
+    apply(b.dataset.pose);
+  });
+
+  /* undo / redo / reset ke baad active mark sync karo */
+  ['btnUndo', 'btnRedo', 'btnReset'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', function () { setTimeout(function () { mark(null); }, 30); });
+  });
+
+  mark('idle');
+
+  /* ================= WALK CYCLE ENGINE (mirror + spread + speed) ================= */
+  const Anim = {
+    on: false, raf: 0, phase: 0, last: 0, kind: 'walk',
+    spread: 0.22,          /* legs amplitude (rad) */
+    armAmp: 0.30,
+    speed: 1.0,            /* cycles per second base */
+    torso: 0.03
+  };
+
+  function step(ts) {
+    if (!Anim.on) return;
+    const dt = Anim.last ? Math.min(0.05, (ts - Anim.last) / 1000) : 0.016;
+    Anim.last = ts;
+    Anim.phase += dt * Anim.speed * Math.PI * 2;      /* 1 cycle = 2π */
+    const a = Math.sin(Anim.phase) * Anim.spread;      /* legs: perfectly mirrored */
+    const b = Math.sin(Anim.phase) * Anim.armAmp;      /* arms: opposite of legs */
+    try {
+      RIG.Pose.setPair({
+        legL: -a, legR: a,                              /* left/right exact mirror */
+        armL:  b, armR: -b,                             /* arms counter-swing */
+        torso: Anim.torso * (0.6 + 0.4 * Math.cos(Anim.phase * 2)),
+        head: 0
+      });
+      RIG.Studio.render();
+    } catch (e) { Anim.on = false; return; }
+    Anim.raf = requestAnimationFrame(step);
+  }
+
+  function startAnim(kind) {
+    Anim.kind = kind || 'walk';
+    Anim.on = true; Anim.last = 0;
+    cancelAnimationFrame(Anim.raf);
+    Anim.raf = requestAnimationFrame(step);
+  }
+  function stopAnim(silent) {
+    Anim.on = false; cancelAnimationFrame(Anim.raf);
+    if (!silent) { try { RIG.Studio.render(); } catch (e) {} }
+  }
+
+  /* ================= INSTANT PANEL ================= */
+  const panel = {
+    wrap: document.getElementById('ppWrap'),
+    spread: document.getElementById('ppSpread'),
+    speed: document.getElementById('ppSpeed'),
+    spreadVal: document.getElementById('ppSpreadVal'),
+    speedVal: document.getElementById('ppSpeedVal'),
+    mirror: document.getElementById('ppMirror')
+  };
+
+  function openPanel() {
+    if (!panel.wrap) return;
+    panel.wrap.classList.add('open');
+  }
+  function closePanel() {
+    if (panel.wrap) panel.wrap.classList.remove('open');
+  }
+  function syncPanel() {
+    if (panel.spread) {
+      panel.spread.value = Math.round(((Anim.spread - 0.04) / 0.46) * 100);
+      panel.spreadVal.textContent = panel.spread.value + '%';
+    }
+    if (panel.speed) {
+      panel.speed.value = Math.round(Anim.speed * 100);
+      panel.speedVal.textContent = Anim.speed.toFixed(1) + '×';
+    }
+    if (panel.mirror && window.RIG && RIG.Pose) {
+      const on = RIG.Pose.isMirror();
+      panel.mirror.classList.toggle('on', on);
+      panel.mirror.textContent = on ? '⇄ MIRROR ON' : '⇄ MIRROR OFF';
+    }
+  }
+
+  if (panel.spread) panel.spread.addEventListener('input', function () {
+    Anim.spread = 0.04 + (this.value / 100) * 0.46;
+    panel.spreadVal.textContent = this.value + '%';
+    if (!Anim.on) { /* static preview: legs spread turant dikhe */
+      try { RIG.Pose.setPair({ legL: -Anim.spread, legR: Anim.spread }); RIG.Studio.render(); } catch (e) {}
+    }
+  });
+  if (panel.speed) panel.speed.addEventListener('input', function () {
+    Anim.speed = this.value / 100;
+    panel.speedVal.textContent = Anim.speed.toFixed(1) + '×';
+  });
+  if (panel.mirror) panel.mirror.addEventListener('click', function () {
+    try { const on = !RIG.Pose.isMirror(); RIG.Pose.setMirror(on); syncPanel(); } catch (e) {}
+  });
+  const ppClose = document.getElementById('ppClose');
+  const ppStop = document.getElementById('ppStop');
+  const ppDone = document.getElementById('ppDone');
+  if (ppClose) ppClose.addEventListener('click', closePanel);
+  if (ppDone) ppDone.addEventListener('click', closePanel);
+  if (ppStop) ppStop.addEventListener('click', function () { stopAnim(); mark(null); });
+
+  /* Walk / Run click → panel turant khule + cycle chale */
+  document.addEventListener('click', function (e) {
+    const b = e.target && e.target.closest ? e.target.closest('#qpRow .qp') : null;
+    if (!b) return;
+    const p = b.dataset.pose;
+    if (p === 'walk' || p === 'run') {
+      Anim.spread = p === 'walk' ? 0.22 : 0.30;
+      Anim.armAmp = p === 'walk' ? 0.30 : 0.55;
+      Anim.torso  = p === 'walk' ? 0.03 : 0.09;
+      Anim.speed  = p === 'walk' ? 1.0 : 1.6;
+      startAnim(p);
+      openPanel(); syncPanel();
+      try { RIG.Pose.push('cycle: ' + p); } catch (err) {}
+    } else {
+      stopAnim();
+      closePanel();
+    }
+  }, true);   /* capture: preset handler se pehle */
+
+  /* ring drag -> animation pause (user ka control jeetega) */
+  const cvEl = document.getElementById('studio');
+  if (cvEl) cvEl.addEventListener('pointerdown', function () { if (Anim.on) stopAnim(true); }, true);
+  try { window.RIG.Studio.setOnLeave = closePanel; } catch (e) {}
+  closePanel(); syncPanel();
+
+  /* screen ghumane / resize par scale dobara calculate ho */
+  let rz = null;
+  function relayout() {
+    try {
+      RIG.Studio.layout();
+      RIG.Studio.render();
+      const si = RIG.Studio.info();
+      const el = document.getElementById('scaleMeta');
+      if (el) el.textContent = (si.scale * 100).toFixed(1) + '%  ·  ' + si.w + '×' + si.h + ' px';
+    } catch (e) {}
+  }
+  window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(relayout, 220); });
+  window.addEventListener('orientationchange', function () { setTimeout(relayout, 350); });
+})();
+</script>
+</body>
+</html>
