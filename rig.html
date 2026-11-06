@@ -590,7 +590,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-07T05:35Z">
+<meta name="rigbuild" content="2026-11-07T07:20Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -741,7 +741,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v18.3 · 2026-11-07</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v18.4 · 2026-11-07</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -2264,7 +2264,7 @@ body{padding-bottom:40px!important}
      Composite render + rotation rings. Sub-pixel: fractional scale + high
      smoothing quality, so rotated edges stay clean.                          */
   const Studio = (function () {
-    let cv, ctx, bbox = null, scale = 1, baseScale = 1, zoom = 1;
+    let cv, ctx, bbox = null, scale = 1, baseScale = 1, zoom = 1, DPR = 1;
     let ringsOn = true, aaOn = true;
     let drag = null, hoverId = null;
 
@@ -2282,9 +2282,18 @@ body{padding-bottom:40px!important}
       /* v17: stage = character se 1.55x chaudi — walk/run me aage badhne ki jagah */
       baseScale = Math.min(availW / (bbox.w * STAGE_MUL), maxH / bbox.h);
       if (!wide) baseScale = Math.min(baseScale, 0.50);
-      scale = baseScale * zoom;
-      cv.width = Math.max(1, Math.round(bbox.w * STAGE_MUL * scale));
-      cv.height = Math.max(1, Math.round(bbox.h * scale));
+      /* v18.4 · SHARP SYNC: canvas bitmap = CSS size × devicePixelRatio.
+         Isse character aur rings dono ek hi pixel grid par hote hain
+         (pehle canvas 1x tha aur browser usko stretch karta tha — rings
+         character se off lagti thi). */
+      DPR = Math.min(2, window.devicePixelRatio || 1);
+      scale = baseScale * zoom * DPR;
+      const cssW = Math.max(1, Math.round(bbox.w * STAGE_MUL * baseScale * zoom));
+      const cssH = Math.max(1, Math.round(bbox.h * baseScale * zoom));
+      cv.width = Math.max(1, Math.round(cssW * DPR));
+      cv.height = Math.max(1, Math.round(cssH * DPR));
+      cv.style.width = cssW + 'px';
+      cv.style.height = cssH + 'px';
     }
 
     const STAGE_MUL = 1.45;                    /* travel room (left + right) */
@@ -2321,47 +2330,52 @@ body{padding-bottom:40px!important}
         }
         ctx.restore();
       }
-      if (ringsOn) drawRings();
+      if (ringsOn) drawRings(R);      /* wahi root snapshot jo layers ko mila — 100% sync */
     }
 
-    function drawRings() {
+    function drawRings(rootSnap) {
       const t = performance.now() / 1000;
       const list = Layers.order();
       const hot = (drag && drag.id) || hoverId;
-      const RR = (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
+      const RR = rootSnap || (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
       for (const p of list) {
         if (!p.pivot || p.kind === 'cloth') continue;
-        const pvR = toScreen(p.pivot.x, p.pivot.y);
+        /* v18.4 · RING SYNC: Position step me part ox/oy se jo khiska hai, uska pivot
+           bhi utna hi khisko — warna ring purani jagah par locked reh jaati hai. */
+        const pdx = (p.ox !== undefined ? p.ox : p.x) - p.x;
+        const pdy = (p.oy !== undefined ? p.oy : p.y) - p.y;
+        const pvR = toScreen(p.pivot.x + pdx, p.pivot.y + pdy);
         const offR = Pose.getOffset ? Pose.getOffset(p.id) : { dx: 0, dy: 0 };
         const pv = { x: pvR.x + RR.x * scale + offR.dx * scale, y: pvR.y + RR.y * scale + offR.dy * scale };
         const rot = Pose.get(p.id) || 0;
         const isHot = (p.id === hot);
         /* breathing: har ring apni phase me, active ring tez saans leta hai */
         const pulse = 0.5 + 0.5 * Math.sin(t * (isHot ? 4.4 : 1.75) + (isHot ? 0 : pv.x * 0.012));
+        const D = DPR;
         ctx.save();
         ctx.translate(pv.x, pv.y);
         /* neon halo (breathing) */
         ctx.shadowColor = 'rgba(0,230,118,' + (isHot ? '.95' : '.70') + ')';
-        ctx.shadowBlur = isHot ? (15 + 17 * pulse) : (7 + 9 * pulse);
-        ctx.beginPath(); ctx.arc(0, 0, 13 + (isHot ? 5.4 : 3.0) * pulse, 0, Math.PI * 2);
+        ctx.shadowBlur = (isHot ? (15 + 17 * pulse) : (7 + 9 * pulse)) * D;
+        ctx.beginPath(); ctx.arc(0, 0, (13 + (isHot ? 5.4 : 3.0) * pulse) * D, 0, Math.PI * 2);
         ctx.strokeStyle = 'rgba(0,230,118,' + (isHot ? (.55 + .38 * pulse) : (.16 + .24 * pulse)) + ')';
-        ctx.lineWidth = isHot ? 2.6 : 1.7; ctx.stroke();
+        ctx.lineWidth = (isHot ? 2.6 : 1.7) * D; ctx.stroke();
         ctx.shadowBlur = 0;
         /* core ring */
-        ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI * 2);
+        ctx.beginPath(); ctx.arc(0, 0, 13 * D, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.fill();
-        ctx.lineWidth = 2; ctx.strokeStyle = isHot ? 'rgba(150,255,205,1)' : 'rgba(0,230,118,.92)'; ctx.stroke();
-        ctx.beginPath(); ctx.arc(0, 0, isHot ? 3.6 : 3, 0, Math.PI * 2);
+        ctx.lineWidth = 2 * D; ctx.strokeStyle = isHot ? 'rgba(150,255,205,1)' : 'rgba(0,230,118,.92)'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, (isHot ? 3.6 : 3) * D, 0, Math.PI * 2);
         ctx.fillStyle = isHot ? '#9dffcf' : '#00e676'; ctx.fill();
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -22); ctx.strokeStyle = 'rgba(0,230,118,' + (isHot ? '.85' : '.55') + ')';
-        ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -22 * D); ctx.strokeStyle = 'rgba(0,230,118,' + (isHot ? '.85' : '.55') + ')';
+        ctx.lineWidth = 1.5 * D; ctx.stroke();
         ctx.restore();
         if (Math.abs(rot) > 0.001) {
           ctx.save();
           ctx.fillStyle = 'rgba(0,230,118,.95)';
-          ctx.font = '10px ui-monospace, monospace';
+          ctx.font = (10 * D) + 'px ui-monospace, monospace';
           ctx.textAlign = 'center';
-          ctx.fillText(Math.round(U.deg(rot)) + '°', pv.x, pv.y + 26);
+          ctx.fillText(Math.round(U.deg(rot)) + '°', pv.x, pv.y + 26 * D);
           ctx.restore();
         }
       }
@@ -2369,10 +2383,12 @@ body{padding-bottom:40px!important}
 
     function hit(x, y) {
       const list = Layers.order();
-      let best = null, bestD = 18;
+      let best = null, bestD = 18 * DPR;
       for (const p of list) {
         if (!p.pivot || p.kind === 'cloth') continue;
-        const pv = toScreen(p.pivot.x, p.pivot.y);
+        const hdx = (p.ox !== undefined ? p.ox : p.x) - p.x;
+        const hdy = (p.oy !== undefined ? p.oy : p.y) - p.y;
+        const pv = toScreen(p.pivot.x + hdx, p.pivot.y + hdy);
         const d = Math.hypot(x - pv.x, y - pv.y);
         if (d < bestD) { bestD = d; best = p; }
       }
@@ -2390,7 +2406,9 @@ body{padding-bottom:40px!important}
         const p = pointerPos(e);
         const target = hit(p.x, p.y);
         if (!target) return;
-        const pv = toScreen(target.pivot.x, target.pivot.y);
+        const ddx = (target.ox !== undefined ? target.ox : target.x) - target.x;
+        const ddy = (target.oy !== undefined ? target.oy : target.y) - target.y;
+        const pv = toScreen(target.pivot.x + ddx, target.pivot.y + ddy);
         drag = { id: target.id, start: Math.atan2(p.y - pv.y, p.x - pv.x) - Pose.get(target.id), pivot: pv };
         cv.setPointerCapture(e.pointerId);
         e.preventDefault();
@@ -2423,7 +2441,7 @@ body{padding-bottom:40px!important}
     function setZoom(z) { zoom = z; layout(); render(); }
     function setRings(v) { ringsOn = v; render(); }
     function setAA(v) { aaOn = v; render(); }
-    function info() { return { scale: +scale.toFixed(4), baseScale: +baseScale.toFixed(4), zoom, w: cv.width, h: cv.height, aa: aaOn, smooth: ctx.imageSmoothingQuality }; }
+    function info() { return { scale: +(baseScale * zoom).toFixed(4), baseScale: +baseScale.toFixed(4), zoom, w: Math.round(cv.width / DPR), h: Math.round(cv.height / DPR), dpr: DPR, aa: aaOn, smooth: ctx.imageSmoothingQuality }; }
 
     return { bind, attach, layout, setScene, setZoom, setRings, setAA, render, info };
   })();
