@@ -1949,4 +1949,31 @@ boot();
   bind(); window.addEventListener('load',bind); setInterval(bind,700);
 })();
 </script>
+
+<script id="charToAnimJS">
+/* v1 — Character card tap => Animations (putlo) page */
+(function () {
+  function openPicker(card) {
+    var id = card.getAttribute('data-char') || '';
+    var nameEl = card.querySelector('.char-name');
+    var name = (nameEl ? nameEl.textContent : '').trim() || 'My character';
+    var img = card.querySelector('.character-art img');
+    var src = img ? (img.getAttribute('src') || '') : '';
+    /* data: URI bahut lambi hoti hai — URL me na bhejo */
+    if (src.length > 400) src = '';
+    var url = 'animations.html?name=' + encodeURIComponent(name) +
+              (id ? '&id=' + encodeURIComponent(id) : '') +
+              (src ? '&img=' + encodeURIComponent(src) : '');
+    setTimeout(function () { location.href = url; }, 170);
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest('[data-edit-char],[data-favorite],[data-delete-char],[data-restore-char]')) return;
+    var card = t.closest('.character-card');
+    if (!card) return;
+    openPicker(card);
+  }, false);
+})();
+</script>
 </body></html>
