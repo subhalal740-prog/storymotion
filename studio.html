@@ -590,7 +590,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-07T01:45Z">
+<meta name="rigbuild" content="2026-11-07T02:20Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -741,7 +741,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.9 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v18.0 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -867,7 +867,7 @@ body{padding-bottom:40px!important}
           <button class="btn tiny ghost" id="btnAddCloth">＋ Clothing layer</button>
           <input type="file" id="clothInput" accept="image/*" style="display:none">
         </div>
-        <p class="note">Row ko <b>drag</b> karo, ya <b>↑ ↓</b> se ek-ek layer aage/peeche karo. Z hamesha Z1 se Z6 ke beech, duplicate nahi — backend me turant recompute hota hai.</p>
+        <p class="note">Row ko <b>drag</b> karo, ya <b>↑ ↓</b> se ek-ek layer aage/peeche karo. Z hamesha Z1 se Z{n} ke beech, duplicate nahi — backend me turant recompute hota hai.</p>
         <button class="btn primary" id="toStudio" style="width:100%;margin-top:14px">Rig step kholo →</button>
         <div id="rigLock" role="alert"></div>
       </div>
@@ -1610,7 +1610,8 @@ body{padding-bottom:40px!important}
       return { semi: semi, solid: solid, ratio: semi + solid ? +(semi / (semi + solid) * 100).toFixed(2) : 0 };
     }
 
-    function run(imgData, W, H) {
+    function run(imgData, W, H, opt) {
+      opt = opt || {};
       const t0 = performance.now();
       const d = imgData.data;
       const rows = new Array(H);
@@ -1657,21 +1658,31 @@ body{padding-bottom:40px!important}
         if (neckY < 0 || (headW && minSpan > headW * 0.95)) neckY = bMinY + Math.floor(bodyH * 0.19);
       }
 
+      /* v18.0 · crotch: paer ke beech ka gap cx ko STRICTLY cover kare — ye zaroori
+         nahi. Aksar gap thoda side me hota hai (3/4 view, long kurta) aur pehle
+         crotch itna neeche chala jata tha ki legs sirf panje reh jate the.
+         Ab gap ka center cx ke ±TOL ke andar ho to bhi chalta hai. */
+      const TOL = Math.max(6, Math.round((bMaxX - bMinX + 1) * 0.15));
+      function midGap(r) {
+        for (let i = 0; i < r.length - 1; i++) {
+          const gc = (r[i][1] + r[i + 1][0]) / 2;
+          if (Math.abs(gc - cx) <= TOL) return true;
+        }
+        return false;
+      }
       let crotchY = -1;
       for (let y = bMinY + Math.floor(bodyH * 0.42); y <= bMaxY; y++) {
         const r = rows[y]; if (!r || r.length < 2) continue;
-        let mid = false;
-        for (let i = 0; i < r.length - 1; i++) if (r[i][1] < cx && cx < r[i + 1][0]) { mid = true; break; }
-        if (!mid) continue;
+        if (!midGap(r)) continue;
         let good = 0, tot = 0;
         for (let k = y; k <= Math.min(bMaxY, y + Math.floor(bodyH * 0.08)); k++) {
-          tot++; const rk = rows[k] || []; let g = false;
-          for (let i = 0; i < rk.length - 1; i++) if (rk[i][1] < cx && cx < rk[i + 1][0]) { g = true; break; }
-          if (g) good++;
+          tot++; if (midGap(rows[k] || [])) good++;
         }
         if (tot && good / tot >= 0.7) { crotchY = y; break; }
       }
       if (crotchY < 0) crotchY = bMinY + Math.floor(bodyH * 0.60);
+      /* agar legs bahut chhoti nikal rahi hain (sirf panje) to crotch ko upar kheencho */
+      if (crotchY > bMinY + bodyH * 0.80) crotchY = bMinY + Math.floor(bodyH * 0.62);
 
       const tw = [];
       for (let y = Math.floor(crotchY - bodyH * 0.22); y <= Math.floor(crotchY - bodyH * 0.08); y++) {
@@ -1721,6 +1732,17 @@ body{padding-bottom:40px!important}
         }
       }
 
+      /* ---------- v18.0 · MERGE ARMS (fused / photo characters) ----------
+         Jab haath body ke saath juda hua ho (side/3-4 view, arms down), alpha se
+         arm aur kurta ke beech ki line nikalna possible hi nahi — us case me arm
+         layers kurte ko cheer deti thin ("kapde fate"). Aise case me arms ko
+         torso ke saath merge kar dete hain: kapde saaf, walk/run phir bhi chalta. */
+      if (opt.mergeArms) {
+        for (let i = 0; i < lab.length; i++) {
+          if (lab[i] === ID.armL || lab[i] === ID.armR) lab[i] = ID.torso;
+        }
+      }
+
       /* ---------- NOISE CLEAN (v15.4) ----------
          Source PNG me koi chhota stray blob (1-6 px speck) ho to wo alag piece
          ban ke hawa me tairta dikhta hai. Isliye har label ke connected
@@ -1751,7 +1773,8 @@ body{padding-bottom:40px!important}
       })();
 
       /* per-piece canvases */
-      const keys = ['head', 'torso', 'armL', 'armR', 'legL', 'legR'];
+      const keys = opt.mergeArms ? ['head', 'torso', 'legL', 'legR']
+                                 : ['head', 'torso', 'armL', 'armR', 'legL', 'legR'];
       const LABEL = { head: 'HEAD', torso: 'TORSO', armL: 'ARM L', armR: 'ARM R', legL: 'LEG L', legR: 'LEG R' };
       /* v17.4 · DEFAULT LAYER ORDER (fixed, user spec):
          HEAD Z6 > ARM R Z5 > LEG R Z4 > TORSO Z3 > ARM L Z2 > LEG L Z1
@@ -1911,7 +1934,43 @@ body{padding-bottom:40px!important}
       };
     }
 
-    return { run, edgeStats, applyAA };
+    /* v18.0 · cut ka structural check — "kapde fate" wale bad cuts pakadta hai.
+       (size check alag hai: yahan bbox/area/pixel ratio dekhte hain) */
+    function quality(cut) {
+      const issues = [];
+      if (!cut || !cut.pieces) return { ok: true, issues, needsMerge: false };
+      const bb = cut.bbox, bodyArea = Math.max(1, bb.w * bb.h);
+      const by = {}; cut.pieces.forEach((p) => { by[p.id] = p; });
+      const torso = by.torso;
+      const inter = (a, b) => {
+        const x0 = Math.max(a.x, b.x), y0 = Math.max(a.y, b.y);
+        const x1 = Math.min(a.x + a.w, b.x + b.w), y1 = Math.min(a.y + a.h, b.y + b.h);
+        return Math.max(0, x1 - x0) * Math.max(0, y1 - y0);
+      };
+      ['armL', 'armR'].forEach((id) => {
+        const p = by[id]; if (!p) return;
+        const torsoPx = torso ? Math.max(1, torso.px) : 0;
+        const pxRatio = torso ? p.px / torsoPx : 0;
+        /* (a) poora body arm layer me: bbox torso ko dhak raha + pixel mass barabar */
+        const cover = torso ? inter(p, torso) / Math.max(1, torso.w * torso.h) : 0;
+        if (cover > 0.70 && pxRatio > 0.45) {
+          issues.push({ id, msg: p.label + ' layer me poori body aa gayi — kurta/kapde phat raha hai' });
+        } else if (torso && pxRatio < 0.02) {
+          /* (b) ulta case: arm layer khaali — haath body me hi samaa gaye */
+          issues.push({ id, msg: p.label + ' layer khali aa gayi (' + p.px + 'px) — haath body me mil gaye' });
+        }
+      });
+      ['legL', 'legR'].forEach((id) => {
+        const p = by[id]; if (!p) return;
+        if (p.h < bb.h * 0.18 || p.px < bodyArea * 0.008) {
+          issues.push({ id, msg: p.label + ' sirf ' + p.h + 'px height — adhoori cut (pair poora nahi)' });
+        }
+      });
+      const needsMerge = issues.some((i) => i.id === 'armL' || i.id === 'armR');
+      return { ok: !issues.length, issues, needsMerge };
+    }
+
+    return { run, edgeStats, applyAA, quality };
   })();
 
   /* -------------------------------------------------------------- 04 · LAYERS (pillar 2) */
@@ -2499,10 +2558,11 @@ body{padding-bottom:40px!important}
       row.dataset.id = p.id;
       row.draggable = true;
 
-      const bad = isBadCut(p, bodyH);
+      const issue = (App.cutIssues || []).find((i) => i.id === p.id);
+      const bad = isBadCut(p, bodyH) || !!issue;
       if (bad) {
         row.classList.add('bad');
-        badList.push(p.label + ' ' + p.w + '×' + p.h + 'px');
+        badList.push(issue ? issue.msg : (p.label + ' ' + p.w + '×' + p.h + 'px'));
         const bdg = document.createElement('span'); bdg.className = 'badgeBad';
         const ic = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         ic.setAttribute('viewBox', '0 0 24 24'); ic.setAttribute('width', '8'); ic.setAttribute('height', '8');
@@ -2553,7 +2613,8 @@ body{padding-bottom:40px!important}
       row.onclick = () => { Layers.select(p.id); renderLayers(); };
       list.appendChild(row);
     });
-    U.$('zMeta').textContent = 'back → front · ' + items.length + ' layers';
+    U.$('zMeta').textContent = 'back → front · ' + items.length + ' layers' +
+      ((App.cut && App.cut.meta && App.cut.meta.mergedArms) ? ' · arms merged' : '');
     App.badParts = badList;
     applyRigLock(badList);
   }
@@ -2638,7 +2699,7 @@ body{padding-bottom:40px!important}
     if (App.cut) Memory.purgeAll('new upload');
     Layers.load([]);
     U.$('layerList').innerHTML = '';
-    App.cut = null; App.imgData = null; App.badParts = []; App.badOverride = false;
+    App.cut = null; App.imgData = null; App.badParts = []; App.badOverride = false; App.cutIssues = [];
     try { applyRigLock([]); } catch (e) {}
     (function () { const ac1 = document.getElementById('acCard1'); if (ac1) ac1.classList.remove('show'); })();
     /* v15.8: naya character = naya rig — purani animation/pose/history saaf */
@@ -2705,8 +2766,25 @@ body{padding-bottom:40px!important}
     if (!res.ok) { Memory.purgeAll('gate failed'); hud(); return; }
 
     /* AUTO-CUT */
-    const cut = Cut.run(data, W, H);
+    let cut = Cut.run(data, W, H);
     if (!cut) { setLight('failed', 'Cut fail ho gaya.'); return; }
+
+    /* v18.0 · structural check: agar arms ne poori body kheench li (kapde phat rahe)
+       to arms ko torso ke saath merge karke dobara cut — kapde safe, rig chalta hai */
+    let cq = Cut.quality(cut);
+    let mergedArms = false;
+    if (cq.needsMerge) {
+      const m = Cut.run(data, W, H, { mergeArms: true });
+      if (m) {
+        const mq = Cut.quality(m);
+        const armGone = !mq.issues.some((i) => i.id === 'armL' || i.id === 'armR');
+        if (armGone) { cut = m; cq = mq; mergedArms = true; }
+      }
+    }
+    cut.meta = cut.meta || {};
+    cut.meta.mergedArms = mergedArms;
+    App.cutIssues = cq.issues;
+    if (mergedArms) U.toast('Haath body se jude the — arms torso ke saath merge kiye (kapde safe)');
     App.cut = cut;
     /* v17.9 · koi hardcoded direction nahi — image se facing detect */
     try {
