@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Character Tool — opening…</title>
+<style>
+  html,body{height:100%;margin:0;background:#04070f;color:#9fc4ff;
+    font:700 13px -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    display:grid;place-items:center}
+  .b{text-align:center;line-height:1.6}
+  .s{width:34px;height:34px;margin:0 auto 12px;border-radius:50%;
+    border:3px solid rgba(96,165,250,.25);border-top-color:#3f8dff;animation:sp .8s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  a{color:#7dffb9}
+</style>
+</head>
+<body>
+<div class="b">
+  <div class="s"></div>
+  Character Tool khul raha hai…
+  <div style="margin-top:10px;font-size:11px;color:#5d6b8a">Agar 4 second se zyada lage to <a id="lnk" href="rig.html">yahan tap karo</a></div>
+</div>
+<script>
+(function(){
+  var url = 'rig.html?t=' + Date.now();   /* har baar naya cache-key → purana version kabhi nahi */
+  document.getElementById('lnk').href = url;
+  location.replace(url);
+})();
+</script>
+</body>
+</html>
