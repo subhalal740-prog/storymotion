@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StoryMotion AI — Story to Video</title>
+<style>
+:root{--bg:#0b1020;--panel:#131b30;--panel2:#19243d;--line:#293754;--text:#f3f6ff;--muted:#a7b4ce;--purple:#9b8cff;--cyan:#65d7e8}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 15% 0%,#252451 0,transparent 36%),var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,-apple-system,Segoe UI,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;padding:20px max(20px,calc((100vw - 1180px)/2));border-bottom:1px solid #26314b;gap:15px}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:19px;letter-spacing:-.4px}.logo{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:linear-gradient(135deg,#9c85ff,#57d5e4);color:#0b1020;font-size:20px}
+.pill{font-size:12px;border:1px solid #354363;border-radius:999px;padding:6px 10px;color:#c8d4eb}
+main{max-width:1180px;margin:30px auto;padding:0 20px}.hero{margin:0 0 25px}.eyebrow{color:var(--cyan);text-transform:uppercase;font-weight:800;letter-spacing:1.8px;font-size:11px}.hero h1{font-size:clamp(30px,5vw,48px);letter-spacing:-1.8px;line-height:1.08;margin:10px 0}.hero p{max-width:700px;color:var(--muted);margin:0}
+.layout{display:grid;grid-template-columns:minmax(0, .95fr) minmax(0,1.05fr);gap:20px}.panel{background:linear-gradient(180deg,#151e34,#10182b);border:1px solid var(--line);border-radius:20px;padding:22px;min-width:0;box-shadow:0 18px 45px #0002}.panel h2{font-size:18px;margin:0 0 5px}.sub{color:var(--muted);font-size:13px;margin:0 0 18px}.field{margin:17px 0}.field label{display:block;font-weight:700;font-size:13px;margin-bottom:8px}.hint{color:var(--muted);font-weight:400}.textarea{width:100%;min-height:180px;resize:vertical;border:1px solid #34415f;background:#0b1223;border-radius:12px;color:var(--text);padding:14px;font:14px/1.65 inherit;outline:none}.textarea:focus,select:focus{border-color:var(--purple)}.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}select{width:100%;background:#0b1223;color:var(--text);border:1px solid #34415f;border-radius:10px;padding:12px;font:inherit}
+button{border:0;border-radius:12px;padding:13px 16px;font:inherit;font-weight:800;cursor:pointer;transition:transform .15s,opacity .15s}button:hover{transform:translateY(-1px)}.primary{width:100%;background:linear-gradient(100deg,#9d89ff,#64d9e8);color:#0a1120;margin-top:8px}.secondary{background:#202d49;color:#e6edff;border:1px solid #394968}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}.actions button{flex:1}
+.note{background:#0c1427;border:1px solid #293858;border-radius:12px;padding:12px;color:#b7c5df;font-size:12px;margin-top:14px}
+.output-head{display:flex;align-items:start;justify-content:space-between;gap:12px}.status{font-size:11px;background:#193b3e;color:#8cf0db;padding:5px 8px;border-radius:999px;white-space:nowrap}
+.empty{min-height:350px;display:grid;place-items:center;text-align:center;color:var(--muted);padding:25px}.empty .big{font-size:42px;margin-bottom:8px}.empty strong{display:block;color:#e9eeff;font-size:16px}
+.scenes{display:grid;gap:12px}.scene{display:grid;grid-template-columns:116px 1fr;gap:13px;background:#0c1427;border:1px solid #293754;border-radius:14px;padding:10px;min-width:0}.visual{min-height:118px;border-radius:10px;display:flex;align-items:end;padding:9px;background:linear-gradient(145deg,#403b72,#10182e 55%,#d68b58);position:relative;overflow:hidden}.visual:before{content:"";position:absolute;width:72px;height:72px;border-radius:50%;background:#ffd99a;filter:blur(1px);right:-12px;top:5px;opacity:.8}.visual:after{content:"";position:absolute;left:-10%;right:-10%;bottom:-12px;height:60%;background:#111a2b;clip-path:polygon(0 70%,22% 20%,38% 65%,60% 5%,100% 75%,100% 100%,0 100%)}.visual span{position:relative;z-index:1;font-size:10px;letter-spacing:1px;text-transform:uppercase;font-weight:800;color:#fff}.scene:nth-child(3n+2) .visual{background:linear-gradient(145deg,#235d67,#10182e 55%,#ba6e55)}.scene:nth-child(3n) .visual{background:linear-gradient(145deg,#67445e,#141b37 55%,#dfb36a)}.scene h3{margin:2px 0 5px;font-size:14px}.scene .visual.generated{background-size:cover;background-position:center;cursor:pointer}.visual.generated:before,.visual.generated:after{display:none}.visual .open-image{position:absolute;right:6px;top:6px;z-index:3;background:#0b1223dd;color:#fff;border:1px solid #ffffff55;padding:5px 7px;border-radius:7px;font-size:10px;display:none}.visual.generated .open-image{display:block}.scene .image-action{margin-top:8px;padding:8px 10px;font-size:11px;width:100%;background:#263957;color:#eaf2ff;border:1px solid #465b7c}.scene .image-state{font-size:11px;color:#8cf0db;margin-top:6px;overflow-wrap:anywhere}.scene p{margin:0 0 7px;color:#bdc9df;font-size:12px}.meta{color:#8fa0bf;font-size:11px}.tag{display:inline-block;margin-top:6px;padding:3px 7px;border-radius:6px;background:#1d2943;color:#b9c8ff;font-size:10px}
+footer{color:#7485a5;text-align:center;font-size:12px;padding:24px 12px 35px}
+@media(max-width:800px){header{padding:15px 18px}main{margin:22px auto}.layout{grid-template-columns:1fr}.panel{padding:17px}.empty{min-height:200px}}@media(max-width:430px){.row{grid-template-columns:1fr}.scene{grid-template-columns:90px 1fr}.visual{min-height:110px}.pill{display:none}}
+</style></head>
+<body>
+<header><div class="brand"><div class="logo">▶</div><span>StoryMotion AI</span></div><span class="pill">FREE AI IMAGE TEST · v0.2</span></header>
+<main>
+<section class="hero"><div class="eyebrow">Your story. Your movie.</div><h1>Turn a story into a<br>cinematic experience.</h1><p>Paste your story, choose a visual style, build a scene-by-scene plan, and try generating real scene images using AI Horde community workers. Free anonymous requests may wait in a queue.</p></section>
+<div class="layout">
+<section class="panel"><h2>1. Create your story</h2><p class="sub">Start with a short story. You can use Hindi, Hinglish, or English.</p>
+<div class="field"><label for="story">Your story</label><textarea class="textarea" id="story" placeholder="Ek chhote se gaon mein Aarav naam ka ladka rehta tha. Ek din use jungle mein ek chamakta hua purana darwaza mila..."></textarea></div>
+<div class="row"><div class="field"><label for="style">Visual style</label><select id="style"><option value="Cinematic realistic">Cinematic realistic</option><option value="3D animated">3D animated</option><option value="Anime">Anime</option><option value="Fantasy cinematic">Fantasy cinematic</option></select></div><div class="field"><label for="language">Narration language</label><select id="language"><option>Hindi</option><option>Hinglish</option><option>English</option><option>Bengali</option></select></div></div>
+<div class="row"><div class="field"><label for="format">Video format</label><select id="format"><option value="9:16 Vertical">9:16 Vertical — Reels / Shorts</option><option value="16:9 Landscape">16:9 Landscape — YouTube</option><option value="1:1 Square">1:1 Square</option></select></div><div class="field"><label for="duration">Target duration</label><select id="duration"><option value="3">3 minutes</option><option value="4" selected>4 minutes</option><option value="5">5 minutes</option></select></div></div>
+<button class="primary" id="generate">✦ Generate storyboard</button>
+<div class="note">Free image test: tap “Generate AI image” on a scene. Images use AI Horde community workers with anonymous, lowest-priority access, so generation can be slow or temporarily unavailable. Voice, music, and MP4 export are not active yet.</div>
+</section>
+<section class="panel"><div class="output-head"><div><h2>2. Your storyboard</h2><p class="sub">Scenes, narration prompts, visual direction, and optional free AI images</p></div><span class="status" id="status">WAITING FOR STORY</span></div>
+<div id="output" class="empty"><div><div class="big">🎬</div><strong>Your movie starts here</strong><span>Write a story and click “Generate storyboard”.</span></div></div>
+<div class="actions" id="actions" hidden><button class="secondary" id="download">Download storyboard (.txt)</button><button class="secondary" id="sample">Load sample story</button></div>
+</section></div></main>
+
+<section class="panel" id="videoStudio" style="margin-top:20px">
+ <h2>3. Video Studio — Images, Voice & Export</h2>
+ <p class="sub">Upload the images you saved, optionally add Hindi narration and music, preview, then export a video in your browser. Files stay on this device while this page is open.</p>
+ <div class="field"><label for="sceneImages">Scene images (select in story order)</label><input id="sceneImages" type="file" accept="image/*" multiple style="width:100%;padding:12px;border:1px solid #34415f;border-radius:10px;background:#0b1223;color:#f3f6ff"><div class="hint" id="imageCount">No images selected yet.</div></div>
+ <div class="row"><div class="field"><label for="voiceFile">Hindi narration audio (optional)</label><input id="voiceFile" type="file" accept="audio/*" style="width:100%;font-size:12px"><div class="hint">Upload an audio file you already have.</div></div><div class="field"><label for="musicFile">Background music (optional)</label><input id="musicFile" type="file" accept="audio/*" style="width:100%;font-size:12px"><div class="hint">Use music you have permission to use.</div></div></div>
+ <div class="row"><div class="field"><label for="exportFormat">Export aspect ratio</label><select id="exportFormat"><option value="9:16">9:16 Vertical — Reels / Shorts</option><option value="16:9">16:9 Landscape — YouTube</option></select></div><div class="field"><label for="sceneSeconds">Seconds per image</label><select id="sceneSeconds"><option value="3">3 seconds</option><option value="4" selected>4 seconds</option><option value="5">5 seconds</option><option value="6">6 seconds</option></select></div></div>
+ <div class="field"><label for="effect">Cinematic movement</label><select id="effect"><option value="zoom">Slow cinematic zoom</option><option value="fade">Fade between scenes</option><option value="none">No movement</option></select></div>
+ <div class="actions"><button class="secondary" id="previewVideo">Preview slideshow</button><button class="primary" id="exportVideo" style="margin-top:0">Export video</button></div>
+ <canvas id="videoCanvas" width="360" height="640" style="display:block;width:100%;max-width:360px;margin:16px auto 0;border-radius:12px;background:#05070d"></canvas>
+ <div id="exportStatus" class="note">Choose your images to begin. Export duration depends on image count and seconds per image. MP4 is offered only if your browser supports MP4 recording; otherwise the export will be WebM.</div>
+ <div id="downloadVideoLink" style="margin-top:10px"></div>
+</section>
+
+<footer>StoryMotion AI · Prototype only · Your story stays in this browser demo.</footer>
+<script>
+const $=id=>document.getElementById(id); let currentText="";
+function sentencesFromStory(s){
+ const cleaned=s.replace(/\n+/g,". ").trim();
+ let parts=cleaned.split(/(?<=[.!?।])\s+/).map(x=>x.trim()).filter(x=>x.length>8);
+ if(parts.length<4){
+  const words=cleaned.split(/\s+/).filter(Boolean); const n=Math.min(12,Math.max(4,Math.ceil(words.length/22))); const size=Math.ceil(words.length/n); parts=[];
+  for(let i=0;i<words.length;i+=size) parts.push(words.slice(i,i+size).join(" "));
+ }
+ return parts;
+}
+function titleFor(s,i){let w=s.split(/\s+/).slice(0,6).join(" ");return (w.length>42?w.slice(0,39)+"…":w)||`Scene ${i+1}`}
+function generate(){
+ const story=$("story").value.trim(); if(!story){$("story").focus();$("status").textContent="ADD YOUR STORY";return}
+ const parts=sentencesFromStory(story); const count=Math.min(12,Math.max(4,parts.length)); const selected=[];
+ for(let i=0;i<count;i++){const start=Math.floor(i*parts.length/count);let chunk=parts.slice(start,Math.max(start+1,Math.floor((i+1)*parts.length/count))).join(" ");selected.push(chunk||parts[i%parts.length]||story)}
+ const style=$("style").value, lang=$("language").value, format=$("format").value, duration=+$("duration").value;
+ const seconds=Math.round(duration*60/count); currentText=`STORYMOTION AI — STORYBOARD\nStyle: ${style}\nNarration: ${lang}\nFormat: ${format}\nTarget duration: ${duration} minutes\nScenes: ${count}\n\n`+
+ selected.map((s,i)=>`SCENE ${String(i+1).padStart(2,"0")} (${seconds}s)\nVisual direction: ${style}; cinematic composition, expressive characters, consistent character design, atmospheric lighting, smooth camera movement.\nStory beat: ${s}\nNarration draft: ${s}\nAudio: soft cinematic background score; duck music under narration.\nTransition: gentle cinematic dissolve.\n`).join("\n");
+ $("status").textContent=count+" SCENES READY";
+ $("output").className="scenes"; $("output").innerHTML="";
+ selected.forEach((s,i)=>{const el=document.createElement("article");el.className="scene";
+ const vis=document.createElement("div");vis.className="visual";const label=document.createElement("span");label.textContent="Scene "+String(i+1).padStart(2,"0");vis.appendChild(label);const openImg=document.createElement("button");openImg.className="open-image";openImg.type="button";openImg.textContent="View image ↗";openImg.addEventListener("click",e=>{e.stopPropagation();if(vis.dataset.imageUrl)window.open(vis.dataset.imageUrl,"_blank","noopener")});vis.appendChild(openImg);
+ const body=document.createElement("div");const h=document.createElement("h3");h.textContent=titleFor(s,i);const p=document.createElement("p");p.textContent=s;const meta=document.createElement("div");meta.className="meta";meta.textContent=seconds+" sec · "+lang+" narration";const tag=document.createElement("span");tag.className="tag";tag.textContent=style;body.append(h,p,meta,tag);const imgBtn=document.createElement("button");imgBtn.className="image-action";imgBtn.textContent="✦ Generate AI image (free)";const imgState=document.createElement("div");imgState.className="image-state";imgState.textContent="No AI image yet";imgBtn.addEventListener("click",()=>generateSceneImage(imgBtn,imgState,vis,s,style));body.append(imgBtn,imgState);el.append(vis,body);$("output").appendChild(el)});
+ $("actions").hidden=false;
+}
+async function generateSceneImage(button,state,visual,storyBeat,style){
+ if(button.disabled)return;button.disabled=true;button.textContent="Generating…";state.textContent="Submitting a free request to AI Horde…";
+ const prompt=`${style} cinematic movie still, ${storyBeat}. detailed composition, atmospheric lighting, high quality, coherent scene, no text, no watermark`;
+ const headers={"Content-Type":"application/json","apikey":"0000000000","Client-Agent":"StoryMotionAI:0.2:browser-prototype"};
+ try{
+  const res=await fetch("https://aihorde.net/api/v2/generate/async",{method:"POST",headers,body:JSON.stringify({prompt,params:{width:512,height:512,steps:20,n:1},nsfw:false,censor_nsfw:true,r2:true,shared:true})});
+  if(!res.ok){let detail="HTTP "+res.status;try{const j=await res.json();detail=j.message||j.errors?.[0]?.message||detail}catch{}throw new Error(detail)}
+  const job=await res.json();if(!job.id)throw new Error(job.message||"No job ID returned");
+  state.textContent="In free queue. Waiting for a volunteer worker…";
+  let result=null;
+  for(let i=0;i<100;i++){
+   await new Promise(r=>setTimeout(r,3000));
+   const cr=await fetch("https://aihorde.net/api/v2/generate/check/"+encodeURIComponent(job.id),{headers:{"apikey":"0000000000","Client-Agent":"StoryMotionAI:0.2:browser-prototype"}});
+   if(!cr.ok)throw new Error("Could not check queue (HTTP "+cr.status+")");
+   const check=await cr.json();state.textContent=`Free queue: ${check.waiting||0} waiting · ${check.processing||0} processing`;
+   if(check.done){const sr=await fetch("https://aihorde.net/api/v2/generate/status/"+encodeURIComponent(job.id),{headers:{"apikey":"0000000000","Client-Agent":"StoryMotionAI:0.2:browser-prototype"}});if(!sr.ok)throw new Error("Could not retrieve image");result=await sr.json();break}
+  }
+  const imageUrl=result?.generations?.[0]?.img;
+  if(!imageUrl)throw new Error("No image returned yet. Please try again later.");
+  visual.style.backgroundImage=`url("${imageUrl}")`;visual.dataset.imageUrl=imageUrl;visual.classList.add("generated");visual.querySelector("span").textContent="AI IMAGE";visual.addEventListener("click",()=>{if(visual.dataset.imageUrl)window.open(visual.dataset.imageUrl,"_blank","noopener")});state.textContent="AI image ready — tap image or View image to open full size";button.textContent="✓ Generate again";
+ }catch(e){state.textContent="Image not generated: "+(e.message||"network error")+". Try again later.";button.textContent="Try AI image again"}
+ finally{button.disabled=false}
+}
+$("generate").addEventListener("click",generate);
+$("sample").addEventListener("click",()=>{$("story").value="Ek chhote se gaon mein Aarav naam ka ek ladka rehta tha. Ek shaam use jungle ke beech ek purana chamakta hua darwaza mila. Darwaze ke paar ek jadui duniya thi jahan aasman mein tairte pahaad aur roshni se chamakte ped the. Aarav ki mulaqat Mira naam ki ek bahadur guide se hui. Dono ko pata chala ki duniya ki roshni ek jadui crystal se aati hai, jo kho gaya tha. Woh andheri gufa se guzre, paheliyan suljhayin aur ek bade dragon ka saamna kiya. Aarav ne dragon se ladne ke bajay uski madad ki. Dragon ne crystal wapas kar diya aur poori duniya roshni se bhar gayi. Aarav ghar lauta, lekin uske paas ek chhota sa chamakta patthar tha jo uske agle adventure ka raaz tha.";generate()});
+$("download").addEventListener("click",()=>{const blob=new Blob([currentText],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="storymotion-storyboard.txt";a.click();URL.revokeObjectURL(a.href)});
+
+// Local slideshow studio. Browser-native recording support varies by Android/browser.
+let studioImages=[], studioUrls=[], previewTimer=null, currentVideoUrl=null;
+const sceneInput=document.getElementById('sceneImages'), canvas=document.getElementById('videoCanvas'), ctx=canvas.getContext('2d');
+sceneInput.addEventListener('change',()=>{studioUrls.forEach(u=>URL.revokeObjectURL(u));studioUrls=[];studioImages=Array.from(sceneInput.files||[]).filter(f=>f.type.startsWith('image/')).map(file=>{const url=URL.createObjectURL(file);studioUrls.push(url);const im=new Image();im.src=url;return new Promise(resolve=>{im.onload=()=>resolve({im,file});im.onerror=()=>resolve(null)})});document.getElementById('imageCount').textContent=`${studioImages.length} image(s) selected. Images are used in the selected order.`;document.getElementById('downloadVideoLink').innerHTML='';Promise.all(studioImages).then(items=>{studioImages=items.filter(Boolean);if(studioImages.length)drawScene(0,0)})});
+function drawScene(index,progress=0){if(!studioImages.length){ctx.fillStyle='#080d1b';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#fff';ctx.font='16px sans-serif';ctx.textAlign='center';ctx.fillText('Select scene images above',canvas.width/2,canvas.height/2);return}const item=studioImages[index%studioImages.length];const im=item.im;const cw=canvas.width,ch=canvas.height;ctx.fillStyle='#000';ctx.fillRect(0,0,cw,ch);const mode=document.getElementById('effect').value;let scale=Math.max(cw/im.width,ch/im.height);if(mode==='zoom')scale*=1+0.07*progress;const w=im.width*scale,h=im.height*scale;const drift=mode==='zoom'?progress*8:0;ctx.save();ctx.beginPath();ctx.rect(0,0,cw,ch);ctx.clip();ctx.drawImage(im,(cw-w)/2-drift,(ch-h)/2,w,h);if(mode==='fade'&&progress<0.18){ctx.fillStyle=`rgba(0,0,0,${(0.18-progress)/0.18*.45})`;ctx.fillRect(0,0,cw,ch)}ctx.restore();}
+function setCanvasSize(){const vertical=document.getElementById('exportFormat').value==='9:16';canvas.width=vertical?360:640;canvas.height=vertical?640:360;}
+document.getElementById('exportFormat').addEventListener('change',()=>{setCanvasSize();drawScene(0,0)});
+document.getElementById('previewVideo').addEventListener('click',async()=>{if(!studioImages.length){alert('Please select scene images first.');return}if(previewTimer)clearInterval(previewTimer);setCanvasSize();let started=Date.now();const dur=Number(document.getElementById('sceneSeconds').value)*1000;previewTimer=setInterval(()=>{const elapsed=Date.now()-started;const ix=Math.floor(elapsed/dur)%studioImages.length;drawScene(ix,(elapsed%dur)/dur);if(elapsed>dur*studioImages.length){clearInterval(previewTimer);previewTimer=null}},80);document.getElementById('exportStatus').textContent='Preview is playing on the canvas. Tap Export video when ready.';});
+document.getElementById('exportVideo').addEventListener('click',async()=>{const status=document.getElementById('exportStatus'),link=document.getElementById('downloadVideoLink');if(!studioImages.length){status.textContent='Please select scene images first.';return}if(!window.MediaRecorder||!canvas.captureStream){status.textContent='This browser does not support in-browser video export. Try Chrome on Android or use a free video editor.';return}if(previewTimer){clearInterval(previewTimer);previewTimer=null}setCanvasSize();const seconds=Number(document.getElementById('sceneSeconds').value);const total=seconds*studioImages.length;const voiceFile=document.getElementById('voiceFile').files[0];const musicFile=document.getElementById('musicFile').files[0];let audioCtx=null,stream=canvas.captureStream(24),mixDest=null,voiceEl=null,musicEl=null;try{if(voiceFile||musicFile){audioCtx=new (window.AudioContext||window.webkitAudioContext)();mixDest=audioCtx.createMediaStreamDestination();for(const [file,vol] of [[voiceFile,1],[musicFile,.18]]){if(!file)continue;const el=new Audio();el.src=URL.createObjectURL(file);el.loop=!!(file===musicFile);el.volume=1;const src=audioCtx.createMediaElementSource(el);const gain=audioCtx.createGain();gain.gain.value=vol;src.connect(gain).connect(mixDest);if(file===voiceFile)voiceEl=el;else musicEl=el;}mixDest.stream.getAudioTracks().forEach(t=>stream.addTrack(t));await audioCtx.resume();}
+let mime='';for(const m of ['video/mp4;codecs=h264,aac','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm']){if(MediaRecorder.isTypeSupported(m)){mime=m;break}}if(!mime){status.textContent='No compatible video format was found in this browser.';return}const recorder=new MediaRecorder(stream,{mimeType:mime});const chunks=[];recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};recorder.onerror=()=>{status.textContent='Export failed. Try fewer images or shorter duration.'};recorder.onstop=()=>{const blob=new Blob(chunks,{type:mime});if(currentVideoUrl)URL.revokeObjectURL(currentVideoUrl);currentVideoUrl=URL.createObjectURL(blob);const a=document.createElement('a');a.href=currentVideoUrl;a.download='storymotion-video.'+(mime.includes('mp4')?'mp4':'webm');a.textContent='⬇ Download '+(mime.includes('mp4')?'MP4':'WebM')+' video';a.style.cssText='display:inline-block;padding:12px 16px;background:#9b8cff;color:#0b1020;border-radius:10px;font-weight:800;text-decoration:none';link.replaceChildren(a);status.textContent=`Video ready (${Math.round(blob.size/1024/1024*10)/10} MB). Format: ${mime.includes('mp4')?'MP4':'WebM'}${mime.includes('mp4')?'':' — this browser does not offer MP4 recording.'}`;if(voiceEl)voiceEl.pause();if(musicEl)musicEl.pause();stream.getTracks().forEach(t=>t.stop());if(audioCtx)audioCtx.close();};
+status.textContent=`Rendering ${studioImages.length} scenes… keep this page open for about ${total} seconds.`;link.innerHTML='';recorder.start();if(voiceEl){voiceEl.currentTime=0;voiceEl.play().catch(()=>{})}if(musicEl){musicEl.currentTime=0;musicEl.play().catch(()=>{})}let start=performance.now();function frame(now){const elapsed=(now-start)/1000;const ix=Math.min(studioImages.length-1,Math.floor(elapsed/seconds));drawScene(ix,(elapsed%seconds)/seconds);status.textContent=`Rendering scene ${ix+1}/${studioImages.length}… ${Math.min(100,Math.round(elapsed/total*100))}%`;if(elapsed<total){requestAnimationFrame(frame)}else{recorder.stop()}}requestAnimationFrame(frame);
+}catch(err){status.textContent='Export could not start: '+(err.message||'browser limitation')+'. Try Chrome and fewer images.';}});
+setCanvasSize();drawScene(0,0);
+
+</script><style id="smNavCSS">#smNav{position:fixed!important;right:10px;bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:2147483000;display:flex;gap:6px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}#smNav a{display:inline-flex;align-items:center;gap:5px;padding:9px 13px;border-radius:999px;background:rgba(16,16,20,.92);color:#e8e8ec;border:1px solid rgba(255,255,255,.22);font-size:12px;font-weight:800;letter-spacing:.03em;text-decoration:none;box-shadow:0 4px 14px rgba(0,0,0,.45);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);white-space:nowrap}#smNav a:active{transform:scale(.96)}#smNav svg{display:block}#smNav a#smBack svg{width:11px;height:11px}#smNav a#smHome svg{width:13px;height:13px}@media(max-width:400px){#smNav a{padding:8px 11px;font-size:11px}}</style><div id="smNav"><a id="smBack" href="index.html" title="Pichhle page par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> BACK</a><a id="smHome" href="index.html" title="Launcher par"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.8V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.8"/></svg> HOME</a></div>
+<script id="smNavJS">
+(function(){
+  function smGoBack(e){
+  if(e){e.preventDefault();}
+  var ref=''; try{ ref=document.referrer||''; }catch(x){}
+  var same=false; try{ same = ref.indexOf(location.host)>=0; }catch(x){}
+  if(same && window.history.length>1){ try{ window.history.back(); return; }catch(x){} }
+  location.href='index.html';
+}
+  function bind(){ var b=document.getElementById('smBack'); if(!b||b.__smB)return; b.__smB=1;
+    b.addEventListener('click',smGoBack); }
+  bind(); window.addEventListener('load',bind); setInterval(bind,700);
+})();
+</script>
+</body></html>
