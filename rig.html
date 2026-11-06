@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T10:35Z">
+<meta name="rigbuild" content="2026-11-06T11:10Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -606,6 +606,20 @@ body{padding-bottom:40px!important}
 [data-partgrid] .partCard .ok{width:13px!important;height:13px!important;font-size:8px!important;top:-4px!important;right:-4px!important}
 @media(max-width:400px){[data-partgrid] .partCard .nm{font-size:6.6px!important}}
 </style>
+<style id="v9pose">
+.poseCard{margin-top:14px}
+.poseRow{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:11px}
+.poseTile{position:relative;padding:0;border-radius:13px;overflow:hidden;cursor:pointer;background:#0b1424;
+  border:1px solid rgba(96,165,250,.22);display:block}
+.poseTile img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover}
+.poseTile span{position:absolute;left:0;right:0;bottom:0;padding:12px 4px 5px;font-size:9px;font-weight:900;
+  letter-spacing:.5px;text-transform:uppercase;color:#eaf3ff;text-align:center;
+  background:linear-gradient(180deg,rgba(4,8,16,0),rgba(4,8,16,.92))}
+.poseTile.on{border-color:#3f8dff;box-shadow:0 0 0 2px rgba(63,141,255,.55),0 10px 22px -12px rgba(47,123,255,.9)}
+.poseTile.on:after{content:"✓";position:absolute;top:5px;right:5px;width:17px;height:17px;border-radius:50%;
+  background:#12b76a;color:#fff;font-size:10px;display:grid;place-items:center;box-shadow:0 0 10px rgba(34,224,125,.85)}
+.posTile:active{transform:scale(.98)}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -640,7 +654,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v8 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v9 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -690,17 +704,22 @@ body{padding-bottom:40px!important}
       </div>
     </div>
 
-<div class="tipBar" id="tipBar">
+
+    <div class="card poseCard" id="poseCard">
+      <div class="cHead"><h3>Pose Choice</h3><span class="pill" id="posePill">1 TAP</span></div>
+      <div class="poseRow">
+        <button class="poseTile" data-pose="walk"><img src="pose-walk.png" alt="Walk"><span>Walk</span></button>
+        <button class="poseTile" data-pose="run"><img src="pose-run.png" alt="Run"><span>Run</span></button>
+        <button class="poseTile" data-pose="cycle"><img src="pose-cycle.png" alt="Cycle"><span>Cycle</span></button>
+      </div>
+      <p class="note">Ek pose chuno — Rig step khud khulega aur character usi motion me chalega.</p>
+    </div>
+
+    <div class="tipBar" id="tipBar">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z"/></svg></span>
       <p>Tip: Use a front-facing character for the best results!</p>
       <svg class="boy" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="19" fill="#0e2a4a" stroke="#fbbf24" stroke-opacity=".45"/><path d="M20 9c-4.4 0-7.4 3-7.4 7.4 0 4.4 3 8.6 7.4 8.6s7.4-4.2 7.4-8.6C27.4 12 24.4 9 20 9z" fill="#f6c9a0"/><path d="M12.4 17.2c0-4.6 3.2-8.2 7.6-8.2s7.6 3.6 7.6 8.2c-1.4-2.2-4-3.4-7.6-3.4s-6.2 1.2-7.6 3.4z" fill="#2b1b12"/><circle cx="17" cy="17" r="1.1" fill="#2b1b12"/><circle cx="23" cy="17" r="1.1" fill="#2b1b12"/><path d="M17.8 21.2c1.4 1.2 3 1.2 4.4 0" stroke="#a1583a" stroke-width="1.2" stroke-linecap="round"/><path d="M11.5 31.5c1.6-3.4 4.8-5 8.5-5s6.9 1.6 8.5 5z" fill="#ffd75e"/></svg>
     </div>
-      <div class="inlineNext">
-        <button class="nextBtn nxBtn " data-next="2" disabled><span class="tick">&#10003;</span>Next &rarr;</button>
-        <button class="shareBtn" id="shareBtn" aria-label="Share">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6 15.4 6.4"/><path d="M8.6 13.4 15.4 17.6"/></svg>
-    </button>
-      </div>
   </section>
 
   <!-- ================= PAGE 2 · AUTO-CUT & LAYERS ================= -->
@@ -759,12 +778,6 @@ body{padding-bottom:40px!important}
         <button class="btn primary" id="toStudio" style="width:100%;margin-top:14px">Rig step kholo →</button>
       </div>
     </div>
-      <div class="inlineNext">
-        <button class="nextBtn nxBtn " data-next="3" disabled><span class="tick">&#10003;</span>Next &rarr;</button>
-        <button class="shareBtn" id="shareBtn" aria-label="Share">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6 15.4 6.4"/><path d="M8.6 13.4 15.4 17.6"/></svg>
-    </button>
-      </div>
   </section>
 
   <!-- ================= PAGE 3 · POSING STUDIO ================= -->
@@ -829,12 +842,6 @@ body{padding-bottom:40px!important}
         <p class="note" id="snapNote">Snapshot browser me (localStorage) save hota hai — page band karne par bhi rehta hai.</p>
       </div>
     </div>
-      <div class="inlineNext">
-        <button class="nextBtn nxBtn " data-next="5" disabled><span class="tick">&#10003;</span>Next &rarr;</button>
-        <button class="shareBtn" id="shareBtn" aria-label="Share">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6 15.4 6.4"/><path d="M8.6 13.4 15.4 17.6"/></svg>
-    </button>
-      </div>
   </section>
 
 
@@ -872,12 +879,6 @@ body{padding-bottom:40px!important}
       </div>
       <p class="note">Mirror Flip poore character ko ulta karke dobara cut karta hai — pose aur joints apne aap recalculate ho jate hain.</p>
     </div>
-      <div class="inlineNext">
-        <button class="nextBtn nxBtn " data-next="4" disabled><span class="tick">&#10003;</span>Next &rarr;</button>
-        <button class="shareBtn" id="shareBtn" aria-label="Share">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6 15.4 6.4"/><path d="M8.6 13.4 15.4 17.6"/></svg>
-    </button>
-      </div>
   </section>
 
   <!-- ================= PAGE 5 · SAVE (v4) ================= -->
@@ -895,12 +896,6 @@ body{padding-bottom:40px!important}
       <button class="bigBtn alt" id="btnLoadSnap2">Load Snapshot</button>
       <p class="note" id="saveNote">JSON me har part ke coordinates, pivot (joint) points, rotation aur z-order — sab include hote hain, isliye Puppet Control page par alignment exactly same rehti hai.</p>
     </div>
-      <div class="inlineNext">
-        <button class="nextBtn nxBtn " data-next="6" disabled><span class="tick">&#10003;</span>SAVE &rarr;</button>
-        <button class="shareBtn" id="shareBtn" aria-label="Share">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6 15.4 6.4"/><path d="M8.6 13.4 15.4 17.6"/></svg>
-    </button>
-      </div>
   </section>
 
   <!-- ================= PREVIEW MODAL ================= -->
@@ -2619,12 +2614,30 @@ body{padding-bottom:40px!important}
       if (!App.cut) { U.toast('Pehle character cut karo'); return; }
       goPage(3); setTimeout(() => { if (!V4.sel) selectPart('head'); U.toast('Part ko drag karo ya arrows dabao'); }, 120);
     });
-    document.querySelectorAll('.nxBtn').forEach((b) => {
-      b.addEventListener('click', () => {
-        const t = +b.dataset.next;
-        if (t === 6) { saveRig(); return; }
-        if (!App.cut) { U.toast('Pehle transparent PNG upload karo'); return; }
-        goPage(t);
+    /* Pose choice (walk / run / cycle) — real preset, Rig page par le jata hai */
+    document.querySelectorAll('.poseTile').forEach((tile) => {
+      tile.addEventListener('click', () => {
+        if (!App.cut) { U.toast('Pehle character upload karo'); return; }
+        const pose = tile.dataset.pose;
+        document.querySelectorAll('.poseTile').forEach((t) => t.classList.toggle('on', t === tile));
+        goPage(4);
+        setTimeout(() => {
+          const target = pose === 'cycle' ? 'run' : pose;
+          const btn = document.querySelector('#qpRow .qp[data-pose="' + target + '"]');
+          if (btn) btn.click();
+          if (pose === 'cycle') {
+            setTimeout(() => {
+              try {
+                if (window.__RIG_ANIM) {
+                  window.__RIG_ANIM.spread = 0.13;
+                  window.__RIG_ANIM.speed = 1.15;
+                }
+                const fx = document.querySelector('#smArmFixed'); if (fx) fx.click();
+              } catch (e) {}
+            }, 120);
+          }
+          const pill = U.$('posePill'); if (pill) pill.textContent = pose.toUpperCase();
+        }, 150);
       });
     });
     window.addEventListener('resize', () => { if (App.page === 3) renderPosStage(); });
@@ -2710,6 +2723,7 @@ body{padding-bottom:40px!important}
     speed: 1.0,            /* cycles per second base */
     torso: 0.03
   };
+  try { window.__RIG_ANIM = Anim; } catch (e) {}
 
   function step(ts) {
     if (!Anim.on) return;
@@ -2837,7 +2851,8 @@ body{padding-bottom:40px!important}
   });
 
   if (smWalk.slider) smWalk.slider.addEventListener('input', function () {
-    Anim.spread = SPREAD_MIN + (this.value / 100) * SPREAD_SPAN;
+    try { window.__RIG_ANIM = Anim; } catch (e) {}
+  Anim.spread = SPREAD_MIN + (this.value / 100) * SPREAD_SPAN;
     if (smWalk.val) smWalk.val.textContent = this.value + '%';
     if (panel.spread) { panel.spread.value = this.value; if (panel.spreadVal) panel.spreadVal.textContent = this.value + '%'; }
     if (!Anim.on) {   /* animation band ho to static preview turant */
