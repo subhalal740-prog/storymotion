@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T20:05Z">
+<meta name="rigbuild" content="2026-11-06T21:10Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -709,7 +709,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v16.1 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.0 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -1632,17 +1632,42 @@ body{padding-bottom:40px!important}
     let rotation = {};
     RING_IDS.forEach((k) => { rotation[k] = 0; });
 
+    /* v17: ROOT = poore character ki position (walk/run me aage badhne ke liye) */
+    let root = { x: 0, y: 0 };
+    /* v17: per-piece offset (pair uthana / kadam) */
+    let offset = {};
+    RING_IDS.forEach((k) => { offset[k] = { dx: 0, dy: 0 }; });
+
     let hist = [], idx = -1, limit = 80;
     let onChange = () => {};
 
     function capture() {
-      return { v: 1, rotation: Object.assign({}, rotation), order: Layers.idsInOrder() };
+      const off = {};
+      RING_IDS.forEach((k) => { off[k] = { dx: offset[k].dx, dy: offset[k].dy }; });
+      return { v: 2, rotation: Object.assign({}, rotation), order: Layers.idsInOrder(),
+               root: { x: root.x, y: root.y }, offset: off };
     }
     function apply(snap, renderIt) {
       rotation = Object.assign({}, snap.rotation || {});
       RING_IDS.forEach((k) => { if (typeof rotation[k] !== 'number') rotation[k] = 0; });
+      root = snap.root ? { x: +snap.root.x || 0, y: +snap.root.y || 0 } : { x: 0, y: 0 };
+      RING_IDS.forEach((k) => {
+        const o = (snap.offset && snap.offset[k]) || { dx: 0, dy: 0 };
+        offset[k] = { dx: +o.dx || 0, dy: +o.dy || 0 };
+      });
       if (snap.order) Layers.setOrder(snap.order);
       if (renderIt !== false) onChange();
+    }
+    function setRoot(x, y) { root.x = +x || 0; root.y = +y || 0; }
+    function getRoot() { return { x: root.x, y: root.y }; }
+    function setOffset(id, dx, dy) {
+      if (!offset[id]) offset[id] = { dx: 0, dy: 0 };
+      offset[id].dx = +dx || 0; offset[id].dy = +dy || 0;
+    }
+    function getOffset(id) { return offset[id] || { dx: 0, dy: 0 }; }
+    function clearRoot() {
+      root.x = 0; root.y = 0;
+      RING_IDS.forEach((k) => { offset[k].dx = 0; offset[k].dy = 0; });
     }
     function push(label) {
       const snap = capture();
@@ -1662,11 +1687,12 @@ body{padding-bottom:40px!important}
       idx = hist.length - 1;
       onChange();
     }
-    function init() { hist = []; idx = -1; RING_IDS.forEach((k) => rotation[k] = 0); push('init'); }
+    function init() { hist = []; idx = -1; RING_IDS.forEach((k) => rotation[k] = 0); clearRoot(); push('init'); }
     function undo() { if (idx > 0) { idx--; apply(hist[idx].snap); return true; } return false; }
     function redo() { if (idx < hist.length - 1) { idx++; apply(hist[idx].snap); return true; } return false; }
     function reset(render) {
       RING_IDS.forEach((k) => { rotation[k] = 0; });
+      clearRoot();
       Layers.resetOrder();
       push('reset');
       if (render) onChange();
@@ -1705,6 +1731,7 @@ body{padding-bottom:40px!important}
       try { apply(JSON.parse(txt)); push('import'); return true; } catch (e) { return false; }
     }
     return { RING_IDS, init, push, undo, redo, reset, setAngle, setPair, setMirror, isMirror, get, getRotation, capture,
+             setRoot, getRoot, setOffset, getOffset, clearRoot,
              history, setOnChange, save, load, exportJSON, importJSON };
   })();
 
@@ -1722,19 +1749,22 @@ body{padding-bottom:40px!important}
       if (!bbox) return;
       const wide = window.innerWidth >= 821;
       const wrapEl = cv.parentElement;
-      const availW = Math.min(460, ((wrapEl && wrapEl.clientWidth) || 460) - 20);
+      const availW = Math.min(460, ((wrapEl && wrapEl.clientWidth) || 460) - 20, window.innerWidth - 44);
       /* mobile: viewport ki 40vh se zyada nahi + zoom max 50% (character poora frame me) */
       const shortScreen = window.innerHeight < 700;
       const maxH = wide ? 520
         : Math.max(150, Math.round(window.innerHeight * (shortScreen ? 0.34 : 0.40)));
-      baseScale = Math.min(availW / bbox.w, maxH / bbox.h);
+      /* v17: stage = character se 1.55x chaudi — walk/run me aage badhne ki jagah */
+      baseScale = Math.min(availW / (bbox.w * STAGE_MUL), maxH / bbox.h);
       if (!wide) baseScale = Math.min(baseScale, 0.50);
       scale = baseScale * zoom;
-      cv.width = Math.max(1, Math.round(bbox.w * scale));
+      cv.width = Math.max(1, Math.round(bbox.w * STAGE_MUL * scale));
       cv.height = Math.max(1, Math.round(bbox.h * scale));
     }
 
-    function toScreen(x, y) { return { x: (x - bbox.x) * scale, y: (y - bbox.y) * scale }; }
+    const STAGE_MUL = 1.30;                    /* travel room (left + right) */
+    function padX() { return (bbox.w * STAGE_MUL - bbox.w) / 2; }   /* character start = center */
+    function toScreen(x, y) { return { x: (x - bbox.x + padX()) * scale, y: (y - bbox.y) * scale }; }
 
     function render() {
       if (!ctx || !bbox) return;
@@ -1744,20 +1774,25 @@ body{padding-bottom:40px!important}
       ctx.imageSmoothingQuality = 'high';
 
       const list = Layers.order();
+      const R = (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
+      const rx = R.x * scale, ry = R.y * scale;      /* poora character ek saath aage/peeche */
       for (const p of list) {
         if (p.visible === false) continue;
         const rot = Pose.get(p.id) || 0;
+        const off = Pose.getOffset ? Pose.getOffset(p.id) : { dx: 0, dy: 0 };
+        const ox = off.dx * scale, oy = off.dy * scale;   /* per-part step (pair uthana) */
         ctx.save();
         const dx = (p.ox !== undefined ? p.ox : p.x), dy = (p.oy !== undefined ? p.oy : p.y);
         const dw = (p.ow !== undefined ? p.ow : p.w), dh = (p.oh !== undefined ? p.oh : p.h);
         if (p.kind === 'cloth' || !p.pivot) {
-          ctx.drawImage(p.canvas, (dx - bbox.x) * scale, (dy - bbox.y) * scale, dw * scale, dh * scale);
+          const o = toScreen(dx, dy);
+          ctx.drawImage(p.canvas, o.x + rx + ox, o.y + ry + oy, dw * scale, dh * scale);
         } else {
           const pv = toScreen(p.pivot.x, p.pivot.y);
-          ctx.translate(pv.x, pv.y);
+          ctx.translate(pv.x + rx + ox, pv.y + ry + oy);
           ctx.rotate(rot);
-          ctx.drawImage(p.canvas, (dx - bbox.x) * scale - pv.x, (dy - bbox.y) * scale - pv.y,
-                        dw * scale, dh * scale);
+          const o = toScreen(dx, dy);
+          ctx.drawImage(p.canvas, o.x - pv.x, o.y - pv.y, dw * scale, dh * scale);
         }
         ctx.restore();
       }
@@ -1768,9 +1803,12 @@ body{padding-bottom:40px!important}
       const t = performance.now() / 1000;
       const list = Layers.order();
       const hot = (drag && drag.id) || hoverId;
+      const RR = (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
       for (const p of list) {
         if (!p.pivot || p.kind === 'cloth') continue;
-        const pv = toScreen(p.pivot.x, p.pivot.y);
+        const pvR = toScreen(p.pivot.x, p.pivot.y);
+        const offR = Pose.getOffset ? Pose.getOffset(p.id) : { dx: 0, dy: 0 };
+        const pv = { x: pvR.x + RR.x * scale + offR.dx * scale, y: pvR.y + RR.y * scale + offR.dy * scale };
         const rot = Pose.get(p.id) || 0;
         const isHot = (p.id === hot);
         /* breathing: har ring apni phase me, active ring tez saans leta hai */
@@ -1885,7 +1923,7 @@ body{padding-bottom:40px!important}
     });
     App.page = n;
     if (n === 3) { renderPosChips(); renderPosStage(); renderPosReadout(); }
-    if (n === 4) { Studio.render(); }
+    if (n === 4) { Studio.layout(); Studio.render(); }   /* v17: stage width page ke hisaab se */
     if (n === 5) { renderSave(); }
     syncNextBar();
   }
@@ -2596,15 +2634,17 @@ body{padding-bottom:40px!important}
     const cv = document.createElement('canvas'); cv.width = b.w; cv.height = b.h;
     const c = cv.getContext('2d');
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    const RT = (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
     Layers.order().forEach((p) => {
       if (p.visible === false) return;
       const o = offOf(p);
       const rot = Pose.get(p.id) || 0;
+      const off = Pose.getOffset ? Pose.getOffset(p.id) : { dx: 0, dy: 0 };
       if (p.kind === 'cloth' || !p.pivot) {
-        c.drawImage(p.canvas, o.x - b.x, o.y - b.y, p.w, p.h);
+        c.drawImage(p.canvas, o.x - b.x + RT.x + off.dx, o.y - b.y + RT.y + off.dy, p.w, p.h);
       } else {
         c.save();
-        c.translate(p.pivot.x - b.x, p.pivot.y - b.y);
+        c.translate(p.pivot.x - b.x + RT.x + off.dx, p.pivot.y - b.y + RT.y + off.dy);
         c.rotate(rot);
         c.drawImage(p.canvas, (o.x - b.x) - (p.pivot.x - b.x), (o.y - b.y) - (p.pivot.y - b.y), p.w, p.h);
         c.restore();
@@ -2627,6 +2667,14 @@ body{padding-bottom:40px!important}
       bbox: { x: b.x, y: b.y, w: b.w, h: b.h },
       order: Layers.idsInOrder(),
       pose: rot,
+      root: (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 }),
+      offsets: (function () {
+        const o = {};
+        Layers.order().forEach(function (p) { if (Pose.getOffset) o[p.id] = Pose.getOffset(p.id); });
+        return o;
+      })(),
+      anim: { kind: (window.__RIG_ANIM && window.__RIG_ANIM.kind) || null,
+              speed: (window.__RIG_ANIM && window.__RIG_ANIM.speed) || null },
       mirror: Pose.isMirror(),
       layers: Layers.order().map((p) => {
         const o = offOf(p);
@@ -2904,6 +2952,7 @@ body{padding-bottom:40px!important}
   /* sirf angles + label — HISTORY PUSH yahan NAHI hota (single entry merged handler me) */
   function applyStatic(name, mirrorSafe) {
     if (!window.RIG || !RIG.Pose || !PRESETS[name]) return false;
+    try { if (RIG.Pose.clearRoot) RIG.Pose.clearRoot(); } catch (e) {}
     const p = PRESETS[name];
     const wasMirror = RIG.Pose.isMirror();
     if (mirrorSafe) RIG.Pose.setMirror(false);      /* pair values ko mirror se bachao */
@@ -2948,6 +2997,24 @@ body{padding-bottom:40px!important}
     const dt = Anim.last ? Math.min(0.05, (ts - Anim.last) / 1000) : 0.016;
     Anim.last = ts;
     Anim.phase += dt * Anim.speed * Math.PI * 2;      /* 1 cycle = 2π */
+
+    /* ================= v17: WALK + REAL FORWARD MOVEMENT =================
+       Pehle character sirf wahin khada ho kar haath hilata tha. Ab:
+       1. ROOT translation — poora character ek saath aage badhta hai
+       2. Legs alternate (180° phase) + per-leg LIFT (pair uthana)
+       3. Arms legs ke ULTI direction me
+       4. Body bob (up/down) har step par
+       5. Planted pair zameen par sthir rehta hai (bob compensate)
+       6. Stage ke kinare par direction palat jati hai (loop)            */
+    const BW = (RIG.App && RIG.App.cut) ? RIG.App.cut.bbox.w : 800;
+    const BH = (RIG.App && RIG.App.cut) ? RIG.App.cut.bbox.h : 1000;
+    const RANGE = BW * 0.15;                       /* left/right travel limit */
+    /* chalne ki raftaar: walk ~110px/s, run ~210px/s (source px me) */
+    const pxPerSec = BW * ((Anim.kind === 'run') ? 0.26 : 0.14);
+    if (Anim.dir === undefined) Anim.dir = 1;
+    Anim.travel = (Anim.travel || 0) + Anim.dir * dt * pxPerSec;
+    /* hamesha AAGE — right edge par pahunch kar left se loop (endless walk) */
+    if (Anim.travel > RANGE) Anim.travel = -RANGE;
     /* ---- LEGS: 180° (Math.PI) phase offset — dono pair ULTI direction me ----
        sin(p) aur sin(p + PI) = -sin(p) → legL aur legR kabhi ek saath nahi,
        ek aage to dusri peeche. Sign aisa ki pair BAHAR khulein, andar na takrayein. */
@@ -2960,12 +3027,23 @@ body{padding-bottom:40px!important}
     const legAmp = Anim.spread * 0.55;
     const a  = Math.sin(Anim.phase) * legAmp;                        /* legL */
     const a2 = Math.sin(Anim.phase + Math.PI) * legAmp;              /* legR = -a (180° offset) */
+    /* pair uthana (lift) — ek pair up, dusra zameen par */
+    const liftAmp = BH * 0.015 * (Anim.kind === 'run' ? 1.4 : 1);   /* overlap ke andar */
+    const liftL = liftAmp * Math.max(0, Math.sin(Anim.phase));
+    const liftR = liftAmp * Math.max(0, Math.sin(Anim.phase + Math.PI));
+    /* body bob — har step par halka up/down */
+    const bobAmp = BH * 0.005 * (Anim.kind === 'run' ? 1.4 : 1);
+    const rise = bobAmp * Math.abs(Math.sin(Anim.phase));
+    /* planted leg ko bob ke barabar neeche rakho -> pair zameen par sahi padta hai */
+    const dyL = -liftL + (liftL > 0.001 ? 0 : rise);
+    const dyR = -liftR + (liftR > 0.001 ? 0 : rise);
 
     /* ---- ARMS: Arm Posture button ke hisaab se rest angle ----
        T-Pose  -> arms ko pehle neeche laao (-ARM_DOWN_LOCK), phir usi ke around swing
        Arms Down -> rest 0° (photo character pehle se latka hua hai)             */
     const rest = (ARM_POSTURE === 'down') ? 0 : ARM_DOWN_LOCK;
-    const swing = (Anim.armMode === 'fixed') ? 0 : Math.sin(Anim.phase) * Anim.armAmp;
+    /* arms legs ke OPPOSITE: legs sin(p) par hain, arms -sin(p) par */
+    const swing = (Anim.armMode === 'fixed') ? 0 : -Math.sin(Anim.phase) * Anim.armAmp;
     try {
       RIG.Pose.setPair({
         legL: a, legR: a2,                              /* 180° out of phase (opposite swing) */
@@ -2974,6 +3052,14 @@ body{padding-bottom:40px!important}
         torso: Anim.torso * (0.6 + 0.4 * Math.cos(Anim.phase * 2)),
         head: 0
       });
+      /* step offsets + poore character ki position */
+      if (RIG.Pose.setOffset) {
+        RIG.Pose.setOffset('legL', 0, dyL);
+        RIG.Pose.setOffset('legR', 0, dyR);
+        RIG.Pose.setOffset('armL', 0, 0);
+        RIG.Pose.setOffset('armR', 0, 0);
+      }
+      if (RIG.Pose.setRoot) RIG.Pose.setRoot(Anim.travel, -rise);
       RIG.Studio.render();
     } catch (e) { Anim.on = false; return; }
     Anim.raf = requestAnimationFrame(step);
@@ -2982,12 +3068,14 @@ body{padding-bottom:40px!important}
   function startAnim(kind) {
     Anim.kind = kind || 'walk';
     Anim.on = true; Anim.last = 0;
+    Anim.travel = 0; Anim.dir = 1;      /* v17: centre se shuru, phir aage */
     cancelAnimationFrame(Anim.raf);
     /* instant snap: pehla frame turant (user ko wait na karna pade) */
     try { step(performance.now()); } catch (e) { Anim.raf = requestAnimationFrame(step); }
   }
   function stopAnim(silent) {
     Anim.on = false; cancelAnimationFrame(Anim.raf);
+    try { if (RIG.Pose.clearRoot) RIG.Pose.clearRoot(); } catch (e) {}
     if (!silent) { try { RIG.Studio.render(); } catch (e) {} }
   }
 
