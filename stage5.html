@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T23:45Z">
+<meta name="rigbuild" content="2026-11-06T23:59Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -709,7 +709,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.4 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.5 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -1096,6 +1096,210 @@ body{padding-bottom:40px!important}
 
     window.addEventListener('pagehide', () => purgeAll('pagehide'));
     return { makeCanvas, trackCanvas, trackURL, release, purgeAll, stats };
+  })();
+
+  /* --------------------------------------------------------- 02a · BG KILL (v17.5)
+     Client-side solid-background remover — koi API, koi server, koi paisa nahi.
+     • Border ring se background ka rang auto-detect (quantized mode + average)
+     • Background uniformity check — solid na ho to REJECT (kharab image par kaam nahi)
+     • Border se flood-fill chroma key (T_HARD=40) — safe: white kapde (pant/kurta)
+       jo background se milte hain, wo andar hote hain isliye delete nahi hote
+     • 2-pass feather (T_HARD .. T_SOFT) — kinare par safed halo nahi banta
+     • Result: seedha transparent PNG (ImageData) -> Gate -> Cut (bundle center)      */
+  const Bg = (function () {
+    const T_HARD = 40;        /* background se itna close = pakka background */
+    const T_SOFT = 68;        /* is range tak alpha feather hota hai */
+    const MIN_UNIFORM = 0.90; /* border ka 90% bg color ke kareeb hona chahiye */
+    const A_MIN = 18;
+
+    function dist(r, g, b, c) {
+      const dr = r - c[0], dg = g - c[1], db = b - c[2];
+      return Math.sqrt(dr * dr + dg * dg + db * db);
+    }
+
+    /* border ring se dominant background colour (quantized mode -> average) */
+    function detectBg(d, W, H) {
+      const bins = new Map();
+      const step = Math.max(1, Math.round(Math.min(W, H) / 260));
+      const push = (i, x, y) => {
+        if (d[i + 3] < 24) return false;                  /* already transparent */
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        const key = (r >> 4) + ',' + (g >> 4) + ',' + (b >> 4);
+        let e = bins.get(key);
+        if (!e) { e = { n: 0, r: 0, g: 0, b: 0, x0: x, y0: y }; bins.set(key, e); }
+        e.n++; e.r += r; e.g += g; e.b += b;
+        return true;
+      };
+      const ring = 3;
+      for (let k = 0; k < ring; k++) {
+        for (let x = 0; x < W; x += step) { push(((k * W) + x) * 4, x, k); push((((H - 1 - k) * W) + x) * 4, x, H - 1 - k); }
+        for (let y = 0; y < H; y += step) { push(((y * W) + k) * 4, k, y); push(((y * W) + (W - 1 - k)) * 4, W - 1 - k, y); }
+      }
+      let best = null;
+      bins.forEach((e) => { if (!best || e.n > best.n) best = e; });
+      if (!best) return null;
+      return { rgb: [Math.round(best.r / best.n), Math.round(best.g / best.n), Math.round(best.b / best.n)],
+               share: best.n };
+    }
+
+    /* border par bg colour kitna uniform hai (0..1) */
+    function uniformity(d, W, H, bg) {
+      const step = Math.max(1, Math.round(Math.min(W, H) / 200));
+      let near = 0, total = 0;
+      const ring = 3;
+      for (let k = 0; k < ring; k++) {
+        for (let x = 0; x < W; x += step) {
+          [((k * W) + x) * 4, (((H - 1 - k) * W) + x) * 4].forEach((i) => {
+            if (d[i + 3] < 24) return;
+            total++; if (dist(d[i], d[i + 1], d[i + 2], bg) <= T_HARD) near++;
+          });
+        }
+        for (let y = 0; y < H; y += step) {
+          [((y * W) + k) * 4, ((y * W) + (W - 1 - k)) * 4].forEach((i) => {
+            if (d[i + 3] < 24) return;
+            total++; if (dist(d[i], d[i + 1], d[i + 2], bg) <= T_HARD) near++;
+          });
+        }
+      }
+      return total ? near / total : 0;
+    }
+
+    function process(data, W, H) {
+      const d = data.data;
+      const total = W * H;
+
+      /* 1 — already transparent? to bilkul chhedo mat */
+      let seeThrough = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] < 24) seeThrough++;
+      if (seeThrough / total > 0.05) {
+        return { ok: true, removed: false, reason: 'already-transparent',
+                 data, W, H, meta: { transparentPct: +(100 * seeThrough / total).toFixed(1) } };
+      }
+
+      /* 2 — background colour detect */
+      const bgInfo = detectBg(d, W, H);
+      if (!bgInfo) return { ok: false, msg: 'Image khali hai — background bhi nahi mila.' };
+      const bg = bgInfo.rgb;
+
+      /* 3 — solid hai ya nahi (kharab/photo background par kaam nahi) */
+      const uni = uniformity(d, W, H, bg);
+      if (uni < MIN_UNIFORM) {
+        return { ok: false, uniform: uni, bg,
+                 msg: 'Background solid nahi hai (' + Math.round(uni * 100) + '% match) — photo/gradient ' +
+                      'background se character alag nahi kiya ja sakta. Plain solid colour wali image chuno.' };
+      }
+
+      /* 4 — border-seeded flood fill chroma key (8-connected) */
+      const mark = new Uint8Array(total);          /* 0 = not bg, 1 = bg (cleared) */
+      const stack = new Int32Array(total);
+      let sp = 0;
+      const seed = (x, y) => {
+        const p = y * W + x, i = p * 4;
+        if (mark[p] || d[i + 3] < 24) return;
+        if (dist(d[i], d[i + 1], d[i + 2], bg) > T_HARD) return;
+        mark[p] = 1; stack[sp++] = p;
+      };
+      for (let x = 0; x < W; x++) { seed(x, 0); seed(x, H - 1); }
+      for (let y = 0; y < H; y++) { seed(0, y); seed(W - 1, y); }
+      while (sp > 0) {
+        const p = stack[--sp];
+        const x = p % W, y = (p - x) / W;
+        for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
+          const nx = x + ox, ny = y + oy;
+          if ((!ox && !oy) || nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+          seed(nx, ny);
+        }
+      }
+      let cleared = 0;
+      for (let p = 0; p < total; p++) if (mark[p]) { d[p * 4 + 3] = 0; cleared++; }
+
+      /* 5 — feather: kinare ko 2 pass me soft karo (halo / jaggies nahi) */
+      for (let pass = 0; pass < 2; pass++) {
+        const edge = [];
+        for (let p = 0; p < total; p++) {
+          if (mark[p]) continue;
+          const i = p * 4;
+          if (d[i + 3] < 24) continue;
+          const x = p % W, y = (p - x) / W;
+          let touch = false;
+          if (x > 0 && mark[p - 1]) touch = true;
+          else if (x < W - 1 && mark[p + 1]) touch = true;
+          else if (y > 0 && mark[p - W]) touch = true;
+          else if (y < H - 1 && mark[p + W]) touch = true;
+          if (!touch) continue;
+          const dd = dist(d[i], d[i + 1], d[i + 2], bg);
+          if (dd > T_SOFT) continue;
+          const k = Math.max(0, (dd - T_HARD) / (T_SOFT - T_HARD));   /* 0..1 */
+          const a = Math.round(d[i + 3] * k);
+          if (a < d[i + 3]) edge.push(i, a);
+        }
+        for (let i = 0; i < edge.length; i += 2) d[edge[i] + 3] = edge[i + 1];
+      }
+
+      /* 5b — EDGE UNMIX (anti-halo): edge pixel asal me background + character ka
+         blend hota hai. Andar ka asli rang (S) dhoondh kar alpha estimate karte hain:
+             alpha = |pixel - bg| / |S - bg|
+         aur pixel ka rang S kar dete hain. Isse safed/grey rim poori tarah khatam ho
+         jaati hai aur kinara smooth rehta hai (white kapde bhi safe — unka S hi white hai). */
+      (function edgeUnmix() {
+        const edge = [];
+        for (let p = 0; p < total; p++) {
+          if (mark[p]) continue;
+          if (d[p * 4 + 3] < 24) continue;
+          const x = p % W, y = (p - x) / W;
+          if ((x > 0 && mark[p - 1]) || (x < W - 1 && mark[p + 1]) ||
+              (y > 0 && mark[p - W]) || (y < H - 1 && mark[p + W])) edge.push(p);
+        }
+        for (let e = 0; e < edge.length; e++) {
+          const p = edge[e], x = p % W, y = (p - x) / W, i = p * 4;
+          const ddPix = dist(d[i], d[i + 1], d[i + 2], bg);
+          let sr = 0, sg = 0, sb = 0, n = 0;
+          for (let rad = 2; rad <= 5 && n < 3; rad++) {
+            for (let oy = -rad; oy <= rad; oy++) for (let ox = -rad; ox <= rad; ox++) {
+              if (Math.abs(ox) !== rad && Math.abs(oy) !== rad) continue;
+              const nx = x + ox, ny = y + oy;
+              if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+              const q = ny * W + nx;
+              if (mark[q]) continue;
+              const j = q * 4;
+              if (d[j + 3] < 200) continue;
+              if (dist(d[j], d[j + 1], d[j + 2], bg) < 110) continue;   /* ye bhi blend hai */
+              sr += d[j]; sg += d[j + 1]; sb += d[j + 2]; n++;
+            }
+          }
+          if (!n) continue;
+          const S = [sr / n, sg / n, sb / n];
+          const ddS = dist(S[0], S[1], S[2], bg);
+          if (ddS < 40) continue;
+          let a = ddPix / ddS;
+          a = Math.min(1, Math.max(0, a));
+          /* bahut halka blend (a < 0.12) = pakka background */
+          if (a < 0.12) { d[i + 3] = 0; continue; }
+          d[i]     = Math.round(S[0]);
+          d[i + 1] = Math.round(S[1]);
+          d[i + 2] = Math.round(S[2]);
+          d[i + 3] = Math.round(Math.min(d[i + 3], 255 * a));
+        }
+      })();
+
+      /* 6 — character bacha ya nahi */
+      let opaque = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > A_MIN) opaque++;
+      if (opaque / total < 0.01) {
+        return { ok: false, uniform: uni, bg,
+                 msg: 'Background ke saath character bhi hat gaya — is image par character nahi mila.' };
+      }
+
+      return { ok: true, removed: true, data, W, H, meta: {
+        bg: 'rgb(' + bg[0] + ',' + bg[1] + ',' + bg[2] + ')',
+        hex: '#' + [bg[0], bg[1], bg[2]].map((v) => v.toString(16).padStart(2, '0')).join('').toUpperCase(),
+        uniformPct: +(uni * 100).toFixed(1),
+        clearedPct: +(100 * cleared / total).toFixed(1),
+        keepPct: +(100 * opaque / total).toFixed(1)
+      } };
+    }
+
+    return { process, T_HARD, T_SOFT, detectBg, uniformity };
   })();
 
   /* ---------------------------------------------------------------- 02 · GATE
@@ -2212,7 +2416,24 @@ body{padding-bottom:40px!important}
       Memory.release(work); Memory.purgeAll('tainted'); hud(); return;
     }
     Memory.release(work);
+
+    /* ---- v17.5 · SOLID BACKGROUND AUTO-REMOVE (client-side chroma key, no API) ----
+       Gallery se image aayi -> border se bg colour detect -> flood-fill key -> transparent.
+       Solid background nahi mila to yahin REJECT (kharab image par aage kuch nahi hota). */
+    const bgRes = Bg.process(data, W, H);
+    App.bg = bgRes;
+    if (!bgRes.ok) {
+      setLight('rejected', '🚫 ' + bgRes.msg,
+               W + '×' + H + (bgRes.uniform != null ? ' · border match ' + Math.round(bgRes.uniform * 100) + '%' : ''));
+      App.cut = null;
+      Memory.purgeAll('bg not solid'); hud(); return;
+    }
+    data = bgRes.data;
     App.imgData = data; App.W = W; App.H = H;
+    if (bgRes.removed) {
+      U.toast('Background auto-removed · ' + bgRes.meta.hex + ' · ' + bgRes.meta.clearedPct + '% clear');
+      Memory.release(work);
+    }
 
     const res = Gate.run(data, W, H);
     const kind = res.light === 'READY' ? 'ready' : res.light === 'WARNING' ? 'warning' : 'rejected';
@@ -2232,8 +2453,11 @@ body{padding-bottom:40px!important}
     renderHistory();
     enableSteps(); hud();
 
+    const bgTag = bgRes.removed
+      ? '🎯 BG auto-removed ' + bgRes.meta.hex + ' (' + bgRes.meta.clearedPct + '% clear) · '
+      : '';
     setLight(kind, res.msg + (res.light === 'WARNING' ? ' (cut allowed)' : ' · 6 pieces cut in ' + cut.meta.ms + ' ms'),
-             W + '×' + H + ' · ' + cut.pieces.length + ' pieces · ' + cut.meta.coverage + '% coverage');
+             bgTag + W + '×' + H + ' · ' + cut.pieces.length + ' pieces · ' + cut.meta.coverage + '% coverage');
     try { v4AfterCut(res); } catch (e) {}
     if (res.light === 'READY') {
       if (autoTimer) clearTimeout(autoTimer);
@@ -2963,7 +3187,7 @@ body{padding-bottom:40px!important}
   })();
 
   window.RIG = {
-    App, Memory, Gate, Cut, Layers, Pose, Studio,
+    App, Memory, Bg, Gate, Cut, Layers, Pose, Studio,
     goPage,
     stats: () => ({ memory: Memory.stats(), cut: App.cut && App.cut.meta,
                     layers: Layers.idsInOrder(), pose: Pose.getRotation(), history: Pose.history(),
