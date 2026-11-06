@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T13:05Z">
+<meta name="rigbuild" content="2026-11-06T13:40Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -645,6 +645,18 @@ body{padding-bottom:40px!important}
 .voiceBtn{position:relative}
 .upHead{flex-wrap:nowrap}
 </style>
+<style id="v14fix">
+.qp.stop{flex:0 0 46px;min-width:46px;padding:0;display:grid;place-items:center}
+.qp.stop svg{width:15px;height:15px;color:#14161a}
+.qp.stop.on{box-shadow:0 0 0 2px rgba(255,196,0,.85),0 0 18px rgba(255,196,0,.45),inset 0 1px 0 #fff,
+  0 8px 18px -9px rgba(0,0,0,.75)!important}
+.qp.stop.on:after{background:#ffc400;box-shadow:0 0 8px rgba(255,196,0,.95)}
+.tposeWarn{display:flex;gap:8px;align-items:flex-start;margin:10px 0 0;padding:9px 11px;border-radius:11px;
+  background:linear-gradient(160deg,rgba(255,196,0,.14),rgba(255,196,0,.04));border:1px solid rgba(255,196,0,.4)}
+.tposeWarn[hidden]{display:none}
+.tposeWarn .ic{flex:0 0 15px;width:15px;height:15px;color:#ffc400;margin-top:1px}
+.tposeWarn p{margin:0;font-size:9.5px;line-height:1.5;color:#f2d98a;font-weight:600}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -679,7 +691,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v13 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v14 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -851,6 +863,9 @@ body{padding-bottom:40px!important}
             </div>
           </div>
           <div class="qpRow" id="qpRow">
+            <button class="qp stop" id="poseStop" data-pose="stop" title="Stop animation" aria-label="Stop">
+              <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6.5" y="5.5" width="4" height="13" rx="1.2"/><rect x="13.5" y="5.5" width="4" height="13" rx="1.2"/></svg>
+            </button>
             <button class="qp" data-pose="idle">Idle</button>
             <button class="qp" data-pose="walk">Walk</button>
             <button class="qp" data-pose="run">Run</button>
@@ -2553,6 +2568,20 @@ body{padding-bottom:40px!important}
     });
   }
 
+  function detectTPose_unused() {
+    const warn = document.getElementById('tposeWarn');
+    if (!warn) return;
+    const aL = pieceById('armL'), aR = pieceById('armR');
+    let bad = false;
+    [aL, aR].forEach((p) => {
+      if (!p) return;
+      /* T-pose arm: chaudi (horizontal) honi chahiye — w > h*1.25 */
+      if (p.w < p.h * 1.25) bad = true;
+    });
+    warn.hidden = !bad;
+    return bad;
+  }
+
   function v4AfterCut(res) {
     V4.sel = null;
     const ac1 = document.getElementById('acCard1');
@@ -2917,6 +2946,20 @@ body{padding-bottom:40px!important}
       closePanel();
     }
   }, true);   /* capture: preset handler se pehle */
+
+  /* STOP button — animation turant freeze + panel band */
+  document.addEventListener('click', function (e) {
+    const sb = e.target && e.target.closest ? e.target.closest('#poseStop') : null;
+    if (!sb) return;
+    e.preventDefault(); e.stopPropagation();
+    try { stopAnim(); } catch (err) {}
+    try { hideWalkPanel(); } catch (err) {}
+    try { closePanel(); } catch (err) {}
+    document.querySelectorAll('#qpRow .qp').forEach(function (b) { b.classList.remove('on'); });
+    sb.classList.add('on');
+    try { if (window.RIG && RIG.Pose) RIG.Pose.push('stop'); } catch (err) {}
+    if (window.RIG && RIG.U && RIG.U.toast) { try { RIG.U.toast('Animation stopped'); } catch (err) {} }
+  }, true);
 
   /* ring drag -> animation pause (user ka control jeetega) */
   const cvEl = document.getElementById('studio');
