@@ -69,6 +69,26 @@
   /* studio */
   #studioWrap{position:relative;display:grid;place-items:center;padding:10px;border-radius:14px}
   #studio{display:block;max-width:100%;height:auto;touch-action:none;cursor:crosshair}
+
+  /* ===== WALK auto range panel (instant, single slider) ===== */
+  .smWalk{margin:2px 0 11px;padding:12px 13px 4px;border-radius:14px;position:relative;overflow:hidden;
+    background:linear-gradient(150deg,rgba(0,230,118,.11),rgba(255,255,255,.02) 62%);
+    border:1px solid rgba(0,230,118,.30);
+    box-shadow:0 10px 28px -14px rgba(0,0,0,.9),inset 0 1px 0 rgba(255,255,255,.07);
+    animation:smWalkIn .26s cubic-bezier(.2,.8,.3,1)}
+  .smWalk[hidden]{display:none}
+  @keyframes smWalkIn{from{opacity:0;transform:translateY(-7px) scale(.986)}to{opacity:1;transform:none}}
+  .smWalkHead{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+  .smWalkIc{flex:0 0 17px;height:17px;color:#3dffa0;filter:drop-shadow(0 0 9px rgba(0,230,118,.6))}
+  .smWalkTxt{font-size:10.5px;font-weight:900;letter-spacing:.9px;text-transform:uppercase;color:#eef1f5;line-height:1.35}
+  .smWalkSub{display:block;font-size:9.5px;font-weight:700;letter-spacing:.2px;color:#8d939c;text-transform:none;margin-top:1px}
+  .smWalkVal{margin-left:auto;font-size:11.5px;font-weight:800;color:#07130c;background:#3dffa0;
+    border-radius:9px;padding:3px 10px;font-variant-numeric:tabular-nums;
+    box-shadow:0 0 16px rgba(0,230,118,.40),inset 0 1px 0 rgba(255,255,255,.5)}
+  .smWalk .ppRange{height:30px;margin-top:0}
+  .smWalk .ppRange::-webkit-slider-runnable-track{height:7px;
+    background:linear-gradient(90deg,rgba(61,255,160,.95),rgba(255,255,255,.32))}
+  @media(max-width:400px){ .smWalkTxt{font-size:9.5px;letter-spacing:.5px} .smWalk{padding:11px 11px 3px} }
   /* ===== QUICK POSE (premium white) ===== */
   .qpWrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
   .qpTitle{display:flex;align-items:center;gap:7px;font-size:10.5px;letter-spacing:1.6px;font-weight:800;color:#9ca3af;margin-bottom:9px}
@@ -335,6 +355,14 @@
         <div class="kv"><span>state</span><b id="stateMeta">—</b></div>
         <div class="qpWrap">
           <div class="qpTitle">⚡ QUICK POSE</div>
+          <div class="smWalk" id="smWalkPanel" hidden>
+            <div class="smWalkHead">
+              <span class="smWalkIc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18"/><path d="M7 8l-4 4 4 4"/><path d="M17 8l4 4-4 4"/></svg></span>
+              <span class="smWalkTxt">Adjust Leg Stretch Range<span class="smWalkSub">पैरों का फैलाव</span></span>
+              <b class="smWalkVal" id="smWalkVal">39%</b>
+            </div>
+            <input class="ppRange" id="smWalkSlider" type="range" min="0" max="100" value="39" step="1" aria-label="Leg stretch range">
+          </div>
           <div class="qpRow" id="qpRow">
             <button class="qp" data-pose="idle">Idle</button>
             <button class="qp" data-pose="walk">Walk</button>
@@ -1620,7 +1648,8 @@
     Anim.kind = kind || 'walk';
     Anim.on = true; Anim.last = 0;
     cancelAnimationFrame(Anim.raf);
-    Anim.raf = requestAnimationFrame(step);
+    /* instant snap: pehla frame turant (user ko wait na karna pade) */
+    try { step(performance.now()); } catch (e) { Anim.raf = requestAnimationFrame(step); }
   }
   function stopAnim(silent) {
     Anim.on = false; cancelAnimationFrame(Anim.raf);
@@ -1636,6 +1665,36 @@
     speedVal: document.getElementById('ppSpeedVal'),
     mirror: document.getElementById('ppMirror')
   };
+
+  /* ---------- WALK auto range panel (single slider, zero confusion) ---------- */
+  const smWalk = {
+    box: document.getElementById('smWalkPanel'),
+    slider: document.getElementById('smWalkSlider'),
+    val: document.getElementById('smWalkVal')
+  };
+  const SPREAD_MIN = 0.04, SPREAD_SPAN = 0.46;
+  function spreadToPct(v) { return Math.max(0, Math.min(100, Math.round(((v - SPREAD_MIN) / SPREAD_SPAN) * 100))); }
+  function syncWalkPanel() {
+    if (!smWalk.slider) return;
+    const pct = spreadToPct(Anim.spread);
+    smWalk.slider.value = pct;
+    if (smWalk.val) smWalk.val.textContent = pct + '%';
+  }
+  function showWalkPanel() {
+    if (!smWalk.box) return;
+    syncWalkPanel();
+    smWalk.box.hidden = false;
+    /* buttons screen par hi rahein — halka scroll (agar zarurat ho) */
+    requestAnimationFrame(function () {
+      const row = document.getElementById('qpRow');
+      if (!row) return;
+      const over = row.getBoundingClientRect().bottom - window.innerHeight + 14;
+      if (over > 0) {
+        try { window.scrollBy({ top: over, behavior: 'smooth' }); } catch (e) { window.scrollBy(0, over); }
+      }
+    });
+  }
+  function hideWalkPanel() { if (smWalk.box) smWalk.box.hidden = true; }
 
   function openPanel() {
     if (!panel.wrap) return;
@@ -1666,6 +1725,15 @@
     if (!Anim.on) { /* static preview: legs spread turant dikhe */
       try { RIG.Pose.setPair({ legL: -Anim.spread, legR: Anim.spread }); RIG.Studio.render(); } catch (e) {}
     }
+    syncWalkPanel();
+  });
+  if (smWalk.slider) smWalk.slider.addEventListener('input', function () {
+    Anim.spread = SPREAD_MIN + (this.value / 100) * SPREAD_SPAN;
+    if (smWalk.val) smWalk.val.textContent = this.value + '%';
+    if (panel.spread) { panel.spread.value = this.value; if (panel.spreadVal) panel.spreadVal.textContent = this.value + '%'; }
+    if (!Anim.on) {   /* animation band ho to static preview turant */
+      try { RIG.Pose.setPair({ legL: -Anim.spread, legR: Anim.spread }); RIG.Studio.render(); } catch (e) {}
+    }
   });
   if (panel.speed) panel.speed.addEventListener('input', function () {
     Anim.speed = this.value / 100;
@@ -1691,11 +1759,14 @@
       Anim.armAmp = p === 'walk' ? 0.30 : 0.55;
       Anim.torso  = p === 'walk' ? 0.03 : 0.09;
       Anim.speed  = p === 'walk' ? 1.0 : 1.6;
-      startAnim(p);
-      openPanel(); syncPanel();
+      startAnim(p);                 /* instant walk pose + 60fps rAF loop */
+      closePanel();                 /* Tang sheet nahi khulega — zero confusion */
+      showWalkPanel();              /* sirf ek slider, button bar ke theek upar */
+      syncPanel();
       try { RIG.Pose.push('cycle: ' + p); } catch (err) {}
     } else {
       stopAnim();
+      hideWalkPanel();
       closePanel();
     }
   }, true);   /* capture: preset handler se pehle */
@@ -1704,7 +1775,7 @@
   const cvEl = document.getElementById('studio');
   if (cvEl) cvEl.addEventListener('pointerdown', function () { if (Anim.on) stopAnim(true); }, true);
   try { window.RIG.Studio.setOnLeave = closePanel; } catch (e) {}
-  closePanel(); syncPanel();
+  closePanel(); syncPanel(); hideWalkPanel();
 
   /* screen ghumane / resize par scale dobara calculate ho */
   let rz = null;
