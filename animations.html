@@ -418,7 +418,11 @@
     if (pv && pv.kind === 'image') return { kind: 'data', src: pv.src };
     if (pv && (pv.kind === 'video' || pv.kind === 'gif')) return { kind: 'idb', key: 'vid.' + a.id, type: pv.kind };
     if (a.video) return { kind: 'url', src: a.video };
-    return { kind: 'svg', src: svgDataUrl(puppet(a.pose, view)) };
+    /* v3 · white silhouette placeholder BAND — jo character chuna hai
+       (Characters panel / hilao.html) uski asli PNG texture editor me jayegi. */
+    var cid = '';
+    try { cid = localStorage.getItem('hilao.charId') || ''; } catch (e) {}
+    return { kind: 'idbchar', key: 'char.tex', charId: cid || charId || '' };
   }
 
   function saveSelection(a) {
@@ -430,6 +434,7 @@
       charName: charName,
       view: view,
       key: true,                    /* editor me chroma key lagao */
+      flip: false,                  /* mirror: editor me __smBgAnim.flip() */
       media: assetFor(a),
       ts: Date.now()
     };
