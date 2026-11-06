@@ -256,21 +256,173 @@
   .smTile .lb{position:relative;font-size:8px;font-weight:700;letter-spacing:.5px;color:#6b7280;margin-top:2px}
   .smGal .cap{font-size:10px;color:var(--dim);text-align:center;margin:10px 0 0;line-height:1.5}
 </style>
+<style id="v4css">
+/* =====================================================================
+   RIG STUDIO v4 — MOBILE UI (dark navy · blue neon · rounded cards)
+   ===================================================================== */
+:root{
+  --bg:#04070f; --card1:#0a1428; --card2:#060d1c;
+  --line:rgba(96,165,250,.15); --txt:#eef4ff; --mut:#8b9ac0; --dim:#5d6b8a;
+  --ok:#22e07d; --acc:#2f7bff;
+}
+html{background:#04070f}
+body{
+  max-width:520px; margin:0 auto; padding:10px 12px 120px;
+  background:
+    radial-gradient(620px 320px at 50% -170px, rgba(47,123,255,.26), transparent 72%),
+    radial-gradient(420px 260px at 104% 8%, rgba(37,99,235,.12), transparent 70%),
+    #04070f;
+}
+.wrap{max-width:520px}
+/* ---------- top bar ---------- */
+.top{display:grid;grid-template-columns:42px 1fr 42px;align-items:center;gap:10px;margin:2px 0 12px}
+.icoBtn{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;text-decoration:none;
+  color:#cfe0ff;background:linear-gradient(160deg,#101f3d,#0a1529);border:1px solid var(--line);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06),0 6px 16px -10px #000;font-size:15px;font-weight:800}
+.icoBtn:active{transform:scale(.95)}
+.icoBtn svg{width:17px;height:17px}
+.brand{text-align:center;line-height:1.2;min-width:0}
+.brand b{display:block;font-size:17.5px;font-weight:800;letter-spacing:.1px;color:#eef4ff}
+.brand span{display:block;font-size:9.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7d8fba;margin-top:3px}
+#smHome{display:none!important}
+.hud{font-size:9.5px;letter-spacing:.3px;color:#5d6b8a;text-align:center;margin:0 0 10px}
+/* ---------- 5 step rail ---------- */
+.stepRail{position:relative;display:flex;align-items:flex-start;justify-content:space-between;
+  margin:2px 0 12px;padding:0 2px}
+.stepRail:before{content:"";position:absolute;left:24px;right:24px;top:15px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,rgba(47,123,255,.55),rgba(96,165,250,.16))}
+#steps .step{flex:1;min-width:0;background:none!important;border:0!important;padding:0!important;box-shadow:none!important;
+  font-family:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative;z-index:1}
+#steps .step b{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;
+  color:#7f92bb;background:#0a1326;border:2px solid rgba(96,165,250,.24);box-shadow:0 0 0 4px #04070f;transition:.2s}
+#steps .step i{font-style:normal;font-size:9px;font-weight:800;letter-spacing:.1px;color:#6f80a8;text-align:center;line-height:1.15;
+  text-transform:uppercase}
+#steps .step.on b{color:#fff;background:linear-gradient(160deg,#3f8dff,#1e5fe0);border-color:#9cc9ff;
+  box-shadow:0 0 0 4px #04070f,0 0 18px rgba(63,141,255,.8)}
+#steps .step.on i{color:#d3e4ff}
+#steps .step.done b{color:#7dffb9;background:rgba(34,224,125,.14);border-color:rgba(34,224,125,.85);
+  box-shadow:0 0 0 4px #04070f,0 0 14px rgba(34,224,125,.35)}
+#steps .step.done i{color:#8fd9b4}
+#steps .step:disabled{opacity:.6}
+/* ---------- cards ---------- */
+.card{border-radius:18px;padding:14px;background:linear-gradient(165deg,#0a1428,#060d1c);
+  border:1px solid rgba(96,165,250,.14);box-shadow:0 16px 36px -22px #000,inset 0 1px 0 rgba(255,255,255,.05)}
+.card h3{font-size:11px;letter-spacing:1.5px;color:#9db4dd;font-weight:800}
+.cHead{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.note{font-size:10px;line-height:1.55;color:#6f80a8;margin:10px 0 0}
+.btn{border-radius:11px;font-size:11.5px;font-weight:800;padding:10px 12px;color:#cfdcf5;
+  background:linear-gradient(160deg,#101f3d,#0a1529);border:1px solid var(--line)}
+.btn:hover{background:linear-gradient(160deg,#152a4e,#0d1b33);color:#fff}
+.btn.primary{background:linear-gradient(160deg,#3f8dff,#1b57d6);border-color:transparent;color:#fff;
+  box-shadow:0 8px 22px -12px rgba(47,123,255,.95),inset 0 1px 0 rgba(255,255,255,.22)}
+.btn.tiny{padding:7px 9px;font-size:10px;border-radius:9px}
+.btnRow{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}
+.pill{border-radius:999px;font-size:9.5px;font-weight:800;letter-spacing:.6px;padding:5px 9px;
+  border:1px solid rgba(96,165,250,.22);background:rgba(47,123,255,.10);color:#9fc4ff}
+.kv{font-size:10.5px;color:#8091b6;padding:3.5px 0}
+.pill#trafficLight:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:currentColor;margin-right:6px;vertical-align:1px;box-shadow:0 0 8px currentColor}
+.kv b{color:#dbe6fb}
+.kv b.wrapok{font-size:9.5px;line-height:1.5;text-align:right;max-width:64%}
+.checker{background:repeating-conic-gradient(#0c1626 0 25%,#101d31 0 50%) 0 0/12px 12px;border:1px solid rgba(96,165,250,.16)}
+/* ---------- upload preview ---------- */
+.upRow{display:grid;grid-template-columns:104px 1fr;gap:11px;margin-top:12px;align-items:start}
+.upPrev{border-radius:13px;overflow:hidden;aspect-ratio:4/5;display:grid;place-items:center;position:relative}
+.upPrev img{width:100%;height:100%;object-fit:contain;display:block}
+.upPrev span{font-size:9.5px;font-weight:800;letter-spacing:.6px;color:#5d6b8a;text-align:center;padding:0 6px}
+.upChecks{display:flex;flex-direction:column;gap:6px}
+.upChk{display:flex;align-items:center;gap:7px;font-size:10px;font-weight:700;color:#8fa2c6;letter-spacing:.1px}
+.upChk .d{flex:0 0 14px;width:14px;height:14px;border-radius:50%;display:grid;place-items:center;font-size:9px;
+  background:rgba(120,140,180,.12);border:1px solid rgba(120,140,180,.35);color:#7789ad}
+.upChk.on{color:#c9e9d9}
+.upChk.on .d{background:rgba(34,224,125,.18);border-color:rgba(34,224,125,.75);color:#4dffa0;
+  box-shadow:0 0 9px rgba(34,224,125,.5)}
+/* ---------- 6 part cards ---------- */
+.partGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px}
+.partCard{position:relative;border-radius:13px;padding:6px 5px 7px;text-align:center;cursor:pointer;
+  background:linear-gradient(160deg,#0d1a33,#08111f);border:1px solid rgba(96,165,250,.16);transition:.16s}
+.partCard:active{transform:scale(.97)}
+.partCard.sel{border-color:rgba(63,141,255,.9);box-shadow:0 0 0 1px rgba(63,141,255,.55),0 0 16px rgba(47,123,255,.35)}
+.partCard .ph{height:54px;border-radius:9px;display:grid;place-items:center;overflow:hidden;
+  background:repeating-conic-gradient(#0c1626 0 25%,#101d31 0 50%) 0 0/9px 9px}
+.partCard canvas{max-width:100%;max-height:50px;display:block}
+.partCard .nm{font-size:8px;font-weight:900;letter-spacing:.25px;color:#b0c3e6;margin-top:5px;text-transform:uppercase}
+.partCard .ok{position:absolute;top:-5px;right:-5px;width:15px;height:15px;border-radius:50%;background:#12b76a;color:#fff;
+  font-size:9px;display:grid;place-items:center;box-shadow:0 0 9px rgba(34,224,125,.75)}
+/* ---------- position stage + pad ---------- */
+#posStageWrap{margin-top:10px;border-radius:14px;padding:8px;display:grid;place-items:center;touch-action:none}
+#posStage{display:block;max-width:100%;height:auto;touch-action:none}
+.posPad{display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(3,42px);gap:6px;
+  justify-content:center;margin-top:12px}
+.posKey{border-radius:11px;font-family:inherit;font-size:13px;font-weight:800;color:#0d1526;cursor:pointer;
+  background:linear-gradient(180deg,#ffffff,#e7ecf6);border:1px solid rgba(255,255,255,.9);
+  box-shadow:inset 0 1px 0 #fff,0 4px 12px -6px rgba(0,0,0,.9)}
+.posKey:active{transform:translateY(1px)}
+.posKey.mid{font-size:10px;font-weight:900;letter-spacing:.3px;color:#123a86;background:linear-gradient(180deg,#e8f2ff,#cfe2ff)}
+.posKey[data-dx="0"][data-dy="-1"]{grid-area:1/2}
+.posKey[data-dx="-1"]{grid-area:2/1}
+.posKey.mid{grid-area:2/2}
+.posKey[data-dx="1"]{grid-area:2/3}
+.posKey[data-dy="1"]{grid-area:3/2}
+/* ---------- save page ---------- */
+.bigBtn{width:100%;height:46px;border-radius:13px;border:0;font-family:inherit;font-size:12.5px;font-weight:800;
+  letter-spacing:.4px;color:#fff;background:linear-gradient(160deg,#3f8dff,#1b57d6);margin-top:9px;
+  box-shadow:0 10px 24px -12px rgba(47,123,255,.95),inset 0 1px 0 rgba(255,255,255,.22)}
+.bigBtn.alt{background:linear-gradient(160deg,#0f2444,#0a1830);border:1px solid var(--line);color:#cfdcf5;box-shadow:none}
+.bigBtn:active{transform:translateY(1px)}
+/* ---------- sticky next bar ---------- */
+.nextBar{position:fixed;left:0;right:0;bottom:0;z-index:70;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+  max-width:520px;margin:0 auto;background:linear-gradient(180deg,rgba(4,7,15,0),rgba(4,7,15,.92) 34%,#04070f)}
+.nextBtn{flex:1;height:48px;border-radius:14px;border:0;font-family:inherit;font-size:13.5px;font-weight:800;letter-spacing:.5px;
+  color:#fff;background:linear-gradient(160deg,#3f8dff,#1b57d6);
+  box-shadow:0 12px 28px -12px rgba(47,123,255,.95),inset 0 1px 0 rgba(255,255,255,.25)}
+.nextBtn:disabled{opacity:.4;box-shadow:none}
+.nextBtn.ghost{flex:0 0 92px;background:rgba(255,255,255,.05);border:1px solid var(--line);color:#a9bcdf;box-shadow:none}
+/* ---------- preview modal ---------- */
+.pvWrap{position:fixed;inset:0;z-index:2147483300;display:none;place-items:center;padding:16px;
+  background:rgba(2,5,12,.94);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px)}
+.pvWrap.open{display:grid}
+.pvBox{width:100%;max-width:420px;border-radius:20px;padding:13px;background:linear-gradient(165deg,#0a1428,#060d1c);
+  border:1px solid rgba(96,165,250,.22);box-shadow:0 24px 60px -20px #000}
+.pvTop{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.pvTop b{font-size:11px;letter-spacing:1.6px;color:#9db4dd;text-transform:uppercase}
+.pvX{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:rgba(255,255,255,.05);
+  color:#cfdcf5;font-size:13px;font-weight:800;cursor:pointer}
+.pvStage{border-radius:14px;padding:8px;display:grid;place-items:center;min-height:180px}
+#pvCanvas{display:block;max-width:100%;height:auto}
+.pvBtns{display:flex;gap:6px;margin-top:11px;flex-wrap:wrap}
+.pvBtns .btn{flex:1}
+@media(max-width:360px){
+  .upRow{grid-template-columns:88px 1fr}
+  .partCard .ph{height:46px}
+  .posPad{grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,38px)}
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
 
-  <!-- ================= TOP BAR ================= -->
+  <!-- ================= TOP BAR (v4 mobile) ================= -->
   <header class="top">
-    <a id="backBtn" class="backbtn" href="tool.html" title="Wapas tool par">&#8592; BACK</a>
-    <div class="brand">RIG&nbsp;STUDIO <span>v3.0</span> · PRODUCTION BUILD</div>
-    <div class="steps" id="steps">
-      <button class="step on" data-page="1">1 · CHECKPOST</button>
-      <button class="step" data-page="2" disabled>2 · AUTO-CUT &amp; LAYERS</button>
-      <button class="step" data-page="3" disabled>3 · POSING STUDIO</button>
-    </div>
-    <div class="hud" id="hud">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
+    <a id="backBtn" class="icoBtn" href="tool.html" title="Back" aria-label="Back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19 8 12l7-7"/></svg>
+    </a>
+    <div class="brand"><b>Rig Studio</b><span>Character · Rig · Animate</span></div>
+    <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/></svg>
+    </a>
   </header>
+
+  <div class="stepRail" id="steps">
+    <button class="step on" data-page="1"><b>1</b><i>Upload</i></button>
+    <button class="step" data-page="2" disabled><b>2</b><i>Auto-Cut</i></button>
+    <button class="step" data-page="3" disabled><b>3</b><i>Position</i></button>
+    <button class="step" data-page="4" disabled><b>4</b><i>Rig</i></button>
+    <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
+  </div>
+  <div class="hud" id="hud">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
+
 
   <div class="smHead" role="alert"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
 
@@ -289,6 +441,10 @@
       </p>
       
       <div class="smWarn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9h6v6H9z"/></svg></span><p><b>Dhyan Dein:</b> Agar background wali photo daali toh system turant <b>LAL SIGNAL</b> dekar reject kar dega. Sirf <b>Transparent PNG</b> hi chalegi!</p></div>
+      <div class="upRow">
+        <div class="upPrev checker" id="upPrev"><span>NO PNG</span></div>
+        <div class="upChecks" id="upChecks"></div>
+      </div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px">
         <label for="fileInput" class="btn primary" style="display:inline-flex;align-items:center;gap:7px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.48"/></svg> Choose file</label>
         <span id="fileName" style="font-size:11.5px;color:var(--mut)">no image selected</span>
@@ -313,6 +469,11 @@
 
   <!-- ================= PAGE 2 · AUTO-CUT & LAYERS ================= -->
   <section id="pg2" class="hidden">
+    <div class="card" style="margin-bottom:14px">
+      <div class="cHead"><h3>6 Body Parts Extracted</h3><span class="pill" id="partPill">AUTO</span></div>
+      <div class="partGrid" id="partGrid"></div>
+      <p class="note">Tap any part card → Position step me usi part ko correct karo.</p>
+    </div>
     <div class="grid2 two">
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -345,7 +506,7 @@
           <input type="file" id="clothInput" accept="image/*" style="display:none">
         </div>
         <p class="note">Row ko <b>drag</b> karo ya select karke Front/Back dabao. Z backend me turant recompute hota hai.</p>
-        <button class="btn primary" id="toStudio" style="width:100%;margin-top:14px">Posing Studio kholo →</button>
+        <button class="btn primary" id="toStudio" style="width:100%;margin-top:14px">Rig step kholo →</button>
       </div>
     </div>
   </section>
@@ -413,6 +574,79 @@
       </div>
     </div>
   </section>
+
+
+  <!-- ================= PAGE 3 · POSITION (v4) ================= -->
+  <section id="pgPos" class="hidden">
+    <div class="card" style="margin-bottom:14px">
+      <div class="cHead"><h3>Position &amp; Cut Correction</h3><span class="pill" id="posPill">1 PX STEP</span></div>
+      <div class="partGrid" id="posChips"></div>
+      <div id="posStageWrap" class="checker"><canvas id="posStage"></canvas></div>
+      <div class="kv" style="margin-top:10px"><span>selected part</span><b id="posSelName">—</b></div>
+      <div class="kv"><span>offset</span><b id="posOff">0, 0 px</b></div>
+      <div class="posPad">
+        <button class="posKey" data-dx="0" data-dy="-1" aria-label="Up">▲</button>
+        <button class="posKey" data-dx="-1" data-dy="0" aria-label="Left">◀</button>
+        <button class="posKey mid" id="posStepBtn">1px</button>
+        <button class="posKey" data-dx="1" data-dy="0" aria-label="Right">▶</button>
+        <button class="posKey" data-dy="1" aria-label="Down">▼</button>
+      </div>
+      <div class="btnRow">
+        <button class="btn tiny" id="posResetOne">Reset part</button>
+        <button class="btn tiny ghost" id="posResetAll">Reset all</button>
+        <button class="btn tiny ghost" id="posUndo">↶ Undo</button>
+        <button class="btn tiny ghost" id="posRedo">↷ Redo</button>
+      </div>
+      <p class="note">Canvas par part ko <b>drag</b> karo ya arrow keys se 1px shift karo — cut stack aur rig dono turant update hote hain.</p>
+    </div>
+
+    <div class="card">
+      <div class="cHead"><h3>Mirror · Preview · Reset</h3></div>
+      <div class="btnRow" style="margin-top:0">
+        <button class="btn" id="btnMirrorFlip">⇄ Mirror Flip</button>
+        <button class="btn" id="btnEditPos">✥ Edit Position</button>
+        <button class="btn" id="btnPreview">▷ Preview</button>
+        <button class="btn ghost" id="btnPosReset">⟲ Reset</button>
+      </div>
+      <p class="note">Mirror Flip poore character ko ulta karke dobara cut karta hai — pose aur joints apne aap recalculate ho jate hain.</p>
+    </div>
+  </section>
+
+  <!-- ================= PAGE 5 · SAVE (v4) ================= -->
+  <section id="pgSave" class="hidden">
+    <div class="card" style="margin-bottom:14px">
+      <div class="cHead"><h3>Save Package</h3><span class="pill" id="savePill">READY</span></div>
+      <div class="kv" style="margin-top:10px"><span>body parts</span><b id="svParts">—</b></div>
+      <div class="kv"><span>canvas</span><b id="svBbox">—</b></div>
+      <div class="kv"><span>joints (pivots)</span><b id="svJoints">—</b></div>
+      <div class="kv"><span>pose state</span><b id="svPose" class="wrapok">—</b></div>
+      <div class="kv"><span>layer order</span><b id="svOrder">—</b></div>
+      <button class="bigBtn" id="btnSavePng">Save Character PNG</button>
+      <button class="bigBtn alt" id="btnSaveRig">Save Rig Data · JSON + Pivots</button>
+      <button class="bigBtn alt" id="btnSaveSnap2">Save Snapshot (localStorage)</button>
+      <button class="bigBtn alt" id="btnLoadSnap2">Load Snapshot</button>
+      <p class="note" id="saveNote">JSON me har part ke coordinates, pivot (joint) points, rotation aur z-order — sab include hote hain, isliye Puppet Control page par alignment exactly same rehti hai.</p>
+    </div>
+  </section>
+
+  <!-- ================= PREVIEW MODAL ================= -->
+  <div class="pvWrap" id="pvWrap" role="dialog" aria-label="Live preview">
+    <div class="pvBox">
+      <div class="pvTop"><b>Live Preview</b><button class="pvX" id="pvClose" aria-label="Close">✕</button></div>
+      <div class="pvStage checker"><canvas id="pvCanvas"></canvas></div>
+      <div class="pvBtns">
+        <button class="btn tiny" data-pv="idle">Idle</button>
+        <button class="btn tiny" data-pv="walk">Walk</button>
+        <button class="btn tiny" data-pv="run">Run</button>
+        <button class="btn tiny" data-pv="sit">Sit</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="nextBar" id="nextBar">
+    <button class="nextBtn ghost" id="prevStep">← Back</button>
+    <button class="nextBtn" id="nextStep" disabled>Next →</button>
+  </div>
 
   <!-- ===== TANG POSITION SETTINGS — instant panel ===== -->
   <div class="ppWrap" id="ppWrap" role="dialog" aria-label="Tang position settings">
@@ -1199,19 +1433,28 @@
 
   function goPage(n) {
     if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }   /* user ki navigation jeetegi */
-    [1, 2, 3].forEach((i) => {
-      U.$('pg' + i).classList.toggle('hidden', i !== n);
+    Object.keys(PAGE_EL).forEach((k) => {
+      const i = +k;
+      const el = U.$(PAGE_EL[i]);
+      if (el) el.classList.toggle('hidden', i !== n);
       const b = document.querySelector('.step[data-page="' + i + '"]');
+      if (!b) return;
       b.classList.toggle('on', i === n);
-      b.classList.toggle('done', i < n || (i === 1 && App.cut));
+      b.classList.toggle('done', i < n || (i === 1 && !!App.cut));
     });
     App.page = n;
-    if (n === 3) { Studio.render(); }
+    if (n === 3) { renderPosChips(); renderPosStage(); renderPosReadout(); }
+    if (n === 4) { Studio.render(); }
+    if (n === 5) { renderSave(); }
+    syncNextBar();
   }
 
   function enableSteps() {
-    document.querySelector('.step[data-page="2"]').disabled = !App.cut;
-    document.querySelector('.step[data-page="3"]').disabled = !App.cut;
+    [2, 3, 4, 5].forEach((i) => {
+      const b = document.querySelector('.step[data-page="' + i + '"]');
+      if (b) b.disabled = !App.cut;
+    });
+    syncNextBar();
   }
 
   function hud() {
@@ -1223,12 +1466,12 @@
   function setLight(kind, msg, meta) {
     const tl = U.$('trafficLight'), card = U.$('gateCard'), glow = U.$('gateGlow'), m = U.$('gateMsg');
     const map = {
-      standby: ['⚪ STANDBY', '#6b7280', ''],
-      scanning: ['🔵 SCANNING…', '#4dabf7', 'rgba(77,171,247,.10)'],
-      ready: ['🟢 READY TO RIG', '#00e676', 'rgba(0,230,118,.10)'],
-      warning: ['🟡 POSE WARNING', '#ffcc00', 'rgba(255,204,0,.10)'],
-      rejected: ['🔴 REJECTED', '#ff4d4d', 'rgba(255,77,77,.10)'],
-      failed: ['🔴 SCAN FAILED', '#ff4d4d', 'rgba(255,77,77,.10)']
+      standby: ['STANDBY', '#8b9ac0', 'rgba(255,255,255,.04)'],
+      scanning: ['SCANNING…', '#4dabf7', 'rgba(77,171,247,.10)'],
+      ready: ['READY TO RIG', '#22e07d', 'rgba(34,224,125,.10)'],
+      warning: ['POSE WARNING', '#ffcc00', 'rgba(255,204,0,.10)'],
+      rejected: ['REJECTED', '#ff4d4d', 'rgba(255,77,77,.10)'],
+      failed: ['SCAN FAILED', '#ff4d4d', 'rgba(255,77,77,.10)']
     };
     const [txt, col, bg] = map[kind] || map.standby;
     tl.textContent = txt; tl.style.color = col;
@@ -1438,6 +1681,7 @@
 
     setLight(kind, res.msg + (res.light === 'WARNING' ? ' (cut allowed)' : ' · 6 pieces cut in ' + cut.meta.ms + ' ms'),
              W + '×' + H + ' · ' + cut.pieces.length + ' pieces · ' + cut.meta.coverage + '% coverage');
+    try { v4AfterCut(res); } catch (e) {}
     if (res.light === 'READY') {
       if (autoTimer) clearTimeout(autoTimer);
       autoTimer = setTimeout(() => { autoTimer = null; if (App.page === 1) goPage(2); }, 380);
@@ -1497,7 +1741,7 @@
     btn.dataset.z = next;
     btn.textContent = next === 2 ? 'Zoom 1×' : 'Zoom 2×';
     Studio.setZoom(next);
-    if (App.page !== 3) goPage(3);
+    if (App.page !== 4) goPage(4);
   });
 
   U.$('btnFront').addEventListener('click', () => {
@@ -1528,7 +1772,7 @@
     U.toast('Clothing layer add ho gayi (front)');
   });
 
-  U.$('toStudio').addEventListener('click', () => goPage(3));
+  U.$('toStudio').addEventListener('click', () => goPage(4));
   U.$('btnUndo').addEventListener('click', () => { Pose.undo(); renderHistory(); });
   U.$('btnRedo').addEventListener('click', () => { Pose.redo(); renderHistory(); });
   U.$('btnReset').addEventListener('click', () => { Pose.reset(true); renderHistory(); U.toast('Pose reset'); });
@@ -1588,6 +1832,491 @@
   hud();
 
   /* ---- test hooks ---- */
+  /* =====================================================================
+     07 · V4 MOBILE SHELL — 5 steps: Upload → Auto-Cut → Position → Rig → Save
+     (sab functions real data par chalte hain, koi dummy button nahi)
+     ===================================================================== */
+  const PAGE_EL = { 1: 'pg1', 2: 'pg2', 3: 'pgPos', 4: 'pg3', 5: 'pgSave' };
+  const PART_LIST = [
+    { id: 'head', name: 'Head' }, { id: 'torso', name: 'Torso' },
+    { id: 'armL', name: 'Left Arm' }, { id: 'armR', name: 'Right Arm' },
+    { id: 'legL', name: 'Left Leg' }, { id: 'legR', name: 'Right Leg' }
+  ];
+  const V4 = { sel: null, step: 1, posHist: [], posIdx: -1, pvRAF: null, pvTimer: null };
+
+  function pieceById(id) {
+    const list = Layers.order();
+    for (let i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+  function offOf(p) { return { x: p.ox !== undefined ? p.ox : p.x, y: p.oy !== undefined ? p.oy : p.y }; }
+
+  /* ---------- real thumbnail from the cut canvas ---------- */
+  function thumbCanvas(p, maxPx) {
+    const sc = Math.min(1, maxPx / Math.max(p.w, p.h));
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(p.w * sc));
+    c.height = Math.max(1, Math.round(p.h * sc));
+    const x = c.getContext('2d');
+    x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+    x.drawImage(p.canvas, 0, 0, c.width, c.height);
+    return c;
+  }
+
+  /* ---------- STEP 2: 6 body part cards ---------- */
+  function renderParts() {
+    const grid = U.$('partGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    if (!App.cut) return;
+    let found = 0;
+    PART_LIST.forEach((spec) => {
+      const p = pieceById(spec.id);
+      const card = document.createElement('div');
+      card.className = 'partCard';
+      const ph = document.createElement('div'); ph.className = 'ph';
+      if (p) { ph.appendChild(thumbCanvas(p, 96)); found++; }
+      else { ph.textContent = ''; }
+      const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = spec.name;
+      card.appendChild(ph); card.appendChild(nm);
+      if (p) { const ok = document.createElement('span'); ok.className = 'ok'; ok.textContent = '✓'; card.appendChild(ok); }
+      card.onclick = () => { goPage(3); selectPart(spec.id); };
+      grid.appendChild(card);
+    });
+    const pill = U.$('partPill');
+    if (pill) pill.textContent = found + '/6 PARTS';
+  }
+
+  /* ---------- STEP 3: position stage ---------- */
+  function posSnapshot() {
+    const m = {};
+    Layers.order().forEach((p) => { const o = offOf(p); m[p.id] = [o.x, o.y]; });
+    return JSON.stringify(m);
+  }
+  function posPush() {
+    const s = posSnapshot();
+    if (V4.posIdx >= 0 && V4.posHist[V4.posIdx] === s) return;
+    V4.posHist = V4.posHist.slice(0, V4.posIdx + 1);
+    V4.posHist.push(s);
+    if (V4.posHist.length > 60) V4.posHist.shift();
+    V4.posIdx = V4.posHist.length - 1;
+  }
+  function posRestore(json) {
+    let m; try { m = JSON.parse(json); } catch (e) { return; }
+    Layers.order().forEach((p) => {
+      const v = m[p.id];
+      if (!v) return;
+      p.ox = v[0]; p.oy = v[1];
+    });
+    afterPosChange();
+  }
+  function afterPosChange() {
+    renderCutStackOnly();
+    Studio.render();
+    renderPosStage();
+    renderPosReadout();
+    if (App.page === 2) renderParts();
+  }
+  function renderPosReadout() {
+    const p = V4.sel ? pieceById(V4.sel) : null;
+    const nm = U.$('posSelName'), off = U.$('posOff');
+    if (!p) { if (nm) nm.textContent = '—'; if (off) off.textContent = '0, 0 px'; return; }
+    const spec = PART_LIST.find((s) => s.id === p.id);
+    const o = offOf(p);
+    if (nm) nm.textContent = spec ? spec.name : p.label;
+    const bx = (p._ox0 !== undefined ? p._ox0 : p.x), by = (p._oy0 !== undefined ? p._oy0 : p.y);
+    if (off) off.textContent = Math.round(o.x - bx) + ', ' + Math.round(o.y - by) + ' px';
+  }
+  function renderPosChips() {
+    const box = U.$('posChips');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!App.cut) return;
+    PART_LIST.forEach((spec) => {
+      const p = pieceById(spec.id);
+      if (!p) return;
+      const card = document.createElement('div');
+      card.className = 'partCard' + (V4.sel === spec.id ? ' sel' : '');
+      card.dataset.pid = spec.id;
+      const ph = document.createElement('div'); ph.className = 'ph'; ph.appendChild(thumbCanvas(p, 84));
+      const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = spec.name;
+      card.appendChild(ph); card.appendChild(nm);
+      card.onclick = () => selectPart(spec.id);
+      box.appendChild(card);
+    });
+  }
+  function selectPart(id) {
+    V4.sel = id;
+    const chips = U.$('posChips');
+    if (chips) chips.querySelectorAll('.partCard').forEach((c) => c.classList.toggle('sel', c.dataset.pid === id));
+    renderPosReadout();
+    renderPosStage();
+  }
+  function posStageCtx() {
+    const cv = U.$('posStage');
+    if (!cv || !App.cut) return null;
+    const b = App.cut.bbox;
+    const wrap = U.$('posStageWrap');
+    const availW = Math.max(120, ((wrap && wrap.clientWidth) || 300) - 20);
+    const sc = Math.min(availW / b.w, 250 / b.h, 0.62);
+    cv.width = Math.max(1, Math.round(b.w * sc));
+    cv.height = Math.max(1, Math.round(b.h * sc));
+    return { cv, ctx: cv.getContext('2d'), sc, b };
+  }
+  function renderPosStage() {
+    const S = posStageCtx();
+    if (!S) return;
+    const { cv, ctx, sc, b } = S;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    Layers.order().forEach((p) => {
+      const o = offOf(p);
+      ctx.globalAlpha = (V4.sel && V4.sel !== p.id) ? 0.72 : 1;
+      ctx.drawImage(p.canvas, (o.x - b.x) * sc, (o.y - b.y) * sc, p.w * sc, p.h * sc);
+    });
+    ctx.globalAlpha = 1;
+    if (V4.sel) {
+      const p = pieceById(V4.sel);
+      if (p) {
+        const o = offOf(p);
+        ctx.strokeStyle = 'rgba(63,141,255,.95)'; ctx.lineWidth = 1.6;
+        ctx.setLineDash([5, 4]);
+        ctx.strokeRect((o.x - b.x) * sc - 1, (o.y - b.y) * sc - 1, p.w * sc + 2, p.h * sc + 2);
+        ctx.setLineDash([]);
+      }
+    }
+  }
+  function nudge(dx, dy) {
+    if (!V4.sel) { U.toast('Pehle koi part chuno'); return; }
+    const p = pieceById(V4.sel);
+    if (!p) return;
+    const o = offOf(p);
+    p.ox = o.x + dx; p.oy = o.y + dy;
+    afterPosChange();
+  }
+  function resetPosPart() {
+    if (!V4.sel) { U.toast('Pehle koi part chuno'); return; }
+    const p = pieceById(V4.sel);
+    if (!p) return;
+    p.ox = (p._ox0 !== undefined ? p._ox0 : p.x); p.oy = (p._oy0 !== undefined ? p._oy0 : p.y);
+    afterPosChange(); posPush();
+  }
+  function resetPosAll() {
+    Layers.order().forEach((p) => { p.ox = (p._ox0 !== undefined ? p._ox0 : p.x); p.oy = (p._oy0 !== undefined ? p._oy0 : p.y); });
+    afterPosChange(); posPush(); U.toast('Saare parts original position par');
+  }
+
+  /* ---------- drag pieces on the position stage ---------- */
+  (function bindPosDrag() {
+    const cv = document.getElementById('posStage');
+    if (!cv) return;
+    let drag = null;
+    function pt(e) {
+      const r = cv.getBoundingClientRect();
+      const t = e.touches ? e.touches[0] : e;
+      return { x: (t.clientX - r.left) * (cv.width / r.width), y: (t.clientY - r.top) * (cv.height / r.height) };
+    }
+    function pick(x, y) {
+      const b = App.cut.bbox;
+      const sc = cv.width / b.w;
+      const list = Layers.order();
+      for (let i = list.length - 1; i >= 0; i--) {
+        const p = list[i], o = offOf(p);
+        const px = (o.x - b.x) * sc, py = (o.y - b.y) * sc;
+        if (x >= px && x <= px + p.w * sc && y >= py && y <= py + p.h * sc) return p;
+      }
+      return null;
+    }
+    cv.addEventListener('pointerdown', function (e) {
+      if (!App.cut) return;
+      const q = pt(e);
+      const p = pick(q.x, q.y);
+      if (!p) return;
+      selectPart(p.id);
+      const o = offOf(p);
+      drag = { id: p.id, sx: q.x, sy: q.y, ox: o.x, oy: o.y, sc: cv.width / App.cut.bbox.w };
+      cv.setPointerCapture && cv.setPointerCapture(e.pointerId);
+      cv.style.cursor = 'grabbing';
+      e.preventDefault();
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      const p = pieceById(drag.id); if (!p) return;
+      const q = pt(e);
+      p.ox = Math.round(drag.ox + (q.x - drag.sx) / drag.sc);
+      p.oy = Math.round(drag.oy + (q.y - drag.sy) / drag.sc);
+      afterPosChange();
+      e.preventDefault();
+    });
+    function end() {
+      if (!drag) return;
+      drag = null; cv.style.cursor = 'grab';
+      posPush();
+    }
+    cv.addEventListener('pointerup', end);
+    cv.addEventListener('pointercancel', end);
+    cv.addEventListener('pointerleave', end);
+    cv.style.cursor = 'grab';
+  })();
+
+  /* ---------- mirror flip (real re-cut of flipped pixels) ---------- */
+  function mirrorFlip() {
+    if (!App.imgData || !App.W) { U.toast('Pehle character upload karo'); return; }
+    const t = document.createElement('canvas'); t.width = App.W; t.height = App.H;
+    t.getContext('2d').putImageData(App.imgData, 0, 0);
+    const out = document.createElement('canvas'); out.width = App.W; out.height = App.H;
+    const c = out.getContext('2d');
+    c.translate(App.W, 0); c.scale(-1, 1); c.drawImage(t, 0, 0);
+    out.toBlob(function (blob) {
+      if (!blob) { U.toast('Mirror fail'); return; }
+      U.toast('Mirror flip · re-cutting…');
+      handleFile(new File([blob], 'character-mirror.png', { type: 'image/png' }));
+    }, 'image/png');
+  }
+
+  /* ---------- live preview (copies the real studio canvas) ---------- */
+  function openPreview() {
+    if (!App.cut) { U.toast('Pehle character cut karo'); return; }
+    if (App.page !== 4) Studio.render();
+    const wrap = U.$('pvWrap');
+    if (!wrap) return;
+    wrap.classList.add('open');
+    const src = U.$('studio'), dst = U.$('pvCanvas');
+    function loop() {
+      if (!wrap.classList.contains('open')) return;
+      if (src && dst && src.width) {
+        if (dst.width !== src.width || dst.height !== src.height) { dst.width = src.width; dst.height = src.height; }
+        const x = dst.getContext('2d');
+        x.clearRect(0, 0, dst.width, dst.height);
+        x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+        try { x.drawImage(src, 0, 0); } catch (e) {}
+      }
+      V4.pvRAF = requestAnimationFrame(loop);
+    }
+    if (V4.pvRAF) cancelAnimationFrame(V4.pvRAF);
+    V4.pvRAF = requestAnimationFrame(loop);
+  }
+  function closePreview() {
+    const wrap = U.$('pvWrap');
+    if (wrap) wrap.classList.remove('open');
+    if (V4.pvRAF) { cancelAnimationFrame(V4.pvRAF); V4.pvRAF = null; }
+  }
+  function pvPose(name) {
+    const b = document.querySelector('#qpRow .qp[data-pose="' + name + '"]');
+    if (b) b.click();
+  }
+
+  /* ---------- exports ---------- */
+  function compositeCanvas() {
+    const b = App.cut.bbox;
+    const cv = document.createElement('canvas'); cv.width = b.w; cv.height = b.h;
+    const c = cv.getContext('2d');
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    Layers.order().forEach((p) => {
+      if (p.visible === false) return;
+      const o = offOf(p);
+      const rot = Pose.get(p.id) || 0;
+      if (p.kind === 'cloth' || !p.pivot) {
+        c.drawImage(p.canvas, o.x - b.x, o.y - b.y, p.w, p.h);
+      } else {
+        c.save();
+        c.translate(p.pivot.x - b.x, p.pivot.y - b.y);
+        c.rotate(rot);
+        c.drawImage(p.canvas, (o.x - b.x) - (p.pivot.x - b.x), (o.y - b.y) - (p.pivot.y - b.y), p.w, p.h);
+        c.restore();
+      }
+    });
+    return cv;
+  }
+  function downloadBlob(blob, name) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+  }
+  function rigPackage() {
+    const b = App.cut.bbox;
+    const rot = Pose.getRotation();
+    return {
+      v: 2, tool: 'rig-studio-v4', savedAt: new Date().toISOString(),
+      source: { w: App.W, h: App.H },
+      bbox: { x: b.x, y: b.y, w: b.w, h: b.h },
+      order: Layers.idsInOrder(),
+      pose: rot,
+      mirror: Pose.isMirror(),
+      layers: Layers.order().map((p) => {
+        const o = offOf(p);
+        return {
+          id: p.id, label: p.label, kind: p.kind || 'part', z: p.z,
+          x: p.x, y: p.y, w: p.w, h: p.h, ox: o.x, oy: o.y,
+          pivot: p.pivot ? { x: p.pivot.x, y: p.pivot.y } : null,
+          rotation: rot[p.id] || 0
+        };
+      })
+    };
+  }
+  function savePng() {
+    if (!App.cut) { U.toast('Pehle character cut karo'); return; }
+    compositeCanvas().toBlob(function (b) {
+      if (!b) return;
+      downloadBlob(b, 'rig-character.png');
+      U.toast('Character PNG saved');
+    }, 'image/png');
+  }
+  function saveRig() {
+    if (!App.cut) { U.toast('Pehle character cut karo'); return; }
+    const data = rigPackage();
+    downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), 'rig-data.json');
+    try { localStorage.setItem('rigstudio.rig', JSON.stringify(data)); } catch (e) {}
+    U.toast('Rig JSON saved · ' + data.layers.length + ' parts');
+  }
+
+  /* ---------- STEP 5 render ---------- */
+  function renderSave() {
+    const set = (id, v) => { const el = U.$(id); if (el) el.textContent = v; };
+    if (!App.cut) { set('svParts', '—'); set('svBbox', '—'); set('svJoints', '—'); set('svPose', '—'); set('svOrder', '—');
+      const p = U.$('savePill'); if (p) { p.textContent = 'NO CUT'; p.style.color = '#ff8a8a'; }
+      return; }
+    const b = App.cut.bbox;
+    const joints = Layers.order().filter((p) => p.pivot).length;
+    const rot = Pose.getRotation();
+    const st = Pose.history();
+    set('svParts', App.cut.pieces.length + ' parts');
+    set('svBbox', b.w + ' × ' + b.h + ' px');
+    set('svJoints', joints + ' pivots · ' + (rot ? 'live' : ''));
+    const live = Object.keys(rot).filter((k) => Math.abs(rot[k] || 0) > 0.001);
+    set('svPose', live.length ? live.map((k) => k + ' ' + Math.round((rot[k] || 0) * 180 / Math.PI) + '°').join(' · ') : 'neutral 0°');
+    set('svOrder', Layers.idsInOrder().join(' → '));
+    const p = U.$('savePill');
+    if (p) { p.textContent = 'READY'; p.style.color = '#9fc4ff'; }
+    const note = U.$('saveNote');
+    if (note) note.textContent = 'Last state: ' + (st.list.length ? st.list[st.idx].label : '—') +
+      ' · JSON me coordinates, pivot (joint) points, rotation aur z-order — sab include hote hain.';
+  }
+
+  /* ---------- next / prev bar ---------- */
+  function syncNextBar() {
+    const n = App.page || 1;
+    const prev = U.$('prevStep'), nx = U.$('nextStep');
+    if (prev) prev.disabled = n <= 1;
+    if (nx) {
+      nx.textContent = n === 5 ? 'SAVE ⤓' : 'Next →';
+      nx.disabled = !App.cut;
+    }
+  }
+  function gotoNext() {
+    const n = App.page || 1;
+    if (n >= 5) { saveRig(); return; }
+    if (!App.cut) { U.toast('Pehle transparent PNG upload karo'); return; }
+    goPage(n + 1);
+  }
+
+  /* ---------- upload preview + real validation rows ---------- */
+  function renderUpload(res) {
+    const prev = U.$('upPrev'), box = U.$('upChecks');
+    if (!prev || !box) return;
+    prev.innerHTML = '';
+    if (!App.imgData || !App.W) { const s = document.createElement('span'); s.textContent = 'NO PNG'; prev.appendChild(s); }
+    else {
+      const t = document.createElement('canvas'); t.width = App.W; t.height = App.H;
+      t.getContext('2d').putImageData(App.imgData, 0, 0);
+      t.style.width = '100%'; t.style.height = '100%'; t.style.objectFit = 'contain';
+      prev.appendChild(t);
+    }
+    const m = (res && res.metrics) || {};
+    const tr = typeof m.transparent === 'number' ? m.transparent : null;
+    const bigEnough = App.W >= 300 && App.H >= 400;
+    const rows = [
+      ['Transparent PNG', !!App.imgData && (tr === null || tr >= 0.30)],
+      ['Full body visible', !!App.cut],
+      ['Front / T-pose check', !!res && (res.light === 'READY' || res.light === 'WARNING')],
+      ['Resolution ' + (App.W ? App.W + '×' + App.H : '—'), bigEnough]
+    ];
+    box.innerHTML = '';
+    rows.forEach((r) => {
+      const d = document.createElement('div');
+      d.className = 'upChk' + (r[1] ? ' on' : '');
+      const dot = document.createElement('span'); dot.className = 'd'; dot.textContent = r[1] ? '✓' : '•';
+      const tx = document.createElement('span'); tx.textContent = r[0];
+      d.appendChild(dot); d.appendChild(tx);
+      box.appendChild(d);
+    });
+  }
+
+  function v4AfterCut(res) {
+    V4.sel = null;
+    Layers.order().forEach((p) => { p._ox0 = (p.ox !== undefined ? p.ox : p.x); p._oy0 = (p.oy !== undefined ? p.oy : p.y); });
+    V4.posHist = []; V4.posIdx = -1;
+    posPush();
+    renderParts(); renderPosChips(); renderPosStage(); renderPosReadout();
+    renderUpload(res);
+    renderSave();
+    syncNextBar();
+  }
+
+  /* ---------- wiring ---------- */
+  (function v4Wire() {
+    const q = (id) => document.getElementById(id);
+    document.querySelectorAll('#posChips .partCard').forEach(() => {});
+    document.querySelectorAll('.posKey[data-dx],.posKey[data-dy]').forEach((b) => {
+      b.addEventListener('click', () => {
+        const dx = +(b.dataset.dx || 0), dy = +(b.dataset.dy || 0);
+        nudge(dx * V4.step, dy * V4.step);
+        posPush();
+      });
+    });
+    const stepBtn = q('posStepBtn');
+    if (stepBtn) stepBtn.addEventListener('click', () => {
+      V4.step = V4.step === 1 ? 5 : V4.step === 5 ? 10 : 1;
+      stepBtn.textContent = V4.step + 'px';
+      const pill = q('posPill'); if (pill) pill.textContent = V4.step + ' PX STEP';
+    });
+    if (q('posResetOne')) q('posResetOne').addEventListener('click', resetPosPart);
+    if (q('posResetAll')) q('posResetAll').addEventListener('click', resetPosAll);
+    if (q('posUndo')) q('posUndo').addEventListener('click', () => {
+      if (V4.posIdx > 0) { V4.posIdx--; posRestore(V4.posHist[V4.posIdx]); }
+      else U.toast('Position history khatam');
+    });
+    if (q('posRedo')) q('posRedo').addEventListener('click', () => {
+      if (V4.posIdx < V4.posHist.length - 1) { V4.posIdx++; posRestore(V4.posHist[V4.posIdx]); }
+      else U.toast('Aage kuch nahi');
+    });
+    if (q('btnMirrorFlip')) q('btnMirrorFlip').addEventListener('click', mirrorFlip);
+    if (q('btnPreview')) q('btnPreview').addEventListener('click', openPreview);
+    if (q('btnEditPos')) q('btnEditPos').addEventListener('click', () => {
+      if (!App.cut) { U.toast('Pehle character cut karo'); return; }
+      if (!V4.sel) selectPart('head');
+      U.toast('Part ko canvas par drag karo ya arrows dabao');
+      renderPosStage();
+    });
+    if (q('btnPosReset')) q('btnPosReset').addEventListener('click', () => {
+      Pose.reset(true); resetPosAll(); renderHistory(); U.toast('Pose + position reset');
+    });
+    if (q('pvClose')) q('pvClose').addEventListener('click', closePreview);
+    if (q('pvWrap')) q('pvWrap').addEventListener('click', (e) => { if (e.target.id === 'pvWrap') closePreview(); });
+    document.querySelectorAll('.pvBtns .btn').forEach((b) => {
+      b.addEventListener('click', () => pvPose(b.dataset.pv));
+    });
+    if (q('btnSavePng')) q('btnSavePng').addEventListener('click', savePng);
+    if (q('btnSaveRig')) q('btnSaveRig').addEventListener('click', saveRig);
+    if (q('btnSaveSnap2')) q('btnSaveSnap2').addEventListener('click', () => {
+      const ok = Pose.save();
+      U.toast(ok ? 'Snapshot saved' : 'Save fail — storage full?');
+    });
+    if (q('btnLoadSnap2')) q('btnLoadSnap2').addEventListener('click', () => {
+      const ok = Pose.load();
+      renderHistory(); renderSave();
+      U.toast(ok ? 'Snapshot loaded' : 'Koi snapshot nahi mila');
+    });
+    if (q('nextStep')) q('nextStep').addEventListener('click', gotoNext);
+    if (q('prevStep')) q('prevStep').addEventListener('click', () => { const n = App.page || 1; if (n > 1) goPage(n - 1); });
+    window.addEventListener('resize', () => { if (App.page === 3) renderPosStage(); });
+    /* initial upload rows */
+    renderUpload(null);
+    syncNextBar();
+  })();
+
   window.RIG = {
     App, Memory, Gate, Cut, Layers, Pose, Studio,
     goPage,
