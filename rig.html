@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T14:15Z">
+<meta name="rigbuild" content="2026-11-06T14:55Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -691,7 +691,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v15 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v15.1 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -1533,8 +1533,16 @@ body{padding-bottom:40px!important}
     }
     function push(label) {
       const snap = capture();
-      const prev = idx >= 0 ? hist[idx].snap : null;
-      if (prev && JSON.stringify(prev) === JSON.stringify(snap)) return;
+      const prev = idx >= 0 ? (hist[idx] && hist[idx].snap) : null;
+      /* FIX v15.1: pose bilkul same ho to naya entry na banao — sirf label update.
+         Isse Undo list me ek hi click ke do entry ('pose: walk' + 'cycle: walk') nahi aate. */
+      if (prev &&
+          JSON.stringify(prev.rotation) === JSON.stringify(snap.rotation) &&
+          JSON.stringify(prev.order) === JSON.stringify(snap.order)) {
+        hist[idx].label = label || hist[idx].label;
+        onChange();
+        return;
+      }
       hist = hist.slice(0, idx + 1);
       hist.push({ label: label || 'change', snap: snap });
       if (hist.length > limit) { hist.shift(); }
@@ -2747,24 +2755,28 @@ body{padding-bottom:40px!important}
     });
   }
 
-  function apply(name) {
-    if (!window.RIG || !RIG.Pose || !PRESETS[name]) return;
+  /* sirf angles + label — HISTORY PUSH yahan NAHI hota (single entry merged handler me) */
+  function applyStatic(name, mirrorSafe) {
+    if (!window.RIG || !RIG.Pose || !PRESETS[name]) return false;
     const p = PRESETS[name];
+    const wasMirror = RIG.Pose.isMirror();
+    if (mirrorSafe) RIG.Pose.setMirror(false);      /* pair values ko mirror se bachao */
     RIG.Pose.RING_IDS.forEach(function (k) { RIG.Pose.setAngle(k, p[k] || 0); });
-    RIG.Pose.push('pose: ' + name);
+    if (mirrorSafe) RIG.Pose.setMirror(wasMirror);
     mark(name);
+    setMeta('pose: ' + name);
+    return true;
+  }
+  function setMeta(label) {
     try {
       const st = document.getElementById('stateMeta');
-      if (st) st.textContent = 'pose: ' + name;
+      if (st) st.textContent = label;
     } catch (e) {}
   }
 
-  document.addEventListener('click', function (e) {
-    const b = e.target && e.target.closest ? e.target.closest('#qpRow .qp') : null;
-    if (!b) return;
-    e.preventDefault();
-    apply(b.dataset.pose);
-  });
+  /* v15.1: alag listener HATA diya — sirf ek hi (merged) handler hai, warna
+     double push hota tha: 'pose: walk' + 'cycle: walk' dono history me. */
+  window.__QP = { applyStatic: applyStatic, mark: mark, PRESETS: PRESETS };
 
   /* undo / redo / reset ke baad active mark sync karo */
   ['btnUndo', 'btnRedo', 'btnReset'].forEach(function (id) {
@@ -2959,27 +2971,39 @@ body{padding-bottom:40px!important}
   if (ppDone) ppDone.addEventListener('click', closePanel);
   if (ppStop) ppStop.addEventListener('click', function () { stopAnim(); mark(null); });
 
-  /* Walk / Run click → panel turant khule + cycle chale */
+  /* ===== EK HI HANDLER (v15.1) — koi duplicate listener nahi =====
+     walk/run -> animation + 1 history entry ('cycle: walk')
+     idle/sit -> static pose + 1 history entry ('pose: idle')
+     stop     -> neeche wala dedicated listener (pose freeze)        */
   document.addEventListener('click', function (e) {
     const b = e.target && e.target.closest ? e.target.closest('#qpRow .qp') : null;
     if (!b) return;
     const p = b.dataset.pose;
+    if (p === 'stop') return;
+
     if (p === 'walk' || p === 'run') {
+      e.preventDefault();
       Anim.spread = p === 'walk' ? 0.22 : 0.30;
       Anim.armAmp = p === 'walk' ? ARM_SWING_AMP : ARM_SWING_AMP * 2.2;
       Anim.torso  = p === 'walk' ? 0.03 : 0.09;
       Anim.speed  = p === 'walk' ? 1.0 : 1.6;
       startAnim(p);                 /* instant walk pose + 60fps rAF loop */
-      closePanel();                 /* Tang sheet nahi khulega — zero confusion */
+      closePanel();                 /* Tang sheet nahi khulega */
       showWalkPanel();              /* sirf ek slider, button bar ke theek upar */
       syncPanel();
+      if (window.__QP) window.__QP.mark(p);
       try { RIG.Pose.push('cycle: ' + p); } catch (err) {}
-    } else {
-      stopAnim();
-      hideWalkPanel();
-      closePanel();
+      try { const st = document.getElementById('stateMeta'); if (st) st.textContent = 'cycle: ' + p; } catch (err) {}
+      return;
     }
-  }, true);   /* capture: preset handler se pehle */
+
+    /* idle / sit — static, mirror-safe presets */
+    e.preventDefault();
+    stopAnim(true); hideWalkPanel(); closePanel();
+    const done = window.__QP ? window.__QP.applyStatic(p, true) : false;
+    if (!done) return;
+    try { RIG.Pose.push('pose: ' + p); } catch (err) {}
+  }, true);
 
   /* STOP button — animation turant freeze + panel band */
   document.addEventListener('click', function (e) {
