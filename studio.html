@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T21:45Z">
+<meta name="rigbuild" content="2026-11-06T22:20Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -709,7 +709,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.1 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.2 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -1762,7 +1762,7 @@ body{padding-bottom:40px!important}
       cv.height = Math.max(1, Math.round(bbox.h * scale));
     }
 
-    const STAGE_MUL = 1.30;                    /* travel room (left + right) */
+    const STAGE_MUL = 1.45;                    /* travel room (left + right) */
     function padX() { return (bbox.w * STAGE_MUL - bbox.w) / 2; }   /* character start = center */
     function toScreen(x, y) { return { x: (x - bbox.x + padX()) * scale, y: (y - bbox.y) * scale }; }
 
@@ -3008,9 +3008,9 @@ body{padding-bottom:40px!important}
        6. Stage ke kinare par direction palat jati hai (loop)            */
     const BW = (RIG.App && RIG.App.cut) ? RIG.App.cut.bbox.w : 800;
     const BH = (RIG.App && RIG.App.cut) ? RIG.App.cut.bbox.h : 1000;
-    const RANGE = BW * 0.15;                       /* left/right travel limit */
+    const RANGE = BW * 0.205;                      /* left/right travel limit */
     /* chalne ki raftaar: walk ~110px/s, run ~210px/s (source px me) */
-    const pxPerSec = BW * ((Anim.kind === 'run') ? 0.26 : 0.14);
+    const pxPerSec = BW * ((Anim.kind === 'run') ? 0.34 : 0.18);
     if (Anim.dir === undefined) Anim.dir = 1;
     Anim.travel = (Anim.travel || 0) + Anim.dir * dt * pxPerSec;
     /* hamesha AAGE — right edge par pahunch kar left se loop (endless walk) */
