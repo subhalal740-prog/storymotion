@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T11:35Z">
+<meta name="rigbuild" content="2026-11-06T12:00Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -620,6 +620,13 @@ body{padding-bottom:40px!important}
   background:#12b76a;color:#fff;font-size:10px;display:grid;place-items:center;box-shadow:0 0 10px rgba(34,224,125,.85)}
 .posTile:active{transform:scale(.98)}
 </style>
+<style id="v11gate">
+#acCard1{display:none}
+#acCard1.show{display:block;animation:acIn .28s ease}
+@keyframes acIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+#pg1 .icoAct{pointer-events:none;opacity:.35}
+#acCard1.show .icoAct{pointer-events:auto;opacity:1}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -654,7 +661,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v10 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v11 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -1892,7 +1899,9 @@ body{padding-bottom:40px!important}
     if (App.cut) Memory.purgeAll('new upload');
     Layers.load([]);
     U.$('layerList').innerHTML = '';
-    App.cut = null; App.imgData = null; enableSteps(); hud();
+    App.cut = null; App.imgData = null;
+    (function () { const ac1 = document.getElementById('acCard1'); if (ac1) ac1.classList.remove('show'); })();
+    enableSteps(); hud();
 
     const url = Memory.trackURL(URL.createObjectURL(file));
     const img = new Image();
@@ -2514,6 +2523,8 @@ body{padding-bottom:40px!important}
 
   function v4AfterCut(res) {
     V4.sel = null;
+    const ac1 = document.getElementById('acCard1');
+    if (ac1) ac1.classList.toggle('show', !!App.cut);
     Layers.order().forEach((p) => { p._ox0 = (p.ox !== undefined ? p.ox : p.x); p._oy0 = (p.oy !== undefined ? p.oy : p.y); });
     V4.posHist = []; V4.posIdx = -1;
     posPush();
@@ -2637,19 +2648,7 @@ body{padding-bottom:40px!important}
     renderUpload(null);
     syncNextBar();
 
-    /* demo character auto-load (reference jaisa ready state) */
-    setTimeout(function () {
-      if (App.cut) return;
-      fetch('demo-character.png', { cache: 'force-cache' })
-        .then(function (r) { return r.ok ? r.blob() : null; })
-        .then(function (bl) {
-          if (!bl) return;
-          U.toast('Demo character load ho gaya — apna PNG Choose File se daalo');
-          handleFile(new File([bl], 'demo-character.png', { type: 'image/png' }));
-          setTimeout(function () { if (App.page === 2) goPage(1); }, 1500);
-        })
-        .catch(function () {});
-    }, 600);
+    /* v11: koi demo auto-load nahi — pehle user apna PNG chunta hai */
   })();
 
   window.RIG = {
