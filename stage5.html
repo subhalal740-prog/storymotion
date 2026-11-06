@@ -590,7 +590,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-07T01:10Z">
+<meta name="rigbuild" content="2026-11-07T01:45Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -741,7 +741,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.8 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.9 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -799,7 +799,7 @@ body{padding-bottom:40px!important}
 
     <div class="tipBar" id="tipBar">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z"/></svg></span>
-      <p>Tip: Use a front-facing character for the best results!</p>
+      <p>Tip: Front, side ya 3/4 — koi bhi direction chalegi. Facing khud detect hoti hai.</p>
       <svg class="boy" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="19" fill="#0e2a4a" stroke="#fbbf24" stroke-opacity=".45"/><path d="M20 9c-4.4 0-7.4 3-7.4 7.4 0 4.4 3 8.6 7.4 8.6s7.4-4.2 7.4-8.6C27.4 12 24.4 9 20 9z" fill="#f6c9a0"/><path d="M12.4 17.2c0-4.6 3.2-8.2 7.6-8.2s7.6 3.6 7.6 8.2c-1.4-2.2-4-3.4-7.6-3.4s-6.2 1.2-7.6 3.4z" fill="#2b1b12"/><circle cx="17" cy="17" r="1.1" fill="#2b1b12"/><circle cx="23" cy="17" r="1.1" fill="#2b1b12"/><path d="M17.8 21.2c1.4 1.2 3 1.2 4.4 0" stroke="#a1583a" stroke-width="1.2" stroke-linecap="round"/><path d="M11.5 31.5c1.6-3.4 4.8-5 8.5-5s6.9 1.6 8.5 5z" fill="#ffd75e"/></svg>
     </div>
 
@@ -896,6 +896,8 @@ body{padding-bottom:40px!important}
         </div>
         <div class="kv" style="margin-top:10px"><span>scale</span><b id="scaleMeta">—</b></div>
         <div class="kv"><span>state</span><b id="stateMeta">—</b></div>
+        <div class="kv"><span>facing</span><b id="facingMeta" role="button" tabindex="0"
+             style="cursor:pointer;border-bottom:1px dashed rgba(255,255,255,.25)">—</b></div>
         <div class="qpWrap">
           <div class="qpTitle">⚡ QUICK POSE</div>
           <div class="smWalk" id="smWalkPanel" hidden>
@@ -1334,6 +1336,106 @@ body{padding-bottom:40px!important}
     }
 
     return { process, T_HARD, T_SOFT, detectBg, uniformity };
+  })();
+
+  /* ------------------------------------------------ 01b · FACING (v17.9)
+     Kisi bhi hardcoded North/South/front direction ki zarurat nahi — image se
+     khud detect hota hai ki character kis taraf dekh raha hai. 3 signals:
+       (1) SIR ka silhouette (naak/gala) — jis taraf mass zyada, wo facing side
+       (2) BAAL (dark pixels) — baal peeche hote hain, isliye ULTI side signal
+       (3) PAIR ke panje (bottom rows) — panje aage ki taraf nikalte hain
+     score → dir = +1 (right) / -1 (left) / +1 (front, ambiguous = purana behaviour) */
+  const Facing = (function () {
+    const A_MIN = 24;
+
+    function luma(r, g, b) { return 0.299 * r + 0.587 * g + 0.114 * b; }
+
+    /* ek piece ke canvas par transparent-silhouette centroid (bbox center se offset) */
+    function silhouetteOffset(p) {
+      const cv = p.canvas; if (!cv) return 0;
+      const w = cv.width, h = cv.height;
+      if (!w || !h) return 0;
+      let ctx; try { ctx = cv.getContext('2d', { willReadFrequently: true }); } catch (e) { return 0; }
+      let d; try { d = ctx.getImageData(0, 0, w, h).data; } catch (e) { return 0; }
+      let sum = 0, n = 0;
+      for (let y = 0; y < h; y++) {
+        const base = y * w * 4;
+        for (let x = 0; x < w; x++) if (d[base + x * 4 + 3] > A_MIN) { sum += x; n++; }
+      }
+      if (!n) return 0;
+      return (sum / n) / w - 0.5;            /* -0.5..+0.5 */
+    }
+
+    /* sir ke andar "baal" (dark) pixels ka offset */
+    function hairOffset(p) {
+      const cv = p.canvas; if (!cv) return 0;
+      const w = cv.width, h = cv.height;
+      if (!w || !h) return 0;
+      let ctx; try { ctx = cv.getContext('2d', { willReadFrequently: true }); } catch (e) { return 0; }
+      let d; try { d = ctx.getImageData(0, 0, w, h).data; } catch (e) { return 0; }
+      let sum = 0, n = 0;
+      for (let y = 0; y < h; y++) {
+        const base = y * w * 4;
+        for (let x = 0; x < w; x++) {
+          const i = base + x * 4;
+          if (d[i + 3] < 200) continue;
+          if (luma(d[i], d[i + 1], d[i + 2]) > 95) continue;   /* sirf dark = baal */
+          sum += x; n++;
+        }
+      }
+      if (n < w * h * 0.01) return 0;
+      return (sum / n) / w - 0.5;
+    }
+
+    /* pair ke panje: neeche ke hisse ka offset (upar ki tulna me) */
+    function toeOffset(p) {
+      const cv = p.canvas; if (!cv) return 0;
+      const w = cv.width, h = cv.height;
+      if (!w || !h) return 0;
+      let ctx; try { ctx = cv.getContext('2d', { willReadFrequently: true }); } catch (e) { return 0; }
+      let d; try { d = ctx.getImageData(0, 0, w, h).data; } catch (e) { return 0; }
+      function band(y0, y1) {
+        let sum = 0, n = 0;
+        for (let y = y0; y < y1; y++) {
+          const base = y * w * 4;
+          for (let x = 0; x < w; x++) if (d[base + x * 4 + 3] > A_MIN) { sum += x; n++; }
+        }
+        return n ? sum / n : null;
+      }
+      const top = band(0, Math.max(1, Math.round(h * 0.25)));
+      const bot = band(Math.max(1, Math.round(h * 0.85)), h);
+      if (top === null || bot === null) return 0;
+      return (bot - top) / w;
+    }
+
+    function detect(pieces) {
+      const head = (pieces || []).find((p) => p.id === 'head');
+      const legs = (pieces || []).filter((p) => p.id === 'legL' || p.id === 'legR');
+      let sil = 0, hair = 0, toe = 0;
+      if (head) { sil = silhouetteOffset(head) * 2; hair = hairOffset(head) * 2; }
+      if (legs.length) {
+        toe = legs.reduce((a, p) => a + toeOffset(p), 0) / legs.length * 2;
+      }
+      const c = (v) => Math.max(-1, Math.min(1, v));
+      sil = c(sil * 2); hair = c(hair * 2); toe = c(toe * 2);
+      /* Note: silhouette aur baal dono PEEECHE ki taraf mass badhate hain,
+         isliye facing = ULTI sign. Panje seedha aage ka signal dete hain. */
+      const score = -0.45 * sil - 0.35 * hair + 0.20 * toe;
+      /* front view par teeno signal ~0 aate hain -> threshold se neeche = "front"
+         (purana behaviour, koi direction change nahi) */
+      const TH = 0.12;
+      const dir = score > TH ? 1 : score < -TH ? -1 : 1;
+      const mode = Math.abs(score) <= TH ? 'front' : (dir > 0 ? 'right' : 'left');
+      /* confidence: kitne signal ek hi taraf bol rahe hain (0..1) */
+      const parts = [-0.45 * sil, -0.35 * hair, 0.20 * toe].filter((v) => Math.abs(v) > 0.02);
+      const agree = parts.filter((v) => Math.sign(v) === Math.sign(score)).length;
+      return { dir, mode, score: +score.toFixed(3),
+               conf: parts.length ? +(agree / parts.length).toFixed(2) : 0,
+               signals: { head: +sil.toFixed(3), hair: +hair.toFixed(3), toes: +toe.toFixed(3) },
+               auto: true };
+    }
+
+    return { detect, silhouetteOffset, hairOffset, toeOffset };
   })();
 
   /* ---------------------------------------------------------------- 02 · GATE
@@ -2366,6 +2468,24 @@ body{padding-bottom:40px!important}
     }
   }
 
+  /* v17.9 · facing chip — auto detect ka result dikhata hai, tap par manually flip */
+  function applyFacingUI() {
+    const el = U.$('facingMeta'); if (!el) return;
+    const f = App.facing || { dir: 1, mode: 'front', auto: true };
+    const face = f.mode === 'front' ? 'Front' : (f.dir > 0 ? 'Right' : 'Left');
+    el.textContent = face + ' · ' + (f.manual ? 'manual' : 'auto');
+    el.title = 'Tap: chalne ki direction ulti karo';
+  }
+  function flipFacing() {
+    if (!App.facing) App.facing = { dir: 1, mode: 'front', score: 0 };
+    App.facing.dir = -App.facing.dir;
+    App.facing.manual = true;
+    App.facing.mode = App.facing.dir > 0 ? 'right' : 'left';
+    window.__RIG_FACING = App.facing;
+    applyFacingUI();
+    U.toast('Facing: ' + (App.facing.dir > 0 ? 'Right' : 'Left') + ' (manual)');
+  }
+
   function renderLayers() {
     const list = U.$('layerList');
     list.innerHTML = '';
@@ -2588,6 +2708,13 @@ body{padding-bottom:40px!important}
     const cut = Cut.run(data, W, H);
     if (!cut) { setLight('failed', 'Cut fail ho gaya.'); return; }
     App.cut = cut;
+    /* v17.9 · koi hardcoded direction nahi — image se facing detect */
+    try {
+      App.facing = Facing.detect(cut.pieces);
+      App.facing.manual = false;
+      window.__RIG_FACING = App.facing;
+      applyFacingUI();
+    } catch (e) { App.facing = { dir: 1, mode: 'front', score: 0, auto: true }; }
     Layers.load(cut.pieces);
     Layers.setOnChange(() => { renderLayers(); Studio.render(); });
     renderCut();
@@ -2693,6 +2820,11 @@ body{padding-bottom:40px!important}
   });
 
   U.$('toStudio').addEventListener('click', () => goPage(4));
+  (function bindFacing() {
+    const el = U.$('facingMeta'); if (!el) return;
+    el.addEventListener('click', flipFacing);
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flipFacing(); } });
+  })();
   U.$('btnUndo').addEventListener('click', () => { Pose.undo(); renderHistory(); });
   U.$('btnRedo').addEventListener('click', () => { Pose.redo(); renderHistory(); });
   U.$('btnReset').addEventListener('click', () => { Pose.reset(true); renderHistory(); U.toast('Pose reset'); });
@@ -3170,7 +3302,7 @@ body{padding-bottom:40px!important}
     const bigEnough = App.W >= 300 && App.H >= 400;
     const rows = [
       ['Full body image', !!App.imgData && !!App.cut],
-      ['Front view', !!res && (res.light === 'READY' || res.light === 'WARNING')],
+      ['Any direction (front / side / 3-4)', !!res && (res.light === 'READY' || res.light === 'WARNING')],
       ['Standing pose', !!App.cut],
       ['Transparent PNG', !!App.imgData && (tr === null || tr >= 0.30)]
     ];
@@ -3330,7 +3462,7 @@ body{padding-bottom:40px!important}
   })();
 
   window.RIG = {
-    App, Memory, Bg, Gate, Cut, Layers, Pose, Studio,
+    App, Memory, Bg, Facing, Gate, Cut, Layers, Pose, Studio,
     goPage,
     stats: () => ({ memory: Memory.stats(), cut: App.cut && App.cut.meta,
                     layers: Layers.idsInOrder(), pose: Pose.getRotation(), history: Pose.history(),
@@ -3418,10 +3550,15 @@ body{padding-bottom:40px!important}
     const RANGE = BW * 0.205;                      /* left/right travel limit */
     /* chalne ki raftaar: walk ~110px/s, run ~210px/s (source px me) */
     const pxPerSec = BW * ((Anim.kind === 'run') ? 0.34 : 0.18);
-    if (Anim.dir === undefined) Anim.dir = 1;
+    /* v17.9 · velocity multiplier facing se aata hai (+1 right / -1 left).
+       Ye script block alag hai, isliye window.__RIG_FACING se padho (App yahan
+       scope me nahi hai — pehle ReferenceError aa raha tha). */
+    const faceDir = (window.__RIG_FACING && window.__RIG_FACING.dir) || 1;
+    Anim.dir = faceDir;
     Anim.travel = (Anim.travel || 0) + Anim.dir * dt * pxPerSec;
-    /* hamesha AAGE — right edge par pahunch kar left se loop (endless walk) */
-    if (Anim.travel > RANGE) Anim.travel = -RANGE;
+    /* jis taraf dekh raha hai usi taraf badhta hai — kinare par pahunch kar loop */
+    if (Anim.dir > 0) { if (Anim.travel > RANGE) Anim.travel = -RANGE; }
+    else { if (Anim.travel < -RANGE) Anim.travel = RANGE; }
     /* ---- LEGS: 180° (Math.PI) phase offset — dono pair ULTI direction me ----
        sin(p) aur sin(p + PI) = -sin(p) → legL aur legR kabhi ek saath nahi,
        ek aage to dusri peeche. Sign aisa ki pair BAHAR khulein, andar na takrayein. */
