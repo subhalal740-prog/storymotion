@@ -401,20 +401,164 @@ body{
 }
 </style>
 
+<style id="v5css">
+/* ================= v5 — EXACT REFERENCE LOOK ================= */
+body{padding-bottom:190px}
+/* header: hamburger + robot logo + title + home */
+.top{display:grid;grid-template-columns:44px 1fr 44px;gap:9px;align-items:center;margin:6px 0 12px}
+.icoBtn{width:44px;height:44px;border-radius:14px;background:linear-gradient(160deg,#101f3d,#0a1529);
+  border:1px solid rgba(96,165,250,.20);color:#cfe0ff}
+#menuBtn{display:grid;place-items:center;cursor:pointer}
+.brandRow{display:flex;align-items:center;gap:9px;min-width:0}
+.logo{flex:0 0 34px;width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:#5fb0ff;
+  background:linear-gradient(160deg,rgba(47,123,255,.22),rgba(47,123,255,.06));border:1px solid rgba(96,165,250,.30);
+  box-shadow:0 0 18px -6px rgba(47,123,255,.85)}
+.logo svg{width:21px;height:21px}
+.brand{text-align:left;line-height:1.15;min-width:0}
+.brand b{font-size:19px;font-weight:800;color:#f2f7ff;letter-spacing:.1px;white-space:nowrap}
+.brand b em.vtag{display:none}
+.brand span{font-size:10px;letter-spacing:.7px;text-transform:none;color:#7f93bd;margin-top:1px;font-weight:600}
+/* menu drawer */
+.menuPanel{position:fixed;left:10px;top:60px;z-index:2147483400;width:210px;border-radius:16px;padding:9px;
+  background:linear-gradient(165deg,#0a1428,#050c19);border:1px solid rgba(96,165,250,.25);
+  box-shadow:0 24px 50px -18px #000;display:none}
+.menuPanel.open{display:block}
+.menuPanel a{display:flex;align-items:center;gap:9px;padding:10px 11px;border-radius:11px;text-decoration:none;
+  font-size:12px;font-weight:700;color:#cfdcf5}
+.menuPanel a:hover{background:rgba(47,123,255,.14)}
+.menuPanel .sep{height:1px;background:rgba(255,255,255,.07);margin:6px 4px}
+/* step rail labels: Title Case */
+#steps .step i{text-transform:none;font-size:10.5px;letter-spacing:.2px;font-weight:700}
+/* upload card */
+.upCard{border-color:rgba(47,123,255,.55)!important;
+  box-shadow:0 0 0 1px rgba(47,123,255,.20),0 0 34px -10px rgba(47,123,255,.55),inset 0 1px 0 rgba(255,255,255,.06)!important}
+.upHead{display:flex;align-items:flex-start;gap:10px;position:relative}
+.upIcon{flex:0 0 40px;width:40px;height:40px;border-radius:13px;display:grid;place-items:center;color:#5fb0ff;
+  background:linear-gradient(160deg,rgba(47,123,255,.20),rgba(47,123,255,.05));border:1px solid rgba(96,165,250,.30)}
+.upIcon svg{width:24px;height:24px}
+.upTT{flex:1;min-width:0}
+.upTT h3{margin:0;font-size:15px;font-weight:800;letter-spacing:0;text-transform:none;color:#f0f6ff}
+.upTT p{margin:3px 0 0;font-size:10.5px;color:#8298c2;line-height:1.35}
+#trafficLight{align-self:flex-start;font-size:9px;letter-spacing:.5px;padding:4px 8px}
+.upRow{display:grid;grid-template-columns:118px 1fr;gap:12px;margin-top:14px;align-items:center}
+.upPrev{aspect-ratio:1/1;border-radius:14px}
+.upChecks{gap:9px}
+.upChk{font-size:11px;color:#b9c9e6;font-weight:700}
+.upChk .d{flex:0 0 17px;width:17px;height:17px;font-size:10px}
+.chooseBtn{margin-top:14px;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;height:48px;
+  border-radius:14px;font-size:14.5px;font-weight:800;color:#fff;cursor:pointer;letter-spacing:.2px;
+  background:linear-gradient(160deg,#3f8dff,#1b57d6);border:1px solid rgba(140,200,255,.45);
+  box-shadow:0 12px 26px -12px rgba(47,123,255,.95),inset 0 1px 0 rgba(255,255,255,.3)}
+.chooseBtn svg{width:20px;height:20px}
+.chooseBtn:active{transform:translateY(1px)}
+.upMeta{display:flex;align-items:center;gap:6px;justify-content:center;margin-top:9px;font-size:10px;color:#7d90b8;
+  font-variant-numeric:tabular-nums;flex-wrap:wrap;text-align:center}
+.upMeta .dot{color:#3d4f72}
+.gateMsg{margin:10px 0 0;font-size:10.5px;line-height:1.5;color:#7f93bd;text-align:center}
+.upCard .smWarn{margin-top:12px}
+.upCard .kv.rules{margin-top:10px;font-size:9.5px}
+/* auto-cut card */
+.acCard{border-color:rgba(96,165,250,.20)}
+.acHead{display:flex;align-items:center;gap:10px}
+.acIcon{flex:0 0 38px;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:#5fb0ff;
+  background:linear-gradient(160deg,rgba(47,123,255,.20),rgba(47,123,255,.05));border:1px solid rgba(96,165,250,.30)}
+.acIcon svg{width:21px;height:21px}
+.acTT{flex:1;min-width:0}
+.acTT h3{margin:0;font-size:15px;font-weight:800;letter-spacing:0;text-transform:none;color:#f0f6ff}
+.acTT p{margin:3px 0 0;font-size:10px;color:#8298c2;line-height:1.3}
+.acOk{flex:0 0 26px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:900;
+  color:#fff;background:linear-gradient(160deg,#2ee183,#12b76a);box-shadow:0 0 16px -3px rgba(34,224,125,.9)}
+.acOk.off{background:rgba(120,140,180,.18);color:#7889ad;box-shadow:none}
+/* 6 parts in ONE row */
+#partGrid{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:12px}
+#partGrid .partCard{padding:4px 3px 5px;border-radius:10px}
+#partGrid .partCard .ph{height:44px;border-radius:7px}
+#partGrid .partCard canvas{max-height:40px}
+#partGrid .partCard .nm{font-size:7px;letter-spacing:0;margin-top:4px}
+#partGrid .partCard .ok{width:12px;height:12px;font-size:8px;top:-4px;right:-4px}
+/* icon action row */
+.iconRow{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:12px}
+.icoAct{display:flex;align-items:center;justify-content:center;gap:6px;height:42px;border-radius:12px;
+  font-family:inherit;font-size:10.5px;font-weight:800;color:#d5e2f7;cursor:pointer;
+  background:linear-gradient(160deg,#101f3d,#0a1529);border:1px solid rgba(96,165,250,.22)}
+.icoAct svg{width:15px;height:15px;color:#7fb6ff}
+.icoAct:active{transform:translateY(1px)}
+/* green next bar + share */
+.nextBar{align-items:center;flex-wrap:wrap;background:linear-gradient(180deg,rgba(4,7,15,0),rgba(4,7,15,.9) 30%,#04070f)}
+.nextBtn{background:linear-gradient(160deg,#2ee183,#12b76a);border:1px solid rgba(180,255,220,.4);
+  color:#04240f;text-shadow:0 1px 0 rgba(255,255,255,.25);
+  box-shadow:0 14px 30px -12px rgba(34,224,125,.95),inset 0 1px 0 rgba(255,255,255,.45);position:relative}
+.nextBtn:disabled{background:linear-gradient(160deg,#1d3a2b,#12241a);color:#5f8a72;border-color:rgba(120,180,150,.2)}
+.nextBtn .tick{display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;background:#fff;
+  color:#12b76a;font-size:11px;font-weight:900;margin-right:7px;vertical-align:-3px}
+.shareBtn{flex:0 0 48px;width:48px;height:48px;border-radius:50%;border:0;cursor:pointer;display:grid;place-items:center;
+  color:#0a1428;background:linear-gradient(160deg,#ffffff,#dfe8f6);
+  box-shadow:0 10px 24px -10px rgba(0,0,0,.9),inset 0 1px 0 #fff}
+.shareBtn svg{width:21px;height:21px}
+.shareBtn:active{transform:scale(.95)}
+/* yellow tip banner */
+.tipBar{display:flex;align-items:center;gap:9px;margin-top:8px;padding:9px 11px;border-radius:14px;
+  background:linear-gradient(160deg,rgba(251,191,36,.16),rgba(251,191,36,.05));
+  border:1px solid rgba(251,191,36,.35)}
+.tipBar .ic{flex:0 0 18px;width:18px;height:18px;color:#fbbf24;filter:drop-shadow(0 0 8px rgba(251,191,36,.55))}
+.tipBar p{margin:0;flex:1;font-size:10px;line-height:1.4;color:#f4d68a;font-weight:600}
+.tipBar[hidden]{display:none}
+@media(max-width:360px){
+  #partGrid .partCard .nm{font-size:6.4px}
+  .upRow{grid-template-columns:100px 1fr}
+  .icoAct{font-size:9.5px;gap:4px}
+}
+</style>
+
+
+<style id="v5polish">
+#steps .step.on b{color:#fff!important;background:linear-gradient(160deg,#3f8dff,#1e5fe0)!important;
+  border-color:#9cc9ff!important;box-shadow:0 0 0 4px #04070f,0 0 18px rgba(63,141,255,.85)!important}
+#steps .step.on i{color:#d3e4ff!important}
+.upTT h3{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.upTT p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icoAct{font-size:9.5px;white-space:nowrap;padding:0 5px;gap:5px}
+#partGrid .partCard .nm{font-size:6.6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gateMsg{font-size:9.5px}
+@media(max-width:400px){
+  .upTT h3{font-size:13px}
+  .icoAct{font-size:8.8px;gap:4px}
+  .icoAct svg{width:13px;height:13px}
+  #partGrid .partCard .nm{font-size:6.1px}
+}
+</style>
+
+<style id="v5polish2">
+.upTT p{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;line-height:1.35;font-size:10px}
+#trafficLight{font-size:8px!important;letter-spacing:.3px!important;padding:4px 7px!important;flex:0 0 auto;white-space:nowrap}
+.upTT h3{font-size:13.5px!important}
+@media(max-width:400px){.upTT h3{font-size:12.5px!important}#trafficLight{font-size:7.2px!important;padding:3px 6px!important}}
+</style>
 </head>
 <body>
 <div class="wrap">
 
-  <!-- ================= TOP BAR (v4 mobile) ================= -->
+  <!-- ================= TOP BAR ================= -->
   <header class="top">
-    <a id="backBtn" class="icoBtn" href="tool.html" title="Back" aria-label="Back">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 19 8 12l7-7"/></svg>
-    </a>
-    <div class="brand"><b>Rig Studio <em class="vtag">v4</em></b><span>Character · Rig · Animate</span></div>
+    <button id="menuBtn" class="icoBtn" aria-label="Menu">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/></svg>
+    </button>
+    <div class="brandRow">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="11" rx="3.2"/><path d="M12 8V4.6"/><circle cx="12" cy="3.4" r="1.5"/><circle cx="9" cy="13" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1.5" fill="currentColor" stroke="none"/><path d="M9.5 16.4h5"/><path d="M2.4 12v3"/><path d="M21.6 12v3"/></svg></span>
+      <div class="brand"><b>Rig Studio</b><span>Create · Rig · Animate</span></div>
+    </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/></svg>
     </a>
   </header>
+  <div class="menuPanel" id="menuPanel">
+    <a href="index.html">&#8962; Main launcher</a>
+    <a href="tool.html">&#9986; Character Tool</a>
+    <a href="studio.html">&#9670; Rig Studio (relaunch)</a>
+    <div class="sep"></div>
+    <a href="app1.html">&#9654; Story App</a>
+    <a href="hilao.html">&#127932; Hilao</a>
+  </div>
 
   <div class="stepRail" id="steps">
     <button class="step on" data-page="1"><b>1</b><i>Upload</i></button>
@@ -431,29 +575,30 @@ body{
 
   <!-- ================= PAGE 1 · CHECKPOST ================= -->
   <section id="pg1">
-    <div class="card" id="gateCard" style="max-width:460px;margin:0 auto;transition:border-color .35s">
-      <div id="gateGlow" style="position:absolute;top:-40px;right:-40px;width:100px;height:100px;border-radius:50%;filter:blur(24px);
+    <div class="card upCard" id="gateCard">
+      <div id="gateGlow" style="position:absolute;top:-40px;right:-40px;width:110px;height:110px;border-radius:50%;filter:blur(26px);
            background:radial-gradient(circle, rgba(107,114,128,.12) 0%, transparent 70%)"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;position:relative">
-        <h3 style="margin:0">AI INPUT CHECKPOST</h3>
-        <div class="pill" id="trafficLight" style="color:var(--mut)">⚪ STANDBY</div>
+      <div class="upHead">
+        <span class="upIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 17.7 9.3 3.9 3.9 0 0 1 18 17.9"/><path d="M12 21v-8"/><path d="M8.8 16.2 12 13l3.2 3.2"/></svg></span>
+        <div class="upTT">
+          <h3>Upload Character PNG</h3>
+          <p>Upload a full body character image</p>
+        </div>
+        <div class="pill" id="trafficLight">STANDBY</div>
       </div>
-      <p id="gateMsg" style="margin:14px 0 0;font-size:12.5px;line-height:1.65;color:#8b8f98;position:relative">
-        Transparent PNG character sheet upload karo — baaki matrix khud sambhal lega.
-      </p>
-      
-      <div class="smWarn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9h6v6H9z"/></svg></span><p><b>Dhyan Dein:</b> Agar background wali photo daali toh system turant <b>LAL SIGNAL</b> dekar reject kar dega. Sirf <b>Transparent PNG</b> hi chalegi!</p></div>
+
       <div class="upRow">
         <div class="upPrev checker" id="upPrev"><span>NO PNG</span></div>
         <div class="upChecks" id="upChecks"></div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px">
-        <label for="fileInput" class="btn primary" style="display:inline-flex;align-items:center;gap:7px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05 12.25 20.2a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.48"/></svg> Choose file</label>
-        <span id="fileName" style="font-size:11.5px;color:var(--mut)">no image selected</span>
-      </div>
+
+      <label for="fileInput" class="chooseBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 17.7 9.3 3.9 3.9 0 0 1 18 17.9"/><path d="M12 21v-8"/><path d="M8.8 16.2 12 13l3.2 3.2"/></svg> Choose File</label>
       <input type="file" id="fileInput" accept="image/*" style="display:none">
-      <div class="kv" style="margin-top:12px"><span>scan</span><b id="scanMeta">—</b></div>
-      <div class="kv"><span>rules</span><b>bg · arms · legs · frame</b></div>
+      <div class="upMeta"><span id="fileName">no image selected</span><span class="dot">·</span><span id="scanMeta">&mdash;</span></div>
+
+      <p id="gateMsg" class="gateMsg">Transparent PNG character sheet upload karo — baaki matrix khud sambhal lega.</p>
+      <div class="smWarn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9h6v6H9z"/></svg></span><p><b>Dhyan Dein:</b> Agar background wali photo daali toh system turant <b>LAL SIGNAL</b> dekar reject kar dega. Sirf <b>Transparent PNG</b> hi chalegi!</p></div>
+      <div class="kv rules" style="margin-top:10px"><span>rules</span><b>bg · arms · legs · frame</b></div>
     </div>
     
     <div class="smGal">
@@ -471,11 +616,21 @@ body{
 
   <!-- ================= PAGE 2 · AUTO-CUT & LAYERS ================= -->
   <section id="pg2" class="hidden">
-    <div class="card" style="margin-bottom:14px">
-      <div class="cHead"><h3>6 Body Parts Extracted</h3><span class="pill" id="partPill">AUTO</span></div>
+    <div class="card acCard" style="margin-bottom:14px">
+      <div class="acHead">
+        <span class="acIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.6 15.4"/><path d="M8.6 8.6 20 20"/></svg></span>
+        <div class="acTT"><h3>Auto-Cut</h3><p id="acSub">6 Body Parts Extracted Successfully</p></div>
+        <span class="acOk off" id="acOk">&#10003;</span>
+        <span class="pill" id="partPill" style="display:none">6/6</span>
+      </div>
       <div class="partGrid" id="partGrid"></div>
-      <p class="note">Tap any part card → Position step me usi part ko correct karo.</p>
+      <div class="iconRow">
+        <button class="icoAct" id="btnMirrorFlip2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h9a3.5 3.5 0 0 1 0 7H9"/><path d="M6.6 5.4 4 8l2.6 2.6"/><path d="M4 16h9a3.5 3.5 0 0 0 0-7H9"/><path d="M6.6 13.4 4 16l2.6 2.6"/></svg> Mirror Flip</button>
+        <button class="icoAct" id="btnEditPos2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><circle cx="12" cy="12" r="3.2"/></svg> Edit Position</button>
+        <button class="icoAct" id="btnPreview2"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5.5v13l11-6.5z"/></svg> Preview</button>
+      </div>
     </div>
+    
     <div class="grid2 two">
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
@@ -646,8 +801,14 @@ body{
   </div>
 
   <div class="nextBar" id="nextBar">
-    <button class="nextBtn ghost" id="prevStep">← Back</button>
-    <button class="nextBtn" id="nextStep" disabled>Next →</button>
+    <button class="nextBtn" id="nextStep" disabled><span class="tick">&#10003;</span>Next &rarr;</button>
+    <button class="shareBtn" id="shareBtn" aria-label="Share">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.6 15.4 6.4"/><path d="M8.6 13.4 15.4 17.6"/></svg>
+    </button>
+    <div class="tipBar" id="tipBar">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z"/></svg></span>
+      <p>Tip: Use a front-facing character for the best results!</p>
+    </div>
   </div>
 
   <!-- ===== TANG POSITION SETTINGS — instant panel ===== -->
@@ -1877,7 +2038,7 @@ body{
       const card = document.createElement('div');
       card.className = 'partCard';
       const ph = document.createElement('div'); ph.className = 'ph';
-      if (p) { ph.appendChild(thumbCanvas(p, 96)); found++; }
+      if (p) { ph.appendChild(thumbCanvas(p, 56)); found++; }
       else { ph.textContent = ''; }
       const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = spec.name;
       card.appendChild(ph); card.appendChild(nm);
@@ -1887,6 +2048,9 @@ body{
     });
     const pill = U.$('partPill');
     if (pill) pill.textContent = found + '/6 PARTS';
+    const okb = U.$('acOk'), sub = U.$('acSub');
+    if (okb) okb.classList.toggle('off', found < 6);
+    if (sub) sub.textContent = found + ' Body Part' + (found === 1 ? '' : 's') + ' Extracted Successfully';
   }
 
   /* ---------- STEP 3: position stage ---------- */
@@ -2203,9 +2367,11 @@ body{
     const prev = U.$('prevStep'), nx = U.$('nextStep');
     if (prev) prev.disabled = n <= 1;
     if (nx) {
-      nx.textContent = n === 5 ? 'SAVE ⤓' : 'Next →';
+      nx.innerHTML = '<span class="tick">✓</span>' + (n === 5 ? 'SAVE' : 'Next') + ' &rarr;';
       nx.disabled = !App.cut;
     }
+    const tip = U.$('tipBar');
+    if (tip) tip.hidden = n !== 1;
   }
   function gotoNext() {
     const n = App.page || 1;
@@ -2310,6 +2476,30 @@ body{
       const ok = Pose.load();
       renderHistory(); renderSave();
       U.toast(ok ? 'Snapshot loaded' : 'Koi snapshot nahi mila');
+    });
+    /* hamburger menu */
+    const mb = q('menuBtn'), mp = q('menuPanel');
+    if (mb && mp) {
+      mb.addEventListener('click', (e) => { e.stopPropagation(); mp.classList.toggle('open'); });
+      document.addEventListener('click', (e) => { if (!mp.contains(e.target) && e.target !== mb) mp.classList.remove('open'); });
+    }
+    /* share (real share / clipboard) */
+    const sb = q('shareBtn');
+    if (sb) sb.addEventListener('click', async () => {
+      const url = location.href.split('?')[0];
+      const txt = 'Rig Studio — transparent PNG se 6-part rig, mobile par.';
+      try {
+        if (navigator.share) { await navigator.share({ title: 'Rig Studio', text: txt, url }); return; }
+      } catch (e) {}
+      try { await navigator.clipboard.writeText(url); U.toast('Link copy ho gaya'); }
+      catch (e) { U.toast(url); }
+    });
+    /* step 2 icon row */
+    if (q('btnMirrorFlip2')) q('btnMirrorFlip2').addEventListener('click', mirrorFlip);
+    if (q('btnPreview2')) q('btnPreview2').addEventListener('click', openPreview);
+    if (q('btnEditPos2')) q('btnEditPos2').addEventListener('click', () => {
+      if (!App.cut) { U.toast('Pehle character cut karo'); return; }
+      goPage(3); setTimeout(() => { if (!V4.sel) selectPart('head'); U.toast('Part ko drag karo ya arrows dabao'); }, 120);
     });
     if (q('nextStep')) q('nextStep').addEventListener('click', gotoNext);
     if (q('prevStep')) q('prevStep').addEventListener('click', () => { const n = App.page || 1; if (n > 1) goPage(n - 1); });
