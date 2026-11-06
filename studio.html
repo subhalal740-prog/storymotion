@@ -558,7 +558,23 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T09:40Z">
+<meta name="rigbuild" content="2026-11-06T10:05Z">
+<style id="v7ref">
+.chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
+.upMeta{justify-content:center}
+.gateMsg{display:none}
+#buildStamp{font-size:8px;letter-spacing:1px;opacity:.4;margin:8px 0 0}
+.upCard{border-radius:18px}
+.tipBar .boy{flex:0 0 34px;width:34px;height:34px;margin:-4px -2px -2px 0}
+</style>
+<style id="v7b">
+#pg1 .kv.rules{display:none!important}
+#pg1 > p.note{display:none!important}
+#buildStamp{position:fixed;bottom:4px;left:0;right:0;font-size:7.5px!important;opacity:.28!important;margin:0!important;
+  pointer-events:none;z-index:1}
+#trafficLight{font-size:7.5px!important;padding:3px 7px!important;letter-spacing:.2px!important}
+.upMeta{font-size:9px!important;color:#6f80a8!important}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -592,11 +608,11 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="4" disabled><b>4</b><i>Rig</i></button>
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
-  <div class="hud" id="hud">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div style="text-align:center;font-size:9px;letter-spacing:1.4px;color:#22e07d;opacity:.75;margin:-6px 0 10px">BUILD v6 · 2026-11-06 · INLINE NEXT</div>
+  <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v7 · 2026-11-06</div>
 
 
-  <div class="smHead" role="alert"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
+  <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
 
 
   <!-- ================= PAGE 1 · CHECKPOST ================= -->
@@ -623,24 +639,15 @@ body{padding-bottom:40px!important}
       <div class="upMeta"><span id="fileName">no image selected</span><span class="dot">·</span><span id="scanMeta">&mdash;</span></div>
 
       <p id="gateMsg" class="gateMsg">Transparent PNG character sheet upload karo — baaki matrix khud sambhal lega.</p>
-      <div class="smWarn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 9h6v6H9z"/></svg></span><p><b>Dhyan Dein:</b> Agar background wali photo daali toh system turant <b>LAL SIGNAL</b> dekar reject kar dega. Sirf <b>Transparent PNG</b> hi chalegi!</p></div>
+
       <div class="kv rules" style="margin-top:10px"><span>rules</span><b>bg · arms · legs · frame</b></div>
     </div>
     
-    <div class="smGal">
-      <div class="hd"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z"/></svg></span> Studio Inspiration Gallery</div>
-      <div class="smGalGrid">
-        <div class="smTile"><div class="fig"><svg width="34" height="50" viewBox="0 0 34 50" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="6" r="3.4"/><path d="M18 9.5V24"/><path d="M18 13l-6 5"/><path d="M18 13l6 4"/><path d="M18 24l-6.5 9"/><path d="M18 24l5.5 8"/><path d="M11.5 33l-3 1.5"/><path d="M23.5 32l3.5.6"/></svg></div><div class="nm">Pose A</div><div class="lb">Walk Dynamic Stance</div></div>
-        <div class="smTile"><div class="fig"><svg width="34" height="50" viewBox="0 0 34 50" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="22" cy="6.5" r="3"/><path d="M20.5 9.8 16 20"/><path d="M20 12l5.5 4.5"/><path d="M16 20h-5"/><path d="M9 34l7-14"/><path d="M26 34l-10-14"/><path d="M9 34h17"/><circle cx="8.5" cy="34.5" r="6"/><circle cx="26" cy="34.5" r="6"/></svg></div><div class="nm">Pose B</div><div class="lb">Cycling Pedal Loop</div></div>
-        <div class="smTile"><div class="fig"><svg width="34" height="50" viewBox="0 0 34 50" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="6.5" r="3"/><path d="M15 9.8V22"/><path d="M15 14l6 5"/><path d="M15 22h11"/><path d="M26 22v12"/><path d="M26 34h4"/><path d="M11 22h4"/><path d="M11 22v12"/><path d="M11 34h15"/></svg></div><div class="nm">Pose C</div><div class="lb">Sitting Royal Profile</div></div>
-      </div>
-      <p class="cap">Aisa banane ke liye transparent sheet upload karein.</p>
-    </div>
-
     <p class="note" style="text-align:center">Green milte hi Auto-Cut khud chalega. Red par sab kuch lock rahega.</p>
 <div class="tipBar" id="tipBar">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z"/></svg></span>
       <p>Tip: Use a front-facing character for the best results!</p>
+      <svg class="boy" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="19" fill="#0e2a4a" stroke="#fbbf24" stroke-opacity=".45"/><path d="M20 9c-4.4 0-7.4 3-7.4 7.4 0 4.4 3 8.6 7.4 8.6s7.4-4.2 7.4-8.6C27.4 12 24.4 9 20 9z" fill="#f6c9a0"/><path d="M12.4 17.2c0-4.6 3.2-8.2 7.6-8.2s7.6 3.6 7.6 8.2c-1.4-2.2-4-3.4-7.6-3.4s-6.2 1.2-7.6 3.4z" fill="#2b1b12"/><circle cx="17" cy="17" r="1.1" fill="#2b1b12"/><circle cx="23" cy="17" r="1.1" fill="#2b1b12"/><path d="M17.8 21.2c1.4 1.2 3 1.2 4.4 0" stroke="#a1583a" stroke-width="1.2" stroke-linecap="round"/><path d="M11.5 31.5c1.6-3.4 4.8-5 8.5-5s6.9 1.6 8.5 5z" fill="#ffd75e"/></svg>
     </div>
       <div class="inlineNext">
         <button class="nextBtn nxBtn " data-next="2" disabled><span class="tick">&#10003;</span>Next &rarr;</button>
@@ -1911,7 +1918,7 @@ body{padding-bottom:40px!important}
     const pg1 = document.getElementById('pg1');
     const head = document.querySelector('.smHead');
     if (!pg1 || !head) return;
-    const sync = () => { head.style.display = pg1.classList.contains('hidden') ? 'none' : ''; };
+    const sync = () => { head.style.display = 'none'; };   /* v7: red banner hata diya (reference look) */
     try { new MutationObserver(sync).observe(pg1, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
     sync();
   })();
@@ -2452,10 +2459,10 @@ body{padding-bottom:40px!important}
     const tr = typeof m.transparent === 'number' ? m.transparent : null;
     const bigEnough = App.W >= 300 && App.H >= 400;
     const rows = [
-      ['Transparent PNG', !!App.imgData && (tr === null || tr >= 0.30)],
-      ['Full body visible', !!App.cut],
-      ['Front / T-pose check', !!res && (res.light === 'READY' || res.light === 'WARNING')],
-      ['Resolution ' + (App.W ? App.W + '×' + App.H : '—'), bigEnough]
+      ['Full body image', !!App.imgData && !!App.cut],
+      ['Front view', !!res && (res.light === 'READY' || res.light === 'WARNING')],
+      ['Standing pose', !!App.cut],
+      ['Transparent PNG', !!App.imgData && (tr === null || tr >= 0.30)]
     ];
     box.innerHTML = '';
     rows.forEach((r) => {
@@ -2569,6 +2576,20 @@ body{padding-bottom:40px!important}
     /* initial upload rows */
     renderUpload(null);
     syncNextBar();
+
+    /* demo character auto-load (reference jaisa ready state) */
+    setTimeout(function () {
+      if (App.cut) return;
+      fetch('demo-character.png', { cache: 'force-cache' })
+        .then(function (r) { return r.ok ? r.blob() : null; })
+        .then(function (bl) {
+          if (!bl) return;
+          U.toast('Demo character load ho gaya — apna PNG Choose File se daalo');
+          handleFile(new File([bl], 'demo-character.png', { type: 'image/png' }));
+          setTimeout(function () { if (App.page === 2) goPage(1); }, 1500);
+        })
+        .catch(function () {});
+    }, 600);
   })();
 
   window.RIG = {
