@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T15:25Z">
+<meta name="rigbuild" content="2026-11-06T16:05Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -691,7 +691,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v15.2 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v15.3 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -1358,15 +1358,47 @@ body{padding-bottom:40px!important}
       const keys = ['head', 'torso', 'armL', 'armR', 'legL', 'legR'];
       const LABEL = { head: 'HEAD', torso: 'TORSO', armL: 'ARM L', armR: 'ARM R', legL: 'LEG L', legR: 'LEG R' };
       const Z0 = { legL: 1, legR: 1, armL: 2, armR: 2, torso: 3, head: 4 };
+      /* ---------- JOINT OVERLAP MARGIN (v15.3) ----------
+         Har piece ko padosi piece ke andar R px tak badhaya jata hai. Yani
+         arm ke canvas me shoulder ka thoda torso, torso ke canvas me shoulder
+         ka thoda arm, waist par bhi dono taraf overlap. Rotation par ye extra
+         strip ek dusre ko dhak leti hai — isliye shoulder / waist par khali
+         gap ("kapde phatna") nahi dikhta.                                   */
+      const JOINT_R = Math.max(6, Math.min(18, Math.round(bodyH * 0.014)));   /* ~12px @830px body */
+      const grown = {};
+      for (const k of keys) {
+        const m = new Uint8Array(W * H);
+        let any = false;
+        for (let y = bMinY; y <= bMaxY; y++) for (let x = bMinX; x <= bMaxX; x++) {
+          if (lab[y * W + x] === ID[k]) { m[y * W + x] = 1; any = true; }
+        }
+        if (any) {
+          for (let it = 0; it < JOINT_R; it++) {
+            const nm = m.slice();
+            for (let y = bMinY; y <= bMaxY; y++) for (let x = bMinX; x <= bMaxX; x++) {
+              const i = y * W + x;
+              if (m[i] || !lab[i]) continue;             /* sirf body pixels tak failao */
+              if ((x > 0 && m[i - 1]) || (x < W - 1 && m[i + 1]) ||
+                  (y > 0 && m[i - W]) || (y < H - 1 && m[i + W])) nm[i] = 1;
+            }
+            m.set(nm);
+          }
+        }
+        grown[k] = m;
+      }
+
       const P = {};
       for (const k of keys) P[k] = { id: k, label: LABEL[k], z: Z0[k], x0: W, y0: H, x1: -1, y1: -1, px: 0 };
 
-      for (let y = bMinY; y <= bMaxY; y++) for (let x = bMinX; x <= bMaxX; x++) {
-        const v = lab[y * W + x]; if (!v) continue;
-        const p = P[keys[v - 1]];
-        if (x < p.x0) p.x0 = x; if (x > p.x1) p.x1 = x;
-        if (y < p.y0) p.y0 = y; if (y > p.y1) p.y1 = y;
-        p.px++;
+      for (const k of keys) {
+        const m = grown[k], p = P[k];
+        for (let y = bMinY; y <= bMaxY; y++) for (let x = bMinX; x <= bMaxX; x++) {
+          const i = y * W + x;
+          if (!m[i]) continue;
+          if (x < p.x0) p.x0 = x; if (x > p.x1) p.x1 = x;
+          if (y < p.y0) p.y0 = y; if (y > p.y1) p.y1 = y;
+          if (lab[i] === ID[k]) p.px++;               /* px = asli owned pixels */
+        }
       }
 
       const out = [];
@@ -1375,8 +1407,8 @@ body{padding-bottom:40px!important}
         if (!p.px) continue;
         p.w = p.x1 - p.x0 + 1; p.h = p.y1 - p.y0 + 1;
 
-        /* canvas me 1px padding — edge bleed ke liye jagah */
-        const PAD = 1, cw = p.w + PAD * 2, chh = p.h + PAD * 2, N = cw * chh;
+        /* canvas me padding — edge bleed ke liye jagah */
+        const PAD = 2, cw = p.w + PAD * 2, chh = p.h + PAD * 2, N = cw * chh;
         const raw = Memory.makeCanvas(cw, chh);
         const rc = raw.getContext('2d', { willReadFrequently: true });
         const img = rc.createImageData(cw, chh);
@@ -1384,7 +1416,7 @@ body{padding-bottom:40px!important}
 
         for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) {
           const sx = p.x0 + x, sy = p.y0 + y;
-          if (lab[sy * W + sx] !== ID[k]) continue;
+          if (!grown[k][sy * W + sx]) continue;      /* own + joint overlap strip */
           const si = (sy * W + sx) * 4, di = ((y + PAD) * cw + (x + PAD)) * 4;
           img.data[di] = d[si]; img.data[di + 1] = d[si + 1];
           img.data[di + 2] = d[si + 2]; img.data[di + 3] = d[si + 3];
