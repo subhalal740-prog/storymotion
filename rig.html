@@ -61,6 +61,23 @@
   .layer{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:10px;border:1px solid #232329;
          background:rgba(255,255,255,.022);cursor:grab;user-select:none;transition:background .15s,border-color .15s}
   .layer:hover{background:rgba(255,255,255,.05)}
+  .layer{position:relative}
+  /* v17.7 · BAD CUT detector — galat cut wali row laal */
+  .layer.bad{border-color:#ff4d4d!important;background:rgba(255,77,77,.12)!important;
+    box-shadow:0 0 10px rgba(255,77,77,.38)!important}
+  .layer.bad .name{color:#ffb4b4}
+  .layer.bad .z{color:#ff8d8d;background:rgba(255,77,77,.12);border-color:rgba(255,77,77,.35)}
+  .badgeBad{position:absolute;top:-7px;left:20px;display:flex;align-items:center;gap:3px;
+    background:#ff4d4d;color:#fff;font-size:8px;font-weight:800;letter-spacing:.35px;
+    padding:1.5px 5px;border-radius:5px;white-space:nowrap;z-index:10;
+    box-shadow:0 2px 5px rgba(0,0,0,.5)}
+  .badgeBad svg{display:block}
+  #rigLock{display:none;margin-top:9px;padding:9px 11px;border-radius:11px;
+    border:1px solid rgba(255,77,77,.45);background:rgba(255,77,77,.10);
+    color:#ffb4b4;font-size:11px;line-height:1.55;font-weight:700}
+  #rigLock.on{display:block}
+  #rigLock b{color:#ffd0d0}
+  #toStudio:disabled{opacity:.4!important;cursor:not-allowed!important;box-shadow:none!important;filter:grayscale(.4)}
   .layer.drag{opacity:.45;border-color:rgba(37,99,235,.7);background:rgba(37,99,235,.12)}
   .layer .thumb{width:28px;height:28px;border-radius:6px;flex:0 0 28px;display:grid;place-items:center;
         background:repeating-conic-gradient(#1a1a1f 0 25%, #202027 0 50%) 0 0/8px 8px;border:1px solid #26262c;overflow:hidden}
@@ -567,7 +584,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-07T00:20Z">
+<meta name="rigbuild" content="2026-11-07T00:45Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -718,7 +735,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.6 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.7 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -846,6 +863,7 @@ body{padding-bottom:40px!important}
         </div>
         <p class="note">Row ko <b>drag</b> karo, ya <b>↑ ↓</b> se ek-ek layer aage/peeche karo. Z hamesha Z1 se Z6 ke beech, duplicate nahi — backend me turant recompute hota hai.</p>
         <button class="btn primary" id="toStudio" style="width:100%;margin-top:14px">Rig step kholo →</button>
+        <div id="rigLock" role="alert"></div>
       </div>
     </div>
   </section>
@@ -2150,6 +2168,12 @@ body{padding-bottom:40px!important}
 
   function goPage(n) {
     if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }   /* user ki navigation jeetegi */
+    /* v17.7 · galat cut ke saath Rig page par jaana band (strict lock) */
+    if (n === 4 && App.badParts && App.badParts.length && !App.badOverride) {
+      U.toast('Rig locked — ' + App.badParts.length + ' part ka cut galat hai');
+      applyRigLock(App.badParts);
+      return;
+    }
     Object.keys(PAGE_EL).forEach((k) => {
       const i = +k;
       const el = U.$(PAGE_EL[i]);
@@ -2252,15 +2276,85 @@ body{padding-bottom:40px!important}
     renderLayers();
   }
 
+  /* ---- v17.7 · CUT SIZE CHECK (2-in-1) -------------------------------------
+     Har part ka size dekho. HEAD chhod kar koi part 40px se chhota (ya patla)
+     cut hua ho -> row laal + "BAD CUT" badge + Rig button LOCK.
+     Safety: agar wo part poora limb hai (lambai body height ka >=30% aur area
+     >=6000px) to flag nahi hota — jaise "Arms Down (photo)" wale character ke
+     patle haath (29x346). Warna ek supported flow hi block ho jata.          */
+  const CUT_MIN = 40;
+  function isBadCut(p, bodyH) {
+    if (!p || p.kind === 'cloth') return false;
+    if (p.id === 'head') return false;
+    const w = p.w, h = p.h;
+    if (!(w < CUT_MIN || h < CUT_MIN)) return false;          /* 40px rule */
+    const longest = Math.max(w, h), area = w * h;
+    const fullLimb = bodyH > 0 && longest >= bodyH * 0.30 && area >= 6000;
+    return !fullLimb;
+  }
+
+  function applyRigLock(badList) {
+    const btn = U.$("toStudio");
+    const raw = !!(badList && badList.length);
+    const locked = raw && !App.badOverride;
+    if (btn) {
+      btn.disabled = locked;
+      btn.setAttribute('aria-disabled', locked ? 'true' : 'false');
+      btn.style.opacity = locked ? '0.4' : '1';
+      btn.style.cursor = locked ? 'not-allowed' : 'pointer';
+      btn.title = locked ? 'Pehle cut theek karo — Rig step locked hai' : 'Rig page kholo';
+    }
+    const note = U.$("rigLock");
+    if (note) {
+      note.classList.toggle('on', raw);
+      note.innerHTML = '';
+      if (!raw) return;
+      const t = document.createElement('span');
+      t.innerHTML = '<b>' + badList.length + ' part ka cut galat hai:</b> ' + badList.join(' · ') +
+        ' — ye 40px se chhote/patle aa gaye (adhoore cut). Poora character + saaf solid background wali ' +
+        'image dobara upload karo.';
+      note.appendChild(t);
+      const go = document.createElement('button');
+      go.type = 'button';
+      go.className = 'btn tiny ghost';
+      go.style.cssText = 'margin-top:8px;display:block';
+      go.textContent = App.badOverride ? 'Continue anyway → (already on)' : 'Continue anyway →';
+      go.disabled = !!App.badOverride;
+      go.onclick = function () {
+        App.badOverride = true;
+        applyRigLock(App.badParts || badList);
+        App.page = 0; goPage(4);          /* ab lock override ke saath khulega */
+        U.toast('Rig khul gaya — parts ka size check karke aage badho');
+      };
+      note.appendChild(go);
+    }
+  }
+
   function renderLayers() {
     const list = U.$('layerList');
     list.innerHTML = '';
     const items = Layers.order().slice().reverse();     /* top = front */
+    const bodyH = (App.cut && App.cut.bbox) ? App.cut.bbox.h : 0;
+    const badList = [];
     items.forEach((p) => {
       const row = document.createElement('div');
       row.className = 'layer';
       row.dataset.id = p.id;
       row.draggable = true;
+
+      const bad = isBadCut(p, bodyH);
+      if (bad) {
+        row.classList.add('bad');
+        badList.push(p.label + ' ' + p.w + '×' + p.h + 'px');
+        const bdg = document.createElement('span'); bdg.className = 'badgeBad';
+        const ic = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        ic.setAttribute('viewBox', '0 0 24 24'); ic.setAttribute('width', '8'); ic.setAttribute('height', '8');
+        ic.setAttribute('fill', 'currentColor');
+        ic.innerHTML = '<path d="M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V8h2v5z"/>';
+        bdg.appendChild(ic);
+        bdg.appendChild(document.createTextNode(' BAD CUT'));
+        row.appendChild(bdg);
+      }
 
       const g = document.createElement('span'); g.className = 'grab'; g.textContent = '⠿';
       const th = document.createElement('div'); th.className = 'thumb';
@@ -2303,6 +2397,8 @@ body{padding-bottom:40px!important}
       list.appendChild(row);
     });
     U.$('zMeta').textContent = 'back → front · ' + items.length + ' layers';
+    App.badParts = badList;
+    applyRigLock(badList);
   }
 
   /* drag & drop (HTML5) — pointer fallback ke saath */
@@ -2385,7 +2481,8 @@ body{padding-bottom:40px!important}
     if (App.cut) Memory.purgeAll('new upload');
     Layers.load([]);
     U.$('layerList').innerHTML = '';
-    App.cut = null; App.imgData = null;
+    App.cut = null; App.imgData = null; App.badParts = []; App.badOverride = false;
+    try { applyRigLock([]); } catch (e) {}
     (function () { const ac1 = document.getElementById('acCard1'); if (ac1) ac1.classList.remove('show'); })();
     /* v15.8: naya character = naya rig — purani animation/pose/history saaf */
     (function resetPoseForNewUpload() {
