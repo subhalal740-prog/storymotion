@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T16:35Z">
+<meta name="rigbuild" content="2026-11-06T17:05Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -691,7 +691,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v15.4 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v15.5 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -1417,16 +1417,23 @@ body{padding-bottom:40px!important}
       }
 
       const P = {};
-      for (const k of keys) P[k] = { id: k, label: LABEL[k], z: Z0[k], x0: W, y0: H, x1: -1, y1: -1, px: 0 };
+      for (const k of keys) P[k] = { id: k, label: LABEL[k], z: Z0[k], x0: W, y0: H, x1: -1, y1: -1, px: 0,
+                                     /* owned (bina overlap) bbox — PIVOT isi se banta hai */
+                                     oX0: W, oY0: H, oX1: -1, oY1: -1 };
 
       for (const k of keys) {
         const m = grown[k], p = P[k];
         for (let y = bMinY; y <= bMaxY; y++) for (let x = bMinX; x <= bMaxX; x++) {
           const i = y * W + x;
+          const owned = (lab[i] === ID[k]);
+          if (owned) {                                 /* asli joint anchor ke liye */
+            if (x < p.oX0) p.oX0 = x; if (x > p.oX1) p.oX1 = x;
+            if (y < p.oY0) p.oY0 = y; if (y > p.oY1) p.oY1 = y;
+            p.px++;
+          }
           if (!m[i]) continue;
-          if (x < p.x0) p.x0 = x; if (x > p.x1) p.x1 = x;
+          if (x < p.x0) p.x0 = x; if (x > p.x1) p.x1 = x;   /* canvas bbox (overlap ke saath) */
           if (y < p.y0) p.y0 = y; if (y > p.y1) p.y1 = y;
-          if (lab[i] === ID[k]) p.px++;               /* px = asli owned pixels */
         }
       }
 
@@ -1489,12 +1496,15 @@ body{padding-bottom:40px!important}
         if (aa !== raw) Memory.release(raw);
 
         /* pivot — shoulder / hip / neck */
+        /* PIVOT = anatomical joint, OWNED bbox se nikala jata hai (overlap strip
+           ki wajah se anchor 12px khisakna nahi chahiye).                     */
+        const ow = p.oX1 - p.oX0 + 1, oh = p.oY1 - p.oY0 + 1;
         let pivot;
-        if (k === 'head') pivot = { x: p.x0 + p.w / 2, y: p.y1 };
-        else if (k === 'torso') pivot = { x: p.x0 + p.w / 2, y: p.y1 };
-        else if (k === 'armL') pivot = { x: p.x1, y: p.y0 + p.h * 0.12 };
-        else if (k === 'armR') pivot = { x: p.x0, y: p.y0 + p.h * 0.12 };
-        else pivot = { x: p.x0 + p.w / 2, y: p.y0 };
+        if (k === 'head') pivot = { x: p.oX0 + ow / 2, y: p.oY1 };          /* neck */
+        else if (k === 'torso') pivot = { x: p.oX0 + ow / 2, y: p.oY1 };    /* hip line */
+        else if (k === 'armL') pivot = { x: p.oX1, y: p.oY0 + oh * 0.12 };  /* left shoulder */
+        else if (k === 'armR') pivot = { x: p.oX0, y: p.oY0 + oh * 0.12 };  /* right shoulder */
+        else pivot = { x: p.oX0 + ow / 2, y: p.oY0 };                       /* hip joint */
 
         out.push({
           id: k, label: LABEL[k], z: p.z, x: p.x0, y: p.y0, w: p.w, h: p.h, px: p.px,
