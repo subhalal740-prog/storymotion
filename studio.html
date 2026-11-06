@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T14:55Z">
+<meta name="rigbuild" content="2026-11-06T15:25Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -691,7 +691,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v15.1 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v15.2 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -2802,14 +2802,22 @@ body{padding-bottom:40px!important}
     const dt = Anim.last ? Math.min(0.05, (ts - Anim.last) / 1000) : 0.016;
     Anim.last = ts;
     Anim.phase += dt * Anim.speed * Math.PI * 2;      /* 1 cycle = 2π */
-    const a = Math.sin(Anim.phase) * Anim.spread;      /* legs: perfectly mirrored */
-    const fixedArms = (Anim.armMode === 'fixed');
-    const b = fixedArms ? 0 : Math.sin(Anim.phase) * Anim.armAmp;   /* arms: opposite of legs */
+    /* ---- LEGS: 180° (Math.PI) phase offset — dono pair ULTI direction me ----
+       sin(p) aur sin(p + PI) = -sin(p) → legL aur legR kabhi ek saath nahi,
+       ek aage to dusri peeche. Sign aisa ki pair BAHAR khulein, andar na takrayein. */
+    const a  = Math.sin(Anim.phase) * Anim.spread;                  /* legL */
+    const a2 = Math.sin(Anim.phase + Math.PI) * Anim.spread;         /* legR = -a (180° offset) */
+
+    /* ---- ARMS: Arm Posture button ke hisaab se rest angle ----
+       T-Pose  -> arms ko pehle neeche laao (-ARM_DOWN_LOCK), phir usi ke around swing
+       Arms Down -> rest 0° (photo character pehle se latka hua hai)             */
+    const rest = (ARM_POSTURE === 'down') ? 0 : ARM_DOWN_LOCK;
+    const swing = (Anim.armMode === 'fixed') ? 0 : Math.sin(Anim.phase) * Anim.armAmp;
     try {
       RIG.Pose.setPair({
-        legL: -a, legR: a,                              /* left/right exact mirror */
-        armL: fixedArms ? (ARM_POSTURE === 'down' ? 0 : -ARM_DOWN_LOCK) : b,
-        armR: fixedArms ? (ARM_POSTURE === 'down' ? 0 :  ARM_DOWN_LOCK) : -b,   /* arms counter-swing */
+        legL: a, legR: a2,                              /* 180° out of phase (opposite swing) */
+        armL: -rest + swing,                            /* shoulder se latakta hua + pendulum */
+        armR:  rest - swing,                            /* arms counter-swing (mirror) */
         torso: Anim.torso * (0.6 + 0.4 * Math.cos(Anim.phase * 2)),
         head: 0
       });
@@ -2912,11 +2920,8 @@ body{padding-bottom:40px!important}
     if (mode === 'swing') Anim.armAmp = ARM_SWING_AMP;
     if (!Anim.on) {   /* animation band hai to turant preview */
       try {
-        if (mode === 'fixed') {
-          const lock = ARM_POSTURE === 'down' ? 0 : ARM_DOWN_LOCK;
-          RIG.Pose.setPair({ armL: -lock, armR: lock });
-        }
-        else RIG.Pose.setPair({ armL: 0, armR: 0 });
+        const lock = ARM_POSTURE === 'down' ? 0 : ARM_DOWN_LOCK;
+        RIG.Pose.setPair({ armL: -lock, armR: lock });   /* swing ho ya fixed — rest = latki hui arm */
         RIG.Studio.render();
       } catch (e) {}
     }
@@ -2936,8 +2941,7 @@ body{padding-bottom:40px!important}
     if (!Anim.on) {
       try {
         const lock = (mode === 'down') ? 0 : ARM_DOWN_LOCK;
-        const fixed = (Anim.armMode === 'fixed');
-        RIG.Pose.setPair(fixed ? { armL: -lock, armR: lock } : { armL: 0, armR: 0 });
+        RIG.Pose.setPair({ armL: -lock, armR: lock });   /* dono posture me correct rest */
         RIG.Studio.render();
       } catch (e) {}
     }
@@ -2954,7 +2958,7 @@ body{padding-bottom:40px!important}
     if (smWalk.val) smWalk.val.textContent = this.value + '%';
     if (panel.spread) { panel.spread.value = this.value; if (panel.spreadVal) panel.spreadVal.textContent = this.value + '%'; }
     if (!Anim.on) {   /* animation band ho to static preview turant */
-      try { RIG.Pose.setPair({ legL: -Anim.spread, legR: Anim.spread }); RIG.Studio.render(); } catch (e) {}
+      try { RIG.Pose.setPair({ legL: Anim.spread, legR: -Anim.spread }); RIG.Studio.render(); } catch (e) {}
     }
   });
   if (panel.speed) panel.speed.addEventListener('input', function () {
