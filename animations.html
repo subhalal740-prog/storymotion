@@ -74,6 +74,9 @@
   .tile .up.done{color:#8af2b4;border-color:rgba(34,224,125,.42);background:rgba(34,224,125,.13)}
   .tile .art img{display:block;width:100%;height:150px;object-fit:contain;border-radius:8px}
   .tile .art video{display:block;width:100%;height:150px;object-fit:contain;border-radius:8px;background:transparent}
+  .tile .art{position:relative}
+  .tile .art canvas{display:block;height:150px;width:auto;max-width:100%;border-radius:8px}
+  .tile .art .kvSrc{position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none}
   .tile .lb .pill.vid{color:#ffd166;border-color:rgba(255,209,102,.45);background:rgba(255,209,102,.12)}
   .tile .okChip{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:999px;
     display:grid;place-items:center;background:rgba(34,224,125,.18);border:1px solid rgba(34,224,125,.5);
@@ -134,7 +137,7 @@
   <div class="grid" id="animGrid"></div>
 </div>
 
-<input type="file" id="poseFile" accept="image/*,video/*" hidden>
+<input type="file" id="poseFile" accept="video/*,image/gif,image/png,image/apng,image/jpeg,image/webp,image/*" hidden>
 <div class="cta"><button id="btnUse" disabled>Use animation</button></div>
 <div class="toast" id="toast"></div>
 
@@ -285,7 +288,7 @@
   (function restoreVideos() {
     Object.keys(UPLOADABLE).forEach(function (k) {
       idbGet('vid.' + k).then(function (blob) {
-        if (blob) { poseImg[k] = { kind: 'video', src: URL.createObjectURL(blob) }; render(); }
+        if (blob) { poseImg[k] = { kind: 'video', src: URL.createObjectURL(blob) }; renderAndMount(); }
       }).catch(function () {});
     });
   })();
@@ -293,6 +296,105 @@
   var ICO_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
                '<path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>';
   var ICO_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+
+  /* =====================================================================
+     CHROMA KEY PLAYER (v1) — green/any-flat bg wali video ko card me
+     transparent dikhata hai. Sab client-side: <video> -> canvas -> alpha.
+     Border ring se bg colour nikalta hai; agar bg uniform nahi (busy photo)
+     to key nahi karta aur normal video chala deta hai.
+     ===================================================================== */
+  var players = [];
+  function stopPlayers() { players.forEach(function (f) { try { f(); } catch (e) {} }); players = []; }
+
+  function startKey(host, video, reg) {
+    var cv = document.createElement('canvas');
+    var ctx = cv.getContext('2d', { willReadFrequently: true });
+    var off = document.createElement('canvas');
+    var octx = off.getContext('2d', { willReadFrequently: true });
+    var key = null, T = 45, keyed = false, raf = 0, dead = false, fps = 0;
+
+    video.classList.add('kvSrc');
+    host.appendChild(cv);
+
+    function sampleBorder() {
+      var vw = video.videoWidth, vh = video.videoHeight;
+      if (!vw || !vh) return false;
+      off.width = 48; off.height = Math.max(2, Math.round(48 * vh / vw));
+      octx.drawImage(video, 0, 0, off.width, off.height);
+      var d = octx.getImageData(0, 0, off.width, off.height).data;
+      var n = 0, sr = 0, sg = 0, sb = 0, y, x, i;
+      for (y = 0; y < off.height; y++) for (x = 0; x < off.width; x++) {
+        if (y > 1 && y < off.height - 2 && x > 1 && x < off.width - 2) continue;
+        i = (y * off.width + x) * 4;
+        sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; n++;
+      }
+      if (!n) return false;
+      var kr = sr / n, kg = sg / n, kb = sb / n;
+      var err = 0;
+      for (y = 0; y < off.height; y++) for (x = 0; x < off.width; x++) {
+        if (y > 1 && y < off.height - 2 && x > 1 && x < off.width - 2) continue;
+        i = (y * off.width + x) * 4;
+        err += Math.abs(d[i] - kr) + Math.abs(d[i + 1] - kg) + Math.abs(d[i + 2] - kb);
+      }
+      err = err / n;
+      key = [kr, kg, kb];
+      T = Math.max(45, Math.min(120, err * 1.5 + 35));
+      /* uniform border (err chhota) ho tabhi key karo */
+      keyed = err < 95;
+      return true;
+    }
+
+    function draw() {
+      var vw = video.videoWidth, vh = video.videoHeight;
+      if (!vw || !vh) return;
+      var w = Math.min(200, Math.max(120, Math.round(host.clientWidth || 150)));
+      var h = Math.max(2, Math.round(w * vh / vw));
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      ctx.clearRect(0, 0, w, h);
+      ctx.drawImage(video, 0, 0, w, h);
+      if (!keyed) return;
+      var img = ctx.getImageData(0, 0, w, h), d = img.data;
+      var kr = key[0], kg = key[1], kb = key[2], t1 = T, t2 = T * 1.45;
+      var greenKey = (kg > kr + 25 && kg > kb + 25);      /* green screen? -> spill suppression */
+      for (var i = 0; i < d.length; i += 4) {
+        var dm = Math.abs(d[i] - kr) + Math.abs(d[i + 1] - kg) + Math.abs(d[i + 2] - kb);
+        if (dm <= t1) { d[i + 3] = 0; continue; }
+        if (dm < t2) d[i + 3] = Math.round(d[i + 3] * (dm - t1) / (t2 - t1));
+        /* kinare par hari chamak (spill) hatao */
+        if (greenKey && dm < t2 * 2.4) {
+          var mx = (d[i] > d[i + 2] ? d[i] : d[i + 2]) + 6;
+          if (d[i + 1] > mx) d[i + 1] = mx;
+        }
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    function tick() {
+      if (dead) return;
+      if (video.readyState >= 2) {
+        if (!key && !sampleBorder()) { raf = requestAnimationFrame(tick); return; }
+        draw();
+      }
+      raf = requestAnimationFrame(tick);
+    }
+
+    /* autoplay block ho jaye to pehle tap par chalao */
+    var p = video.play && video.play();
+    if (p && p.catch) p.catch(function () {});
+
+    raf = requestAnimationFrame(tick);
+    reg(function () { dead = true; cancelAnimationFrame(raf); });
+  }
+
+  function mountMedia() {
+    stopPlayers();
+    [].forEach.call(grid.querySelectorAll('.art'), function (host) {
+      var v = host.querySelector('video');
+      if (!v) return;
+      if (host.getAttribute('data-key') !== '1') return;   /* built-in clip: key ki zarurat nahi */
+      startKey(host, v, function (stop) { players.push(stop); });
+    });
+  }
 
   function openPicker(anim) {
     pendingAnim = anim;
@@ -333,13 +435,24 @@
     var anim = pendingAnim; pendingAnim = null;
     var nm = (ANIMS.filter(function (x) { return x.id === anim; })[0] || {}).name || anim;
 
+    /* GIF / APNG: original blob hi rakho (canvas se shrink kiya to animation mar jaati hai) */
+    if (f.type === 'image/gif' || f.type === 'image/apng') {
+      idbPut('vid.' + anim, f).then(function () {
+        poseImg[anim] = { kind: 'gif', src: URL.createObjectURL(f) };
+        try { localStorage.removeItem('hilao.pose.' + anim); } catch (e) {}
+        renderAndMount();
+        showToast(nm + ' ' + (f.type === 'image/gif' ? 'GIF' : 'APNG') + ' set · loop chalega');
+      }).catch(function () { showToast('GIF save nahi hui — dobara try karo'); });
+      return;
+    }
+
     /* VIDEO: seedha blob IDB me (localStorage me nahi) */
     if ((f.type || '').indexOf('video') === 0) {
       if (f.size > 24 * 1024 * 1024) { showToast('Video 24 MB se badi hai — chhoti clip lo'); return; }
       idbPut('vid.' + anim, f).then(function () {
         poseImg[anim] = { kind: 'video', src: URL.createObjectURL(f) };
         try { localStorage.removeItem('hilao.pose.' + anim); } catch (e) {}
-        render();
+        renderAndMount();
         showToast(nm + ' video set · gallery se aa gayi');
       }).catch(function () { showToast('Video save nahi hui — dobara try karo'); });
       return;
@@ -350,7 +463,7 @@
       idbDel('vid.' + anim).catch(function () {});
       poseImg[anim] = { kind: 'image', src: data };
       try { localStorage.setItem('hilao.pose.' + anim, data); } catch (e) {}
-      render();
+      renderAndMount();
       var a = ANIMS.filter(function (x) { return x.id === anim; })[0];
       showToast((a ? a.name : anim) + ' image set · gallery se aa gayi');
     });
@@ -380,13 +493,14 @@
       var pv = poseImg[a.id];                                  /* user ka upload (image/video) */
       var vidSrc = pv && pv.kind === 'video' ? pv.src : (a.video || '');   /* built-in video bhi */
       var hasVid = !!vidSrc;
+      var upVid = !!(pv && pv.kind === 'video');
       var art = hasVid
-        ? '<video autoplay muted loop playsinline preload="auto" webkit-playsinline>' +
-          (a.video && !(pv && pv.kind === 'video')
+        ? '<video autoplay muted loop playsinline preload="auto" webkit-playsinline' + (upVid ? ' data-key="1"' : '') + '>' +
+          (a.video && !upVid
             ? '<source src="' + a.video + '" type="video/webm"><source src="' + (a.video2 || '') + '" type="video/mp4">'
             : '<source src="' + vidSrc + '">') +
           '</video>'
-        : (pv ? '<img src="' + pv.src + '" alt="' + a.name + ' uploaded image">' : puppet(a.pose, view));
+        : (pv ? '<img src="' + pv.src + '" alt="' + a.name + ' uploaded media">' : puppet(a.pose, view));
       var up = UPLOADABLE[a.id]
         ? '<button class="up' + ((pv || hasVid) ? ' done' : '') + '" data-up="' + a.id + '" type="button" ' +
           'aria-label="' + ((pv || hasVid) ? 'Change ' : 'Upload ') + a.name + ' image or video from gallery">' +
@@ -398,10 +512,12 @@
       var pillTxt = hasVid ? 'VIDEO' : (view === 'front' ? 'FRONT' : view === 'q34f' ? '3/4 F' : '3/4 B');
       var pillCls = hasVid ? 'pill vid' : 'pill';
       return '<div class="tile' + (picked === a.id ? ' on' : '') + '" data-anim="' + a.id + '" role="button" tabindex="0" ' +
-        'aria-label="' + a.name + '">' + chip + '<div class="art">' + art + '</div>' +
+        'aria-label="' + a.name + '">' + chip + '<div class="art"' + (upVid ? ' data-key="1"' : '') + '>' + art + '</div>' +
         '<div class="lb"><span>' + a.name + '</span><span class="' + pillCls + '">' + pillTxt + '</span></div>' + up + '</div>';
     }).join('');
   }
+
+  function renderAndMount() { render(); mountMedia(); }
 
   grid.addEventListener('click', function (e) {
     /* Upload button -> gallery; tick chip -> image hatao. Dono par tile select NA ho. */
@@ -421,7 +537,7 @@
       delete poseImg[id];
       try { localStorage.removeItem('hilao.pose.' + id); } catch (err) {}
       idbDel('vid.' + id).catch(function () {});
-      render();
+      renderAndMount();
       showToast(id + ' media hata diya');
       return;
     }
@@ -430,14 +546,14 @@
     var a = ANIMS.filter(function (x) { return x.id === picked; })[0];
     useBtn.disabled = false;
     useBtn.textContent = 'Use “' + a.name + '” →';
-    render();
+    renderAndMount();
   });
 
   document.getElementById('viewTabs').addEventListener('click', function (e) {
     var t = e.target.closest('.tab'); if (!t) return;
     view = t.dataset.view;
     [].forEach.call(this.querySelectorAll('.tab'), function (b) { b.classList.toggle('on', b === t); });
-    render();
+    renderAndMount();
   });
 
   search.addEventListener('input', render);
@@ -478,7 +594,7 @@
     e.preventDefault(); el.click();
   });
 
-  render();
+  renderAndMount();
 })();
 </script>
 </body>
