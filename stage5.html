@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T10:05Z">
+<meta name="rigbuild" content="2026-11-06T10:35Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -574,6 +574,37 @@ body{padding-bottom:40px!important}
   pointer-events:none;z-index:1}
 #trafficLight{font-size:7.5px!important;padding:3px 7px!important;letter-spacing:.2px!important}
 .upMeta{font-size:9px!important;color:#6f80a8!important}
+</style>
+<style id="v8ref">
+.chooseBtn{display:inline-flex!important;width:auto!important;min-width:0!important;
+  margin:14px auto 0!important;padding:0 30px!important;height:44px!important;font-size:14px!important;
+  border-radius:22px!important;box-shadow:0 8px 18px -8px rgba(47,123,255,.9),inset 0 1px 0 rgba(255,255,255,.3)!important}
+.upCard{text-align:center}
+.upRow{text-align:left}
+.upPrev{background:repeating-conic-gradient(#e9eef7 0 25%,#ffffff 0 50%) 0 0/12px 12px!important;
+  border:1px solid rgba(150,175,215,.55)!important}
+.upPrev span{color:#9aa9c4!important}
+#trafficLight{display:none!important}
+#pg1 .upMeta{display:none!important}
+#buildStamp{display:none!important}
+#pg1 .note{display:none!important}
+#acCard1{margin-bottom:0!important}
+#pg1 .tipBar{margin-top:14px}
+#pg1 .inlineNext{margin-top:12px}
+#partGrid1 .partCard .ph{height:52px}
+#partGrid1 .partCard canvas{max-height:48px}
+#partGrid1 .partCard .nm{font-size:7.6px}
+</style>
+
+<style id="v8b">
+[data-partgrid]{display:grid!important;grid-template-columns:repeat(6,1fr)!important;gap:5px!important;margin-top:12px}
+[data-partgrid] .partCard{padding:4px 3px 5px!important;border-radius:10px!important}
+[data-partgrid] .partCard .ph{height:52px!important;border-radius:7px!important}
+[data-partgrid] .partCard canvas{max-height:48px!important}
+[data-partgrid] .partCard .nm{font-size:7.4px!important;letter-spacing:0!important;margin-top:4px!important;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-partgrid] .partCard .ok{width:13px!important;height:13px!important;font-size:8px!important;top:-4px!important;right:-4px!important}
+@media(max-width:400px){[data-partgrid] .partCard .nm{font-size:6.6px!important}}
 </style>
 </head>
 <body>
@@ -609,7 +640,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v7 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v8 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -644,6 +675,21 @@ body{padding-bottom:40px!important}
     </div>
     
     <p class="note" style="text-align:center">Green milte hi Auto-Cut khud chalega. Red par sab kuch lock rahega.</p>
+
+    <div class="card acCard" id="acCard1" style="margin-top:14px">
+      <div class="acHead">
+        <span class="acIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.6 15.4"/><path d="M8.6 8.6 20 20"/></svg></span>
+        <div class="acTT"><h3>Auto-Cut</h3><p id="acSub1">6 Body Parts Extracted Successfully</p></div>
+        <span class="acOk off" id="acOk1">&#10003;</span>
+      </div>
+      <div class="partGrid" id="partGrid1" data-partgrid="1"></div>
+      <div class="iconRow">
+        <button class="icoAct" id="btnMirrorFlip3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h9a3.5 3.5 0 0 1 0 7H9"/><path d="M6.6 5.4 4 8l2.6 2.6"/><path d="M4 16h9a3.5 3.5 0 0 0 0-7H9"/><path d="M6.6 13.4 4 16l2.6 2.6"/></svg> Mirror Flip</button>
+        <button class="icoAct" id="btnEditPos3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><circle cx="12" cy="12" r="3.2"/></svg> Edit Position</button>
+        <button class="icoAct" id="btnPreview3"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5.5v13l11-6.5z"/></svg> Preview</button>
+      </div>
+    </div>
+
 <div class="tipBar" id="tipBar">
       <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6v.5h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3Z"/></svg></span>
       <p>Tip: Use a front-facing character for the best results!</p>
@@ -666,7 +712,7 @@ body{padding-bottom:40px!important}
         <span class="acOk off" id="acOk">&#10003;</span>
         <span class="pill" id="partPill" style="display:none">6/6</span>
       </div>
-      <div class="partGrid" id="partGrid"></div>
+      <div class="partGrid" id="partGrid" data-partgrid="2"></div>
       <div class="scrollHint" id="scrollHint">
         <span class="arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v13"/><path d="M6.5 12.5 12 18l5.5-5.5"/></svg></span>
         <span>Scroll down to verify / adjust Z-Index Layer order before going Next</span>
@@ -2090,17 +2136,18 @@ body{padding-bottom:40px!important}
 
   /* ---------- STEP 2: 6 body part cards ---------- */
   function renderParts() {
-    const grid = U.$('partGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
+    const grids = Array.prototype.slice.call(document.querySelectorAll('[data-partgrid]'));
+    if (!grids.length) return;
+    grids.forEach((g) => { g.innerHTML = ''; });
     if (!App.cut) return;
     let found = 0;
+    grids.forEach((grid, gi) => {
     PART_LIST.forEach((spec) => {
       const p = pieceById(spec.id);
       const card = document.createElement('div');
       card.className = 'partCard';
       const ph = document.createElement('div'); ph.className = 'ph';
-      if (p) { ph.appendChild(thumbCanvas(p, 56)); found++; }
+      if (p) { ph.appendChild(thumbCanvas(p, 56)); if (gi === 0) found++; }
       else { ph.textContent = ''; }
       const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = spec.name;
       card.appendChild(ph); card.appendChild(nm);
@@ -2108,11 +2155,14 @@ body{padding-bottom:40px!important}
       card.onclick = () => { goPage(3); selectPart(spec.id); };
       grid.appendChild(card);
     });
+    });
     const pill = U.$('partPill');
     if (pill) pill.textContent = found + '/6 PARTS';
-    const okb = U.$('acOk'), sub = U.$('acSub');
-    if (okb) okb.classList.toggle('off', found < 6);
-    if (sub) sub.textContent = found + ' Body Part' + (found === 1 ? '' : 's') + ' Extracted Successfully';
+    ['', '1'].forEach((sfx) => {
+      const okb = U.$('acOk' + sfx), sub = U.$('acSub' + sfx);
+      if (okb) okb.classList.toggle('off', found < 6);
+      if (sub) sub.textContent = found + ' Body Part' + (found === 1 ? '' : 's') + ' Extracted Successfully';
+    });
   }
 
   /* ---------- STEP 3: position stage ---------- */
@@ -2558,7 +2608,12 @@ body{padding-bottom:40px!important}
       catch (e) { U.toast(url); }
     });
     /* step 2 icon row */
-    if (q('btnMirrorFlip2')) q('btnMirrorFlip2').addEventListener('click', mirrorFlip);
+    ['btnMirrorFlip2','btnMirrorFlip3'].forEach((id) => { if (q(id)) q(id).addEventListener('click', mirrorFlip); });
+    ['btnPreview2','btnPreview3'].forEach((id) => { if (q(id)) q(id).addEventListener('click', openPreview); });
+    ['btnEditPos2','btnEditPos3'].forEach((id) => { if (q(id)) q(id).addEventListener('click', function () {
+      if (!App.cut) { U.toast('Pehle character cut karo'); return; }
+      goPage(3); setTimeout(function () { if (!V4.sel) selectPart('head'); U.toast('Part ko drag karo ya arrows dabao'); }, 120);
+    }); });
     if (q('btnPreview2')) q('btnPreview2').addEventListener('click', openPreview);
     if (q('btnEditPos2')) q('btnEditPos2').addEventListener('click', () => {
       if (!App.cut) { U.toast('Pehle character cut karo'); return; }
