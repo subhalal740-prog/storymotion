@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T19:00Z">
+<meta name="rigbuild" content="2026-11-06T19:30Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -664,6 +664,17 @@ body{padding-bottom:40px!important}
 .pgBack:active{transform:translateY(1px);background:rgba(255,255,255,.12)}
 .pgBack svg{width:11px;height:11px}
 </style>
+<style id="v16short">
+/* v16.0: chhoti screen (<=720px height) — Quick Pose buttons bina scroll ke fit */
+@media (max-height:720px){
+  #studioWrap{max-height:32vh!important}
+  .qpRow .qp{padding:10px 4px!important;font-size:12px!important}
+  .qp.stop{padding:0!important}
+  .qpWrap{margin-top:6px!important;padding-top:6px!important}
+  .smWalk{padding:10px 11px 2px!important}
+  .smArm{margin-top:8px!important}
+}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -698,7 +709,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v15.9 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v16.0 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
