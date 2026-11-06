@@ -590,7 +590,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-07T02:55Z">
+<meta name="rigbuild" content="2026-11-07T05:05Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -741,7 +741,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v18.1 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v18.2 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -1518,14 +1518,17 @@ body{padding-bottom:40px!important}
       sil = c(sil * 2); hair = c(hair * 2); toe = c(toe * 2);
       /* Note: silhouette aur baal dono PEEECHE ki taraf mass badhate hain,
          isliye facing = ULTI sign. Panje seedha aage ka signal dete hain. */
-      const score = -0.45 * sil - 0.35 * hair + 0.20 * toe;
+      /* v18.3: side-view me baal ka signal sabse bharosemand hota hai (silhouette
+         kai baar kamzor), isliye hair ka weight badhaya aur threshold 0.10 kiya —
+         warna asli side-view photo "front" pakdi jaati thi. */
+      const score = -0.30 * sil - 0.50 * hair + 0.12 * toe;
       /* front view par teeno signal ~0 aate hain -> threshold se neeche = "front"
          (purana behaviour, koi direction change nahi) */
-      const TH = 0.12;
+      const TH = 0.10;
       const dir = score > TH ? 1 : score < -TH ? -1 : 1;
       const mode = Math.abs(score) <= TH ? 'front' : (dir > 0 ? 'right' : 'left');
       /* confidence: kitne signal ek hi taraf bol rahe hain (0..1) */
-      const parts = [-0.45 * sil, -0.35 * hair, 0.20 * toe].filter((v) => Math.abs(v) > 0.02);
+      const parts = [-0.30 * sil, -0.50 * hair, 0.12 * toe].filter((v) => Math.abs(v) > 0.02);
       const agree = parts.filter((v) => Math.sign(v) === Math.sign(score)).length;
       return { dir, mode, score: +score.toFixed(3),
                conf: parts.length ? +(agree / parts.length).toFixed(2) : 0,
@@ -2826,7 +2829,42 @@ body{padding-bottom:40px!important}
       return;
     }
 
-    const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+    let W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+
+    /* ---- v18.2 · AUTO-UPSCALE -------------------------------------------------
+       Pehle chhoti images (jaise 626×1173 ya 720×1284) seedha REJECT ho jati thin
+       ("kam se kam 800×1000 chahiye"). Ab unhe khud upscale kar dete hain —
+       cut geometry resolution se independent hai, isliye quality par asar nahi.
+       Bahut chhoti (< 300px) image par hi reject karte hain.                     */
+    const MIN_W = 800, MIN_H = 1000, MAX_SIDE = 2400;
+    let scaleNote = '';
+    if (W < MIN_W || H < MIN_H) {
+      const biggest = Math.max(W, H);
+      if (biggest < 300) {
+        setLight('rejected', '🚫 Image bahut chhoti hai (' + W + '×' + H + ') — itni chhoti image se cut saaf nahi aayega. Kam se kam 300px chahiye.',
+                 W + '×' + H);
+        Memory.purgeAll('too small'); hud(); return;
+      }
+      let k = Math.max(MIN_W / W, MIN_H / H);
+      if (biggest * k > MAX_SIDE) k = MAX_SIDE / biggest;
+      const W2 = Math.max(1, Math.round(W * k)), H2 = Math.max(1, Math.round(H * k));
+      const up = Memory.makeCanvas(W2, H2);
+      const uc = up.getContext('2d', { willReadFrequently: true });
+      uc.imageSmoothingEnabled = true; uc.imageSmoothingQuality = 'high';
+      uc.drawImage(img, 0, 0, W2, H2);
+      scaleNote = ' · ' + W + '×' + H + ' → ' + W2 + '×' + H2 + ' upscale';
+      W = W2; H = H2;
+      const work = up;
+      let data2;
+      try { data2 = uc.getImageData(0, 0, W, H); }
+      catch (e) {
+        setLight('failed', '❌ Canvas tainted — same-origin image chuno.');
+        Memory.release(work); Memory.purgeAll('tainted'); hud(); return;
+      }
+      Memory.release(work);
+      return finishLoad(data2, W, H, scaleNote);
+    }
+
     const work = Memory.makeCanvas(W, H);
     const wc = work.getContext('2d', { willReadFrequently: true });
     wc.imageSmoothingEnabled = true; wc.imageSmoothingQuality = 'high';
@@ -2838,7 +2876,11 @@ body{padding-bottom:40px!important}
       Memory.release(work); Memory.purgeAll('tainted'); hud(); return;
     }
     Memory.release(work);
+    return finishLoad(data, W, H, '');
+  }
 
+  /* v18.2 · upscale ke baad (ya seedha) yeh saara pipeline chalta hai */
+  function finishLoad(data, W, H, scaleNote) {
     /* ---- v17.5 · SOLID BACKGROUND AUTO-REMOVE (client-side chroma key, no API) ----
        Gallery se image aayi -> border se bg colour detect -> flood-fill key -> transparent.
        Solid background nahi mila to yahin REJECT (kharab image par aage kuch nahi hota). */
@@ -2855,12 +2897,12 @@ body{padding-bottom:40px!important}
     if (bgRes.removed) {
       const m = bgRes.meta;
       U.toast('Background removed (' + m.mode + ') · ' + m.clearedPct + '% clear · ' + m.keepPct + '% character');
-      Memory.release(work);
     }
+    if (scaleNote) U.toast('Image upscale ki gayi' + scaleNote);
 
     const res = Gate.run(data, W, H);
     const kind = res.light === 'READY' ? 'ready' : res.light === 'WARNING' ? 'warning' : 'rejected';
-    setLight(kind, res.msg, W + '×' + H + ' · ' + JSON.stringify(res.metrics));
+    setLight(kind, res.msg, W + '×' + H + (scaleNote || '') + ' · ' + JSON.stringify(res.metrics));
 
     if (!res.ok) { Memory.purgeAll('gate failed'); hud(); return; }
 
@@ -2904,7 +2946,7 @@ body{padding-bottom:40px!important}
       ? '🎯 BG removed (' + bgRes.meta.mode + ') ' + bgRes.meta.hex + ' · ' + bgRes.meta.clearedPct + '% clear · '
       : '';
     setLight(kind, res.msg + (res.light === 'WARNING' ? ' (cut allowed)' : ' · 6 pieces cut in ' + cut.meta.ms + ' ms'),
-             bgTag + W + '×' + H + ' · ' + cut.pieces.length + ' pieces · ' + cut.meta.coverage + '% coverage');
+             bgTag + W + '×' + H + (scaleNote || '') + ' · ' + cut.pieces.length + ' pieces · ' + cut.meta.coverage + '% coverage');
     try { v4AfterCut(res); } catch (e) {}
     if (res.light === 'READY') {
       if (autoTimer) clearTimeout(autoTimer);
