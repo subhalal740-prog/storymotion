@@ -253,7 +253,9 @@ openTool('walk');   /* = ✋ चलाओ — putla + joint rings + naap (khulte
 <script id="smNavJS">(function(){
   var b=document.getElementById('smBack'); if(!b) return;
   b.addEventListener('click',function(){
-    if(window.history.length>1){ try{ window.history.back(); return; }catch(e){} }
+    var ref=''; try{ ref=document.referrer||''; }catch(e){}
+    var same=false; try{ same=ref.indexOf(location.host)>=0; }catch(e){}
+    if(same && window.history.length>1){ try{ window.history.back(); return; }catch(e){} }
     location.href='index.html';
   });
 })();</script>
