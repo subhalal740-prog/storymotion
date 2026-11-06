@@ -63,6 +63,20 @@
   .tile .lb .pill{font-size:8.5px;font-weight:800;letter-spacing:.8px;padding:4px 7px;border-radius:999px;
     color:#9aa3ad;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08)}
   .tile.on .lb .pill{color:#9fc4ff;border-color:rgba(77,141,255,.45);background:rgba(77,141,255,.14)}
+
+  /* ---------- per-card Upload (v1) ---------- */
+  .tile .up{display:inline-flex;align-items:center;gap:5px;margin-top:8px;padding:6px 9px 6px 7px;
+    border-radius:9px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.11);
+    color:#cfd3d8;font:800 10px/1 inherit;letter-spacing:.4px;cursor:pointer;
+    white-space:nowrap;-webkit-tap-highlight-color:transparent}
+  .tile .up svg{width:12px;height:12px;flex:0 0 12px}
+  .tile .up:active{background:rgba(255,255,255,.15)}
+  .tile .up.done{color:#8af2b4;border-color:rgba(34,224,125,.42);background:rgba(34,224,125,.13)}
+  .tile .art img{display:block;width:100%;height:150px;object-fit:contain;border-radius:8px}
+  .tile .okChip{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:999px;
+    display:grid;place-items:center;background:rgba(34,224,125,.18);border:1px solid rgba(34,224,125,.5);
+    color:#7bf0ae;cursor:pointer}
+  .tile .okChip svg{width:11px;height:11px}
   .empty{grid-column:1/-1;text-align:center;color:#7c848d;font-size:13px;padding:30px 10px}
 
   /* ---------- sticky CTA ---------- */
@@ -118,6 +132,7 @@
   <div class="grid" id="animGrid"></div>
 </div>
 
+<input type="file" id="poseFile" accept="image/*" hidden>
 <div class="cta"><button id="btnUse" disabled>Use animation</button></div>
 <div class="toast" id="toast"></div>
 
@@ -209,6 +224,72 @@
   ];
 
 
+  /* ---------- per-card UPLOAD (gallery se image) ----------
+     Idle aur Walk cards par chhota Upload button. Tap -> gallery/file picker khulta hai,
+     image chhoti (max 480px) karke localStorage me save hoti hai aur card ka artwork
+     ban jaati hai. Tap-only, dummy nahi: image turant card me dikhti hai + reload par bhi rehti hai. */
+  var UPLOADABLE = { idle: 1, walk: 1 };
+  var poseImg = {};
+  try {
+    Object.keys(UPLOADABLE).forEach(function (k) {
+      var v = localStorage.getItem('hilao.pose.' + k);
+      if (v) poseImg[k] = v;
+    });
+  } catch (e) {}
+  var pendingAnim = null;
+  var poseFile = document.getElementById('poseFile');
+
+  var ICO_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' +
+               '<path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>';
+  var ICO_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+
+  function openPicker(anim) {
+    pendingAnim = anim;
+    try { poseFile.value = ''; } catch (e) {}
+    poseFile.click();
+  }
+
+  /* gallery image -> max 480px -> dataURL (storage bachane ke liye) */
+  function shrink(file, cb) {
+    var fr = new FileReader();
+    fr.onload = function () {
+      var im = new Image();
+      im.onload = function () {
+        var MAX = 480;
+        var k = Math.min(1, MAX / Math.max(im.width, im.height));
+        var w = Math.max(1, Math.round(im.width * k)), h = Math.max(1, Math.round(im.height * k));
+        var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        var cx = cv.getContext('2d');
+        cx.imageSmoothingQuality = 'high';
+        cx.drawImage(im, 0, 0, w, h);
+        var out = '';
+        try { out = cv.toDataURL('image/webp', 0.85); } catch (e) {}
+        if (!out || out.indexOf('data:image/webp') !== 0) {
+          try { out = cv.toDataURL('image/png'); } catch (e) { out = ''; }
+        }
+        cb(out || '');
+      };
+      im.onerror = function () { cb(''); };
+      im.src = fr.result;
+    };
+    fr.onerror = function () { cb(''); };
+    fr.readAsDataURL(file);
+  }
+
+  poseFile.addEventListener('change', function () {
+    var f = poseFile.files && poseFile.files[0];
+    if (!f || !pendingAnim) return;
+    var anim = pendingAnim; pendingAnim = null;
+    shrink(f, function (data) {
+      if (!data) { showToast('Image padhi nahi ja saki — doosri try karo'); return; }
+      poseImg[anim] = data;
+      try { localStorage.setItem('hilao.pose.' + anim, data); } catch (e) {}
+      render();
+      var a = ANIMS.filter(function (x) { return x.id === anim; })[0];
+      showToast((a ? a.name : anim) + ' image set · gallery se aa gayi');
+    });
+  });
+
   var view = 'front';
   var picked = null;
   var grid = document.getElementById('animGrid');
@@ -230,13 +311,42 @@
       return;
     }
     grid.innerHTML = list.map(function (a) {
+      var img = poseImg[a.id];
+      var art = img
+        ? '<img src="' + img + '" alt="' + a.name + ' uploaded image">'
+        : puppet(a.pose, view);
+      var up = UPLOADABLE[a.id]
+        ? '<button class="up' + (img ? ' done' : '') + '" data-up="' + a.id + '" type="button" ' +
+          'aria-label="' + (img ? 'Change ' : 'Upload ') + a.name + ' image from gallery">' +
+          ICO_UP + '<span>' + (img ? 'Change' : 'Upload') + '</span></button>'
+        : '';
+      var chip = (UPLOADABLE[a.id] && img)
+        ? '<span class="okChip" data-clear="' + a.id + '" role="button" tabindex="0" aria-label="Remove uploaded ' + a.name + ' image">' + ICO_OK + '</span>'
+        : '';
       return '<div class="tile' + (picked === a.id ? ' on' : '') + '" data-anim="' + a.id + '" role="button" tabindex="0" ' +
-        'aria-label="' + a.name + '"><div class="art">' + puppet(a.pose, view) + '</div>' +
-        '<div class="lb"><span>' + a.name + '</span><span class="pill">' + (view === 'front' ? 'FRONT' : view === 'q34f' ? '3/4 F' : '3/4 B') + '</span></div></div>';
+        'aria-label="' + a.name + '">' + chip + '<div class="art">' + art + '</div>' +
+        '<div class="lb"><span>' + a.name + '</span><span class="pill">' + (view === 'front' ? 'FRONT' : view === 'q34f' ? '3/4 F' : '3/4 B') + '</span></div>' + up + '</div>';
     }).join('');
   }
 
   grid.addEventListener('click', function (e) {
+    /* Upload button -> gallery; tick chip -> image hatao. Dono par tile select NA ho. */
+    var up = e.target.closest('.up');
+    if (up) {
+      e.preventDefault(); e.stopPropagation();
+      openPicker(up.dataset.up);
+      return;
+    }
+    var cl = e.target.closest('.okChip');
+    if (cl) {
+      e.preventDefault(); e.stopPropagation();
+      var id = cl.dataset.clear;
+      delete poseImg[id];
+      try { localStorage.removeItem('hilao.pose.' + id); } catch (err) {}
+      render();
+      showToast(id + ' image hata di');
+      return;
+    }
     var t = e.target.closest('.tile'); if (!t) return;
     picked = t.dataset.anim;
     var a = ANIMS.filter(function (x) { return x.id === picked; })[0];
@@ -286,8 +396,8 @@
   /* keyboard access */
   grid.addEventListener('keydown', function (e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    var t = e.target.closest('.tile'); if (!t) return;
-    e.preventDefault(); t.click();
+    var el = e.target.closest('.up, .okChip, .tile'); if (!el) return;
+    e.preventDefault(); el.click();
   });
 
   render();
