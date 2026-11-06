@@ -558,6 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
+<meta name="rigbuild" content="2026-11-06T09:10Z">
 </head>
 <body>
 <div class="wrap">
@@ -2839,5 +2840,21 @@ body{padding-bottom:40px!important}
   <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>
   <span>HOME</span>
 </a>
+
+<script id="selfUpdate">
+(function(){
+  var BUILD = document.querySelector('meta[name="rigbuild"]').content;
+  function bust(){ var u = location.href.replace(/[?&]t=\d+/,''); u += (u.indexOf('?')<0?'?':'&')+'t='+Date.now(); location.replace(u); }
+  function check(){
+    fetch('version.json?t='+Date.now(), {cache:'no-store'})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if (d && d.v && d.v !== BUILD) { document.documentElement.setAttribute('data-newbuild','1'); bust(); } })
+      .catch(function(){});
+  }
+  setTimeout(check, 1200);
+  setInterval(check, 45000);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden) check(); });
+})();
+</script>
 </body>
 </html>
