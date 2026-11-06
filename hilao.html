@@ -1976,4 +1976,270 @@ boot();
   }, false);
 })();
 </script>
+<script id="smBgAnimJS">
+/* =========================================================================
+   smBgAnimJS v2 — Puppets page (animations.html) se chuna hua animation
+   editor ke BACKGROUND layer me render karta hai.
+
+   Kaam:
+   1. localStorage['hilao.sel'] padho (puppets page wahan save karta hai:
+      asset source (URL / dataURL / IndexedDB blob) + character id + view).
+   2. Asset resolve karo — image / GIF / SVG / video (IndexedDB se blob).
+   3. Chroma key: border ring se bg colour, uniform ho to hata do
+      (green screen -> transparent), feather + spill suppression ke saath.
+   4. #preview (WebGL) ke upar, #overlay (rings) ke neeche ek canvas layer
+      me draw karo — stage ke bottom par anchor, contain fit.
+   5. Chhota chip "BG · Walk" + ✕ (hatane ke liye). Sab client-side.
+   ========================================================================= */
+(function () {
+  'use strict';
+
+  var KEY = 'hilao.sel';
+  var sel = null;
+  try { sel = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { sel = null; }
+  if (!sel || !sel.media || !sel.media.kind) return;
+
+  var canvas = null, ctx = null, raf = 0, dead = false;
+  var video = null, imgEl = null, objUrl = '';
+  var key = null, T = 45, keyed = false, sampled = false, sampleTries = 0;
+  var mediaW = 0, mediaH = 0;
+
+  /* ---------- helpers ---------- */
+  function idbGet(k) {
+    return new Promise(function (res, rej) {
+      var r = indexedDB.open('hilao-pose', 1);
+      r.onupgradeneeded = function () { try { r.result.createObjectStore('blobs'); } catch (e) {} };
+      r.onsuccess = function () {
+        var db = r.result;
+        if (!db.objectStoreNames.contains('blobs')) { res(null); return; }
+        var t = db.transaction('blobs', 'readonly'), q = t.objectStore('blobs').get(k);
+        q.onsuccess = function () { res(q.result || null); };
+        q.onerror = function () { res(null); };
+      };
+      r.onerror = function () { res(null); };
+    });
+  }
+
+  function note(msg, ms) {
+    var t = document.querySelector('.toast');
+    if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(note._t); note._t = setTimeout(function () { t.classList.remove('show'); }, ms || 2200);
+  }
+
+  /* ---------- chroma key engine ---------- */
+  function sampleKey(src) {
+    var off = document.createElement('canvas');
+    var w = 48, h = Math.max(2, Math.round(48 * (mediaH / mediaW || 1)));
+    off.width = w; off.height = h;
+    var o = off.getContext('2d', { willReadFrequently: true });
+    try { o.drawImage(src, 0, 0, w, h); } catch (e) { return false; }
+    var d = o.getImageData(0, 0, w, h).data;
+    var n = 0, sr = 0, sg = 0, sb = 0, x, y, i;
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+      if (y > 1 && y < h - 2 && x > 1 && x < w - 2) continue;
+      i = (y * w + x) * 4; sr += d[i]; sg += d[i + 1]; sb += d[i + 2]; n++;
+    }
+    if (!n) return false;
+    var kr = sr / n, kg = sg / n, kb = sb / n, err = 0;
+    for (y = 0; y < h; y++) for (x = 0; x < w; x++) {
+      if (y > 1 && y < h - 2 && x > 1 && x < w - 2) continue;
+      i = (y * w + x) * 4;
+      err += Math.abs(d[i] - kr) + Math.abs(d[i + 1] - kg) + Math.abs(d[i + 2] - kb);
+    }
+    err = err / n;
+    return { avg: [kr, kg, kb], err: err, bright: (kr + kg + kb) / 3 };
+  }
+
+  /* blank/black frame par key nahi lagate — tab tak retry */
+  function trySample() {
+    var now = (window.performance && performance.now) ? performance.now() : Date.now();
+    if (now - trySample._last < 120) return false;
+    trySample._last = now;
+    if (video.readyState < 3) return false;
+    var r = sampleKey(video);
+    if (!r) return false;
+    if (r.bright < 12) return false;                 /* khaali frame */
+    sampleTries++;
+    if (r.err < 95) {
+      key = r.avg;
+      T = Math.max(45, Math.min(120, r.err * 1.5 + 35));
+      keyed = true; sampled = true; return true;
+    }
+    if (sampleTries >= 8) {                          /* busy/photo bg — key nahi */
+      key = null; keyed = false; sampled = true;
+    }
+    return false;
+  }
+  trySample._last = 0;
+
+  function drawFrame() {
+    if (!canvas || !ctx) return;
+    if (!mediaW || !mediaH) return;
+    var cw = canvas.width, ch = canvas.height;
+    ctx.clearRect(0, 0, cw, ch);
+    /* contain + bottom anchor */
+    var k = Math.min(cw / mediaW, ch / mediaH) * 0.98;
+    var dw = mediaW * k, dh = mediaH * k;
+    var dx = (cw - dw) / 2, dy = ch - dh;
+    ctx.drawImage(video || imgEl, dx, dy, dw, dh);
+
+    if (!keyed || !key) return;
+    var img = ctx.getImageData(0, 0, cw, ch), d = img.data;
+    var kr = key[0], kg = key[1], kb = key[2], t1 = T, t2 = T * 1.45;
+    var greenKey = (kg > kr + 25 && kg > kb + 25);
+    for (var i = 0; i < d.length; i += 4) {
+      if (!d[i + 3]) continue;
+      var dm = Math.abs(d[i] - kr) + Math.abs(d[i + 1] - kg) + Math.abs(d[i + 2] - kb);
+      if (dm <= t1) { d[i + 3] = 0; continue; }
+      if (dm < t2) d[i + 3] = Math.round(d[i + 3] * (dm - t1) / (t2 - t1));
+      if (greenKey && dm < t2 * 2.4) {
+        var mx = (d[i] > d[i + 2] ? d[i] : d[i + 2]) + 6;
+        if (d[i + 1] > mx) d[i + 1] = mx;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  function loop() {
+    if (dead) return;
+    if (video) {
+      if (video.readyState >= 2 && video.videoWidth) {
+        mediaW = video.videoWidth; mediaH = video.videoHeight;
+        /* pehla frame khaali aata hai — jab tak asli frame na aaye tab tak retry */
+        if (!sampled) trySample();
+        drawFrame();
+      }
+    }
+    raf = requestAnimationFrame(loop);
+  }
+
+  /* ---------- layer banane ka intezaar (editor late boot hota hai) ---------- */
+  function withStage(cb, tries) {
+    tries = tries || 0;
+    var stage = document.querySelector('.stage');
+    var pv = document.getElementById('preview');
+    if (stage && pv && pv.getBoundingClientRect().width > 10) { cb(stage, pv); return; }
+    if (tries > 120) return;
+    setTimeout(function () { withStage(cb, tries + 1); }, 100);
+  }
+
+  function sizeCanvas() {
+    if (!canvas) return;
+    var r = canvas.getBoundingClientRect();
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var w = Math.max(2, Math.round(r.width * dpr)), h = Math.max(2, Math.round(r.height * dpr));
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+    drawFrame();
+  }
+
+  function mount(stage, pv) {
+    if (document.getElementById('smBgAnim')) return;
+    canvas = document.createElement('canvas');
+    canvas.id = 'smBgAnim';
+    canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1';
+    pv.parentNode.insertBefore(canvas, pv.nextSibling);   /* preview ke UPAR, overlay ke NEECHE */
+    ctx = canvas.getContext('2d', { willReadFrequently: true });
+    sizeCanvas();
+    window.addEventListener('resize', sizeCanvas);
+    window.addEventListener('orientationchange', function () { setTimeout(sizeCanvas, 300); });
+
+    /* chip: kaunsa animation laga hai + hatao */
+    var chip = document.createElement('div');
+    chip.id = 'smBgAnimChip';
+    chip.style.cssText = 'position:absolute;left:6px;top:6px;z-index:3;display:flex;align-items:center;gap:6px;' +
+      'background:rgba(16,16,20,.86);border:1px solid rgba(255,255,255,.18);border-radius:999px;' +
+      'padding:4px 8px;font:700 9px/1 Inter,system-ui,sans-serif;letter-spacing:.6px;color:#e8e8ec';
+    chip.innerHTML = '<span style="color:#22e07d">BG</span><span>' +
+      ((sel.name || sel.anim || 'ANIMATION') + '').toUpperCase().slice(0, 16) + '</span>' +
+      '<span id="smBgAnimX" role="button" aria-label="Background animation hatao" ' +
+      'style="display:grid;place-items:center;width:14px;height:14px;border-radius:999px;background:rgba(255,255,255,.14);cursor:pointer">' +
+      '<svg viewBox="0 0 24 24" width="8" height="8" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>';
+    stage.appendChild(chip);
+    chip.querySelector('#smBgAnimX').addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      cleanup();
+      try { localStorage.removeItem(KEY); } catch (e) {}
+      note('Background animation hataya');
+    });
+
+    note('Background animation load ho raha hai…', 1200);
+    run();
+  }
+
+  function cleanup() {
+    dead = true; cancelAnimationFrame(raf);
+    if (video) { try { video.pause(); } catch (e) {} video.removeAttribute('src'); video.load && video.load(); }
+    if (objUrl) { try { URL.revokeObjectURL(objUrl); } catch (e) {} }
+    var c = document.getElementById('smBgAnim'); if (c) c.remove();
+    var ch = document.getElementById('smBgAnimChip'); if (ch) ch.remove();
+    canvas = null; ctx = null; video = null; imgEl = null;
+  }
+
+  /* ---------- media resolve + start ---------- */
+  function run() {
+    var m = sel.media, src = m.src || '', kind = m.kind;
+    if (kind === 'idb') {
+      idbGet(m.key).then(function (blob) {
+        if (!blob) { note('Asset nahi mila — puppets page se dobara chuno'); return; }
+        objUrl = URL.createObjectURL(blob);
+        start(objUrl, blob.type || (m.type === 'video' ? 'video/*' : 'image/*'));
+      });
+      return;
+    }
+    start(src, m.type || '');
+  }
+
+  function start(src, type) {
+    if (!src) { note('Is animation ka asset khaali hai'); return; }
+    var isVid = (type.indexOf('video') === 0) || /^data:video/.test(src) ||
+                /\.(mp4|webm|mov|m4v)(\?|$)/i.test(src);
+    if (isVid) {
+      video = document.createElement('video');
+      video.muted = true; video.loop = true; video.playsInline = true;
+      video.setAttribute('muted', ''); video.setAttribute('playsinline', '');
+      video.setAttribute('webkit-playsinline', '');
+      video.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:0;top:0';
+      video.src = src;
+      video.addEventListener('loadeddata', function () {
+        mediaW = video.videoWidth; mediaH = video.videoHeight;
+        var p = video.play(); if (p && p.catch) p.catch(function () {});
+        note('Background animation chalu');
+      });
+      video.addEventListener('error', function () { note('Video load nahi hui (codec?)'); });
+      document.body.appendChild(video);
+      raf = requestAnimationFrame(loop);
+      return;
+    }
+    imgEl = new Image();
+    imgEl.crossOrigin = 'anonymous';
+    imgEl.onload = function () {
+      mediaW = imgEl.naturalWidth || imgEl.width || 300;
+      mediaH = imgEl.naturalHeight || imgEl.height || 300;
+      var r = sampleKey(imgEl);
+      if (r && r.bright >= 12 && r.err < 95) {
+        key = r.avg; T = Math.max(45, Math.min(120, r.err * 1.5 + 35)); keyed = true;
+      } else { key = null; keyed = false; }
+      sampled = true;
+      sizeCanvas();
+      note('Background animation lag gaya');
+    };
+    imgEl.onerror = function () { note('Image load nahi hui'); };
+    imgEl.src = src;
+  }
+
+  window.__smBgState = function () {
+    return { keyed: keyed, T: Math.round(T), key: key, sampled: sampled, tries: sampleTries,
+             media: [mediaW, mediaH], dead: dead };
+  };
+
+  withStage(mount);
+
+  /* doosre tab me naya animation chuna gaya ho to live update */
+  window.addEventListener('storage', function (e) {
+    if (e.key === KEY) setTimeout(function () { location.reload(); }, 60);
+  });
+})();
+
+</script>
 </body></html>
