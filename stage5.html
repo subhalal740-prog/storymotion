@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T17:40Z">
+<meta name="rigbuild" content="2026-11-06T18:00Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -691,7 +691,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v15.6 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v15.7 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -1511,8 +1511,8 @@ body{padding-bottom:40px!important}
         let pivot;
         if (k === 'head') pivot = { x: p.oX0 + ow / 2, y: p.oY1 };          /* neck */
         else if (k === 'torso') pivot = { x: p.oX0 + ow / 2, y: p.oY1 };    /* hip line */
-        else if (k === 'legL') pivot = { x: tCx - torsoW * 0.26, y: hipY };  /* hip joint L */
-        else if (k === 'legR') pivot = { x: tCx + torsoW * 0.26, y: hipY };  /* hip joint R */
+        else if (k === 'legL') pivot = { x: tCx - torsoW * 0.32, y: hipY };  /* hip joint L */
+        else if (k === 'legR') pivot = { x: tCx + torsoW * 0.32, y: hipY };  /* hip joint R */
         else if (k === 'armL') {                                            /* left shoulder */
           const own = { x: p.oX1, y: p.oY0 + oh * 0.12 };
           pivot = (own.y > T.oY0 + torsoH * 0.42) ? { x: T.oX0, y: shoulderY } : own;
