@@ -396,6 +396,60 @@
     });
   }
 
+  /* =====================================================================
+     v2 · SELECTION -> localStorage -> Editor
+     Tap par: (1) asset source (image/gif/video/silhouette) + character id
+     localStorage['hilao.sel'] me, (2) turant editor (hilao.html) par redirect.
+     ===================================================================== */
+  function svgDataUrl(svg) {
+    /* editor me <img> ki tarah load hota hai — intrinsic size chahiye,
+       warna naturalWidth 0 rehta hai aur kuch draw nahi hota */
+    try {
+      var clean = String(svg)
+        .replace(/\sstyle="[^"]*"/, '')                       /* height:150px hatao */
+        .replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" ');
+      return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(clean)));
+    } catch (e) { return ''; }
+  }
+
+  /* us card ka asli asset nikaalo (jo bhi user ne upload kiya ho, warna built-in) */
+  function assetFor(a) {
+    var pv = poseImg[a.id];
+    if (pv && pv.kind === 'image') return { kind: 'data', src: pv.src };
+    if (pv && (pv.kind === 'video' || pv.kind === 'gif')) return { kind: 'idb', key: 'vid.' + a.id, type: pv.kind };
+    if (a.video) return { kind: 'url', src: a.video };
+    return { kind: 'svg', src: svgDataUrl(puppet(a.pose, view)) };
+  }
+
+  function saveSelection(a) {
+    var payload = {
+      v: 2,
+      anim: a.id,
+      name: a.name,
+      char: charId || '',
+      charName: charName,
+      view: view,
+      key: true,                    /* editor me chroma key lagao */
+      media: assetFor(a),
+      ts: Date.now()
+    };
+    try {
+      localStorage.setItem('hilao.sel', JSON.stringify(payload));
+      localStorage.setItem('hilao.anim', a.id);          /* purane pages ke liye */
+      localStorage.setItem('hilao.char', charName);
+    } catch (e) {}
+    return payload;
+  }
+
+  function goEditor(a) {
+    var payload = saveSelection(a);
+    showToast((a.name || a.id) + ' select · editor khol raha hai');
+    var url = 'hilao.html?anim=' + encodeURIComponent(payload.anim) +
+              (payload.char ? '&char=' + encodeURIComponent(payload.char) : '') +
+              '&view=' + encodeURIComponent(payload.view);
+    setTimeout(function () { location.href = url; }, 260);
+  }
+
   function openPicker(anim) {
     pendingAnim = anim;
     try { poseFile.value = ''; } catch (e) {}
@@ -544,9 +598,11 @@
     var t = e.target.closest('.tile'); if (!t) return;
     picked = t.dataset.anim;
     var a = ANIMS.filter(function (x) { return x.id === picked; })[0];
+    if (!a) return;
     useBtn.disabled = false;
     useBtn.textContent = 'Use “' + a.name + '” →';
     renderAndMount();
+    goEditor(a);                 /* save + turant editor par */
   });
 
   document.getElementById('viewTabs').addEventListener('click', function (e) {
@@ -561,11 +617,9 @@
   useBtn.addEventListener('click', function () {
     if (!picked) return;
     var a = ANIMS.filter(function (x) { return x.id === picked; })[0];
-    try {
-      localStorage.setItem('hilao.anim', picked);
-      localStorage.setItem('hilao.char', charName);
-    } catch (err) {}
-    showToast(a.name + ' selected');
+    if (!a) return;
+    saveSelection(a);
+    showToast(a.name + ' select · editor khol raha hai');
     var back = 'hilao.html?anim=' + encodeURIComponent(picked) +
                (charId ? '&char=' + encodeURIComponent(charId) : '') +
                '&view=' + encodeURIComponent(view);
