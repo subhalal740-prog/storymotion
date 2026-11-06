@@ -558,7 +558,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-06T23:10Z">
+<meta name="rigbuild" content="2026-11-06T23:45Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -709,7 +709,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.3 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v17.4 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -835,7 +835,7 @@ body{padding-bottom:40px!important}
           <button class="btn tiny ghost" id="btnAddCloth">＋ Clothing layer</button>
           <input type="file" id="clothInput" accept="image/*" style="display:none">
         </div>
-        <p class="note">Row ko <b>drag</b> karo ya select karke Front/Back dabao. Z backend me turant recompute hota hai.</p>
+        <p class="note">Row ko <b>drag</b> karo, ya <b>↑ ↓</b> se ek-ek layer aage/peeche karo. Z hamesha Z1 se Z6 ke beech, duplicate nahi — backend me turant recompute hota hai.</p>
         <button class="btn primary" id="toStudio" style="width:100%;margin-top:14px">Rig step kholo →</button>
       </div>
     </div>
@@ -1413,7 +1413,10 @@ body{padding-bottom:40px!important}
       /* per-piece canvases */
       const keys = ['head', 'torso', 'armL', 'armR', 'legL', 'legR'];
       const LABEL = { head: 'HEAD', torso: 'TORSO', armL: 'ARM L', armR: 'ARM R', legL: 'LEG L', legR: 'LEG R' };
-      const Z0 = { legL: 1, legR: 1, armL: 2, armR: 2, torso: 3, head: 4 };
+      /* v17.4 · DEFAULT LAYER ORDER (fixed, user spec):
+         HEAD Z6 > ARM R Z5 > LEG R Z4 > TORSO Z3 > ARM L Z2 > LEG L Z1
+         (dahina paer hamesha dhad ke upar aur sir ke neeche) */
+      const Z0 = { legL: 1, armL: 2, torso: 3, legR: 4, armR: 5, head: 6 };
       /* ---------- JOINT OVERLAP MARGIN (v15.3) ----------
          Har piece ko padosi piece ke andar R px tak badhaya jata hai. Yani
          arm ke canvas me shoulder ka thoda torso, torso ke canvas me shoulder
@@ -1579,11 +1582,32 @@ body{padding-bottom:40px!important}
 
     function load(list) {
       items = list.map((p) => Object.assign({}, p));
-      normalize();
+      enforceStrict();
       selected = items.length ? items[items.length - 1].id : null;
       onChange();
     }
+    /* v17.4 · strict base order — sirf ye ids, sirf ye z (reset / integrity ke liye) */
+    const Z_BASE = { legL: 1, armL: 2, torso: 3, legR: 4, armR: 5, head: 6 };
+
     function normalize() { items.forEach((it, i) => { it.z = i + 1; }); }
+
+    /* v17.4 · guard: koi layer z bhatak na jaye — sab unique 1..n, clothing sabse aage.
+       (Har layer ka z dobara assign hota hai, isliye duplicate / missing z ho hi nahi sakta) */
+    function enforceStrict() {
+      const core = items.filter((it) => it.kind !== 'cloth');
+      const cloth = items.filter((it) => it.kind === 'cloth');
+      core.sort((a, b) => (a.z || 0) - (b.z || 0));
+      items = core.concat(cloth);
+      normalize();
+    }
+
+    /* v17.4 · ek step upar / neeche (swap logic — ek z par do layer kabhi nahi) */
+    function step(id, dir) {
+      const from = items.findIndex((x) => x.id === id);
+      if (from < 0) return false;
+      const to = U.clamp(from + (dir === 'UP' ? 1 : -1), 0, items.length - 1);
+      return moveTo(id, to);
+    }
     function all() { return items; }
     function byId(id) { return items.find((x) => x.id === id) || null; }
     function order() { return items.slice(); }
@@ -1600,13 +1624,14 @@ body{padding-bottom:40px!important}
     }
     function front(id) { return moveTo(id, items.length - 1); }
     function back(id) { return moveTo(id, 0); }
-    function add(item) { items.push(item); normalize(); selected = item.id; onChange(); }
+    function add(item) { items.push(item); enforceStrict(); selected = item.id; onChange(); }
     function resetOrder() {
       items.sort((a, b) => {
-        const base = { legL: 1, legR: 1, armL: 2, armR: 2, torso: 3, head: 4 };
-        return (base[a.id] || a.baseZ || 0) - (base[b.id] || b.baseZ || 0);
+        const av = (b.kind === 'cloth') ? 999 : (Z_BASE[a.id] || a.baseZ || 0);
+        const bv = (a.kind === 'cloth') ? 999 : (Z_BASE[b.id] || b.baseZ || 0);
+        return av - bv;
       });
-      normalize(); onChange();
+      enforceStrict(); onChange();
     }
     function idsInOrder() { return items.map((x) => x.id); }
     function setOrder(ids) {
@@ -1621,7 +1646,7 @@ body{padding-bottom:40px!important}
     function getSelected() { return selected; }
     function removeKind(kind) { items = items.filter((x) => x.kind !== kind); normalize(); onChange(); }
     return { load, all, byId, order, moveTo, front, back, add, resetOrder, idsInOrder, setOrder,
-             setOnChange, select, getSelected, removeKind };
+             setOnChange, select, getSelected, removeKind, step, enforceStrict, Z_BASE };
   })();
 
   /* ---------------------------------------------------------- 05 · POSE (pillar 4)
@@ -2039,10 +2064,25 @@ body{padding-bottom:40px!important}
       const z = document.createElement('span'); z.className = 'z'; z.textContent = 'Z' + p.z;
 
       const acts = document.createElement('div'); acts.className = 'acts';
-      const bf = document.createElement('button'); bf.className = 'btn tiny ghost'; bf.textContent = '⤒'; bf.title = 'Bring to Front';
-      const bb = document.createElement('button'); bb.className = 'btn tiny ghost'; bb.textContent = '⤓'; bb.title = 'Send to Back';
-      bf.onclick = (e) => { e.stopPropagation(); Layers.front(p.id); App.markLayers(); };
-      bb.onclick = (e) => { e.stopPropagation(); Layers.back(p.id); App.markLayers(); };
+      /* v17.4 · ↑ / ↓ = ek-ek step (clamped + swap). Z6 se upar / Z1 se neeche nahi jayega */
+      const idx = Layers.order().findIndex((x) => x.id === p.id);
+      const last = Layers.order().length - 1;
+      const mkArrow = (up) => {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '13'); svg.setAttribute('height', '13');
+        svg.setAttribute('fill', 'none'); svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2.4'); svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.innerHTML = up ? '<path d="M12 19V6"/><path d="M6 12l6-6 6 6"/>'
+                           : '<path d="M12 5v13"/><path d="M6 12l6 6 6-6"/>';
+        return svg;
+      };
+      const bf = document.createElement('button'); bf.className = 'btn tiny ghost'; bf.title = 'Ek layer aage (up)';
+      bf.appendChild(mkArrow(true)); bf.disabled = (idx >= last);
+      const bb = document.createElement('button'); bb.className = 'btn tiny ghost'; bb.title = 'Ek layer peeche (down)';
+      bb.appendChild(mkArrow(false)); bb.disabled = (idx <= 0);
+      bf.onclick = (e) => { e.stopPropagation(); Layers.step(p.id, 'UP'); App.markLayers(); };
+      bb.onclick = (e) => { e.stopPropagation(); Layers.step(p.id, 'DOWN'); App.markLayers(); };
       acts.appendChild(bf); acts.appendChild(bb);
 
       row.appendChild(g); row.appendChild(th); row.appendChild(nm); row.appendChild(z); row.appendChild(acts);
