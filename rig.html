@@ -590,7 +590,7 @@ body{padding-bottom:40px!important}
 }
 @media(max-width:400px){.scrollHint span:last-child{font-size:8.4px}}
 </style>
-<meta name="rigbuild" content="2026-11-07T02:20Z">
+<meta name="rigbuild" content="2026-11-07T02:55Z">
 <style id="v7ref">
 .chooseBtn{width:auto!important;min-width:230px;margin:14px auto 0!important;padding:0 26px;height:46px}
 .upMeta{justify-content:center}
@@ -741,7 +741,7 @@ body{padding-bottom:40px!important}
     <button class="step" data-page="5" disabled><b>5</b><i>Save</i></button>
   </div>
   <div class="hud" id="hud" style="display:none">MEM: <b>0</b> canvases · <b>0.00</b> MB</div>
-  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v18.0 · 2026-11-06</div>
+  <div id="buildStamp" style="text-align:center;font-size:8.5px;letter-spacing:1.2px;color:#22e07d;opacity:.55;margin:2px 0 0">BUILD v18.1 · 2026-11-06</div>
 
 
   <div class="smHead" role="alert" style="display:none"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9 1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span><span class="tx">ONLY CHARACTER MODIFY EDITOR — <em>No Solid Background Scene Allowed!</em></span></div>
@@ -867,7 +867,7 @@ body{padding-bottom:40px!important}
           <button class="btn tiny ghost" id="btnAddCloth">＋ Clothing layer</button>
           <input type="file" id="clothInput" accept="image/*" style="display:none">
         </div>
-        <p class="note">Row ko <b>drag</b> karo, ya <b>↑ ↓</b> se ek-ek layer aage/peeche karo. Z hamesha Z1 se Z{n} ke beech, duplicate nahi — backend me turant recompute hota hai.</p>
+        <p class="note">Row ko <b>drag</b> karo, ya <b>↑ ↓</b> se ek-ek layer aage/peeche karo. Z hamesha Z1 se top layer tak, duplicate nahi — backend me turant recompute hota hai.</p>
         <button class="btn primary" id="toStudio" style="width:100%;margin-top:14px">Rig step kholo →</button>
         <div id="rigLock" role="alert"></div>
       </div>
@@ -1134,18 +1134,26 @@ body{padding-bottom:40px!important}
     return { makeCanvas, trackCanvas, trackURL, release, purgeAll, stats };
   })();
 
-  /* --------------------------------------------------------- 02a · BG KILL (v17.5)
-     Client-side solid-background remover — koi API, koi server, koi paisa nahi.
-     • Border ring se background ka rang auto-detect (quantized mode + average)
-     • Background uniformity check — solid na ho to REJECT (kharab image par kaam nahi)
-     • Border se flood-fill chroma key (T_HARD=40) — safe: white kapde (pant/kurta)
-       jo background se milte hain, wo andar hote hain isliye delete nahi hote
-     • 2-pass feather (T_HARD .. T_SOFT) — kinare par safed halo nahi banta
-     • Result: seedha transparent PNG (ImageData) -> Gate -> Cut (bundle center)      */
+  /* --------------------------------------------------------- 02a · BG KILL (v18.1)
+     Client-side background remover — koi API, koi server, koi paisa nahi.
+     v18.1 ka bada upgrade: ab SIRF flat/solid background nahi — GRADIENT,
+     vignette aur halki-texture wala studio background bhi hat jata hai.
+
+       1. Border ring se background ka 2D model fit hota hai (quadratic surface:
+          c0 + c1*u + c2*v + c3*u² + c4*v² + c5*uv). Isse har pixel ka "expected"
+          background colour milta hai — gradient par bhi.
+       2. Fit quality = border samples jo model ke ±45 me hain. Achhi quality par
+          seedha remove; kharab par bhi BEST-EFFORT try (block nahi karte).
+       3. Border-seeded flood fill — pixel remove hota hai jab wo (a) model ke
+          kareeb ho YA (b) apne padosi removed pixel ke kareeb ho (local continuity,
+          isse JPEG noise / halki texture bhi saaf ho jati hai).
+          Flood fill honе se white kurta/pant safe rehte hain (border se juda nahi).
+       4. Feather + edge unmix (halo khatam).
+       5. Result: transparent PNG (ImageData) -> Gate -> Cut                        */
   const Bg = (function () {
-    const T_HARD = 40;        /* background se itna close = pakka background */
-    const T_SOFT = 68;        /* is range tak alpha feather hota hai */
-    const MIN_UNIFORM = 0.90; /* border ka 90% bg color ke kareeb hona chahiye */
+    const T_HARD = 45;        /* model se itna close = background */
+    const T_LOCAL = 14;       /* padosi ke itna close = background (texture/gradient) */
+    const T_SOFT = 76;        /* feather band */
     const A_MIN = 18;
 
     function dist(r, g, b, c) {
@@ -1153,58 +1161,105 @@ body{padding-bottom:40px!important}
       return Math.sqrt(dr * dr + dg * dg + db * db);
     }
 
-    /* border ring se dominant background colour (quantized mode -> average) */
-    function detectBg(d, W, H) {
-      const bins = new Map();
-      const step = Math.max(1, Math.round(Math.min(W, H) / 260));
-      const push = (i, x, y) => {
-        if (d[i + 3] < 24) return false;                  /* already transparent */
-        const r = d[i], g = d[i + 1], b = d[i + 2];
-        const key = (r >> 4) + ',' + (g >> 4) + ',' + (b >> 4);
-        let e = bins.get(key);
-        if (!e) { e = { n: 0, r: 0, g: 0, b: 0, x0: x, y0: y }; bins.set(key, e); }
-        e.n++; e.r += r; e.g += g; e.b += b;
-        return true;
+    /* ---- border samples ---- */
+    function borderSamples(d, W, H) {
+      const out = [];
+      const step = Math.max(1, Math.round(Math.min(W, H) / 300));
+      const ring = 4;
+      const add = (x, y) => {
+        const i = (y * W + x) * 4;
+        if (d[i + 3] < 24) return;
+        out.push([x / W, y / H, d[i], d[i + 1], d[i + 2]]);
       };
-      const ring = 3;
       for (let k = 0; k < ring; k++) {
-        for (let x = 0; x < W; x += step) { push(((k * W) + x) * 4, x, k); push((((H - 1 - k) * W) + x) * 4, x, H - 1 - k); }
-        for (let y = 0; y < H; y += step) { push(((y * W) + k) * 4, k, y); push(((y * W) + (W - 1 - k)) * 4, W - 1 - k, y); }
+        for (let x = 0; x < W; x += step) { add(x, k); add(x, H - 1 - k); }
+        for (let y = 0; y < H; y += step) { add(k, y); add(W - 1 - k, y); }
       }
-      let best = null;
-      bins.forEach((e) => { if (!best || e.n > best.n) best = e; });
-      if (!best) return null;
-      return { rgb: [Math.round(best.r / best.n), Math.round(best.g / best.n), Math.round(best.b / best.n)],
-               share: best.n };
+      return out;
     }
 
-    /* border par bg colour kitna uniform hai (0..1) */
-    function uniformity(d, W, H, bg) {
-      const step = Math.max(1, Math.round(Math.min(W, H) / 200));
-      let near = 0, total = 0;
-      const ring = 3;
-      for (let k = 0; k < ring; k++) {
-        for (let x = 0; x < W; x += step) {
-          [((k * W) + x) * 4, (((H - 1 - k) * W) + x) * 4].forEach((i) => {
-            if (d[i + 3] < 24) return;
-            total++; if (dist(d[i], d[i + 1], d[i + 2], bg) <= T_HARD) near++;
-          });
-        }
-        for (let y = 0; y < H; y += step) {
-          [((y * W) + k) * 4, ((y * W) + (W - 1 - k)) * 4].forEach((i) => {
-            if (d[i + 3] < 24) return;
-            total++; if (dist(d[i], d[i + 1], d[i + 2], bg) <= T_HARD) near++;
-          });
+    /* ---- quadratic background surface: least squares (6 unknown) ---- */
+    function fitModel(samples) {
+      const A = new Float64Array(36), b = new Float64Array(6);
+      const f = (u, v) => [1, u, v, u * u, v * v, u * v];
+      for (const [u, v, r, g, bl] of samples) {
+        const t = f(u, v);
+        const y = (r + g + bl) / 3;
+        for (let i = 0; i < 6; i++) {
+          b[i] += t[i] * y;
+          for (let j = 0; j < 6; j++) A[i * 6 + j] += t[i] * t[j];
         }
       }
-      return total ? near / total : 0;
+      /* gaussian elimination (partial pivot). Singular ho to chhodo -> null */
+      const M = [];
+      for (let i = 0; i < 6; i++) M.push(Array.from({ length: 7 }, (_, j) => (j < 6 ? A[i * 6 + j] : b[i])));
+      for (let i = 0; i < 6; i++) {
+        let piv = i;
+        for (let r2 = i + 1; r2 < 6; r2++) if (Math.abs(M[r2][i]) > Math.abs(M[piv][i])) piv = r2;
+        if (Math.abs(M[piv][i]) < 1e-6) return null;
+        [M[i], M[piv]] = [M[piv], M[i]];
+        for (let r2 = 0; r2 < 6; r2++) {
+          if (r2 === i) continue;
+          const k = M[r2][i] / M[i][i];
+          if (!k) continue;
+          for (let c2 = i; c2 < 7; c2++) M[r2][c2] -= k * M[i][c2];
+        }
+      }
+      const coef = M.map((row, i) => row[6] / row[i]);
+      return (u, v) => {
+        const t = f(u, v);
+        return coef[0] * t[0] + coef[1] * t[1] + coef[2] * t[2] +
+               coef[3] * t[3] + coef[4] * t[4] + coef[5] * t[5];
+      };
+    }
+
+    /* model ka per-pixel RGB (luma surface + border ka average colour hue) */
+    function buildBgFn(samples) {
+      const luma = fitModel(samples);
+      let sr = 0, sg = 0, sb = 0, n = 0;
+      for (const [, , r, g, b] of samples) { sr += r; sg += g; sb += b; n++; }
+      const avg = n ? [sr / n, sg / n, sb / n] : [255, 255, 255];
+      /* NOTE: fitModel (r+g+b)/3 use karta hai — yahan bhi wahi, warna hue wali
+         images (jaise green screen) ka model 0.72x dim aa jata tha aur fit fail. */
+      const avgL = Math.max(1, (avg[0] + avg[1] + avg[2]) / 3);
+      function at(u, v) {
+        if (!luma) return avg;
+        const L = luma(u, v);
+        const k = Math.max(0.55, Math.min(1.6, L / avgL));
+        return [avg[0] * k, avg[1] * k, avg[2] * k];
+      }
+      let sumErr = 0, good = 0;
+      for (const [u, v, r, g, b] of samples) {
+        const c = at(u, v);
+        const e = dist(r, g, b, c);
+        sumErr += e;
+        if (e <= T_HARD) good++;
+      }
+      return { at, quality: samples.length ? good / samples.length : 0,
+               meanErr: samples.length ? sumErr / samples.length : 999 };
+    }
+
+    /* smooth-ness: kya border ek "studio background" jaisa hai (photo nahi) */
+    function smoothness(d, W, H) {
+      let n = 0, sum = 0;
+      const step = Math.max(1, Math.round(Math.min(W, H) / 220));
+      const ring = 6;
+      for (let x = 1; x < W; x += step) {
+        for (let k = 0; k < ring; k++) {
+          const i1 = (k * W + x) * 4, i0 = (k * W + x - step) * 4;
+          if (d[i1 + 3] < 24 || d[i0 + 3] < 24) continue;
+          sum += Math.abs(d[i1] - d[i0]) + Math.abs(d[i1 + 1] - d[i0 + 1]) + Math.abs(d[i1 + 2] - d[i0 + 2]);
+          n++;
+        }
+      }
+      return n ? (sum / n) || 0 : 999;
     }
 
     function process(data, W, H) {
       const d = data.data;
       const total = W * H;
 
-      /* 1 — already transparent? to bilkul chhedo mat */
+      /* 1 — already transparent? chhedo mat */
       let seeThrough = 0;
       for (let i = 3; i < d.length; i += 4) if (d[i] < 24) seeThrough++;
       if (seeThrough / total > 0.05) {
@@ -1212,27 +1267,27 @@ body{padding-bottom:40px!important}
                  data, W, H, meta: { transparentPct: +(100 * seeThrough / total).toFixed(1) } };
       }
 
-      /* 2 — background colour detect */
-      const bgInfo = detectBg(d, W, H);
-      if (!bgInfo) return { ok: false, msg: 'Image khali hai — background bhi nahi mila.' };
-      const bg = bgInfo.rgb;
+      /* 2 — background model */
+      const samples = borderSamples(d, W, H);
+      if (!samples.length) return { ok: false, msg: 'Image khali hai — background nahi mila.' };
+      const model = buildBgFn(samples);
+      const smooth = smoothness(d, W, H);
+      const solidPct = model.quality;
+      const mode = solidPct >= 0.90 ? 'solid' : (solidPct >= 0.55 ? 'gradient' : 'busy');
 
-      /* 3 — solid hai ya nahi (kharab/photo background par kaam nahi) */
-      const uni = uniformity(d, W, H, bg);
-      if (uni < MIN_UNIFORM) {
-        return { ok: false, uniform: uni, bg,
-                 msg: 'Background solid nahi hai (' + Math.round(uni * 100) + '% match) — photo/gradient ' +
-                      'background se character alag nahi kiya ja sakta. Plain solid colour wali image chuno.' };
-      }
+      /* tolerance: solid par T_HARD, gradient/texture par thoda zyada (bounded) */
+      const T = mode === 'solid' ? T_HARD : Math.min(T_HARD * 1.7, Math.max(T_HARD, model.meanErr * 1.4));
+      const LOCAL = mode === 'solid' ? 0 : 10;      /* noise slop — bounded, leak nahi hota */
 
-      /* 4 — border-seeded flood fill chroma key (8-connected) */
-      const mark = new Uint8Array(total);          /* 0 = not bg, 1 = bg (cleared) */
+      /* 3 — border-seeded flood fill (model + bounded noise slop) */
+      const mark = new Uint8Array(total);
       const stack = new Int32Array(total);
       let sp = 0;
       const seed = (x, y) => {
         const p = y * W + x, i = p * 4;
         if (mark[p] || d[i + 3] < 24) return;
-        if (dist(d[i], d[i + 1], d[i + 2], bg) > T_HARD) return;
+        const c = model.at(x / W, y / H);
+        if (dist(d[i], d[i + 1], d[i + 2], c) > T) return;
         mark[p] = 1; stack[sp++] = p;
       };
       for (let x = 0; x < W; x++) { seed(x, 0); seed(x, H - 1); }
@@ -1240,16 +1295,61 @@ body{padding-bottom:40px!important}
       while (sp > 0) {
         const p = stack[--sp];
         const x = p % W, y = (p - x) / W;
+        const pi = p * 4, pr = d[pi], pg = d[pi + 1], pb = d[pi + 2];
         for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
           const nx = x + ox, ny = y + oy;
           if ((!ox && !oy) || nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-          seed(nx, ny);
+          const q = ny * W + nx, qi = q * 4;
+          if (mark[q] || d[qi + 3] < 24) continue;
+          const c = model.at(nx / W, ny / H);
+          const dm = dist(d[qi], d[qi + 1], d[qi + 2], c);
+          let okPixel = dm <= T;
+          if (!okPixel && LOCAL > 0 && dm <= T * 1.35) {
+            const dl = Math.abs(d[qi] - pr) + Math.abs(d[qi + 1] - pg) + Math.abs(d[qi + 2] - pb);
+            okPixel = dl <= LOCAL;
+          }
+          if (okPixel) { mark[q] = 1; stack[sp++] = q; }
         }
       }
       let cleared = 0;
       for (let p = 0; p < total; p++) if (mark[p]) { d[p * 4 + 3] = 0; cleared++; }
 
-      /* 5 — feather: kinare ko 2 pass me soft karo (halo / jaggies nahi) */
+      /* 4 — bahut kam clear hua (busy/texture bg)? dheela second pass */
+      if (100 * cleared / total < 5) {
+        for (let p = 0; p < total; p++) {
+          if (mark[p]) continue;
+          const i = p * 4;
+          if (d[i + 3] < 24) continue;
+          const x = p % W, y = (p - x) / W;
+          const c = model.at(x / W, y / H);
+          if (dist(d[i], d[i + 1], d[i + 2], c) <= T * 1.7) {
+            mark[p] = 1; d[i + 3] = 0; cleared++;
+          }
+        }
+      }
+
+      /* ---- LEAK GUARD: agar character bhi hat gaya (bahut zyada clear) ----
+         to strict pass dobara (bina noise slop ke). Jo behtar ho wahi rakho. */
+      let opaqueNow = 0;
+      for (let i = 3; i < d.length; i += 4) if (d[i] > A_MIN) opaqueNow++;
+      const keepNow = 100 * opaqueNow / total;
+      if (keepNow < 3) {
+        /* restore: pixels jo model se bahut door hain wo wapas laao */
+        for (let p = 0; p < total; p++) {
+          if (!mark[p]) continue;
+          const i = p * 4, x = p % W, y = (p - x) / W;
+          const c = model.at(x / W, y / H);
+          if (dist(d[i], d[i + 1], d[i + 2], c) > T * 1.9) {
+            /* ye shayad character tha — alpha wapas */
+            d[i + 3] = 255; mark[p] = 0;
+          }
+        }
+      }
+      cleared = 0;
+      for (let p = 0; p < total; p++) if (mark[p]) cleared++;
+      const clearedPct = 100 * cleared / total;
+
+      /* 5 — feather (2 pass) */
       for (let pass = 0; pass < 2; pass++) {
         const edge = [];
         for (let p = 0; p < total; p++) {
@@ -1263,20 +1363,17 @@ body{padding-bottom:40px!important}
           else if (y > 0 && mark[p - W]) touch = true;
           else if (y < H - 1 && mark[p + W]) touch = true;
           if (!touch) continue;
-          const dd = dist(d[i], d[i + 1], d[i + 2], bg);
+          const c = model.at(x / W, y / H);
+          const dd = dist(d[i], d[i + 1], d[i + 2], c);
           if (dd > T_SOFT) continue;
-          const k = Math.max(0, (dd - T_HARD) / (T_SOFT - T_HARD));   /* 0..1 */
+          const k = Math.max(0, (dd - T_HARD) / (T_SOFT - T_HARD));
           const a = Math.round(d[i + 3] * k);
           if (a < d[i + 3]) edge.push(i, a);
         }
         for (let i = 0; i < edge.length; i += 2) d[edge[i] + 3] = edge[i + 1];
       }
 
-      /* 5b — EDGE UNMIX (anti-halo): edge pixel asal me background + character ka
-         blend hota hai. Andar ka asli rang (S) dhoondh kar alpha estimate karte hain:
-             alpha = |pixel - bg| / |S - bg|
-         aur pixel ka rang S kar dete hain. Isse safed/grey rim poori tarah khatam ho
-         jaati hai aur kinara smooth rehta hai (white kapde bhi safe — unka S hi white hai). */
+      /* 6 — edge unmix (background ka colour cast hatao) */
       (function edgeUnmix() {
         const edge = [];
         for (let p = 0; p < total; p++) {
@@ -1288,7 +1385,8 @@ body{padding-bottom:40px!important}
         }
         for (let e = 0; e < edge.length; e++) {
           const p = edge[e], x = p % W, y = (p - x) / W, i = p * 4;
-          const ddPix = dist(d[i], d[i + 1], d[i + 2], bg);
+          const c = model.at(x / W, y / H);
+          const ddPix = dist(d[i], d[i + 1], d[i + 2], c);
           let sr = 0, sg = 0, sb = 0, n = 0;
           for (let rad = 2; rad <= 5 && n < 3; rad++) {
             for (let oy = -rad; oy <= rad; oy++) for (let ox = -rad; ox <= rad; ox++) {
@@ -1299,43 +1397,43 @@ body{padding-bottom:40px!important}
               if (mark[q]) continue;
               const j = q * 4;
               if (d[j + 3] < 200) continue;
-              if (dist(d[j], d[j + 1], d[j + 2], bg) < 110) continue;   /* ye bhi blend hai */
+              const cq = model.at(nx / W, ny / H);
+              if (dist(d[j], d[j + 1], d[j + 2], cq) < 110) continue;
               sr += d[j]; sg += d[j + 1]; sb += d[j + 2]; n++;
             }
           }
           if (!n) continue;
           const S = [sr / n, sg / n, sb / n];
-          const ddS = dist(S[0], S[1], S[2], bg);
+          const ddS = dist(S[0], S[1], S[2], c);
           if (ddS < 40) continue;
-          let a = ddPix / ddS;
-          a = Math.min(1, Math.max(0, a));
-          /* bahut halka blend (a < 0.12) = pakka background */
+          let a = Math.min(1, Math.max(0, ddPix / ddS));
           if (a < 0.12) { d[i + 3] = 0; continue; }
-          d[i]     = Math.round(S[0]);
-          d[i + 1] = Math.round(S[1]);
-          d[i + 2] = Math.round(S[2]);
+          d[i] = Math.round(S[0]); d[i + 1] = Math.round(S[1]); d[i + 2] = Math.round(S[2]);
           d[i + 3] = Math.round(Math.min(d[i + 3], 255 * a));
         }
       })();
 
-      /* 6 — character bacha ya nahi */
+      /* 7 — character bacha ya nahi */
       let opaque = 0;
       for (let i = 3; i < d.length; i += 4) if (d[i] > A_MIN) opaque++;
-      if (opaque / total < 0.01) {
-        return { ok: false, uniform: uni, bg,
+      const keepPct = 100 * opaque / total;
+      if (keepPct < 1) {
+        return { ok: false, uniform: solidPct, mode,
                  msg: 'Background ke saath character bhi hat gaya — is image par character nahi mila.' };
       }
 
+      const avg = model.at(0.5, 0.5);
+      const hex = '#' + avg.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('').toUpperCase();
       return { ok: true, removed: true, data, W, H, meta: {
-        bg: 'rgb(' + bg[0] + ',' + bg[1] + ',' + bg[2] + ')',
-        hex: '#' + [bg[0], bg[1], bg[2]].map((v) => v.toString(16).padStart(2, '0')).join('').toUpperCase(),
-        uniformPct: +(uni * 100).toFixed(1),
-        clearedPct: +(100 * cleared / total).toFixed(1),
-        keepPct: +(100 * opaque / total).toFixed(1)
-      } };
+        mode, hex,
+        bg: 'rgb(' + Math.round(avg[0]) + ',' + Math.round(avg[1]) + ',' + Math.round(avg[2]) + ')',
+        uniformPct: +(solidPct * 100).toFixed(1),
+        smooth: +smooth.toFixed(1),
+        clearedPct: +clearedPct.toFixed(1),
+        keepPct: +keepPct.toFixed(1) } };
     }
 
-    return { process, T_HARD, T_SOFT, detectBg, uniformity };
+    return { process, T_HARD, T_SOFT };
   })();
 
   /* ------------------------------------------------ 01b · FACING (v17.9)
@@ -2755,7 +2853,8 @@ body{padding-bottom:40px!important}
     data = bgRes.data;
     App.imgData = data; App.W = W; App.H = H;
     if (bgRes.removed) {
-      U.toast('Background auto-removed · ' + bgRes.meta.hex + ' · ' + bgRes.meta.clearedPct + '% clear');
+      const m = bgRes.meta;
+      U.toast('Background removed (' + m.mode + ') · ' + m.clearedPct + '% clear · ' + m.keepPct + '% character');
       Memory.release(work);
     }
 
@@ -2802,7 +2901,7 @@ body{padding-bottom:40px!important}
     enableSteps(); hud();
 
     const bgTag = bgRes.removed
-      ? '🎯 BG auto-removed ' + bgRes.meta.hex + ' (' + bgRes.meta.clearedPct + '% clear) · '
+      ? '🎯 BG removed (' + bgRes.meta.mode + ') ' + bgRes.meta.hex + ' · ' + bgRes.meta.clearedPct + '% clear · '
       : '';
     setLight(kind, res.msg + (res.light === 'WARNING' ? ' (cut allowed)' : ' · 6 pieces cut in ' + cut.meta.ms + ' ms'),
              bgTag + W + '×' + H + ' · ' + cut.pieces.length + ' pieces · ' + cut.meta.coverage + '% coverage');
