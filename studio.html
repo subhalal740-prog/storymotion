@@ -89,6 +89,25 @@
   .smWalk .ppRange::-webkit-slider-runnable-track{height:7px;
     background:linear-gradient(90deg,rgba(61,255,160,.95),rgba(255,255,255,.32))}
   @media(max-width:400px){ .smWalkTxt{font-size:9.5px;letter-spacing:.5px} .smWalk{padding:11px 11px 3px} }
+
+  /* ===== ARM MOTION STYLE toggle (2 white capsules) ===== */
+  .smArm{margin:8px 0 4px;padding-top:9px;border-top:1px solid rgba(255,255,255,.07)}
+  .smArmLab{display:flex;align-items:center;gap:7px;font-size:9.5px;font-weight:900;letter-spacing:1.1px;
+    text-transform:uppercase;color:#a8aeb9;margin-bottom:7px}
+  .smArmLab .ic{width:14px;height:14px;color:#3dffa0;filter:drop-shadow(0 0 8px rgba(0,230,118,.45))}
+  .smArmBtns{display:flex;gap:7px}
+  .smArmBtn{flex:1;position:relative;font-family:inherit;font-size:9.5px;font-weight:900;letter-spacing:.55px;
+    text-transform:uppercase;padding:9px 6px;border-radius:999px;cursor:pointer;
+    color:#14161a;background:#ffffff;background-image:linear-gradient(180deg,#ffffff,#eef0f4);
+    border:1px solid rgba(255,255,255,.95);-webkit-tap-highlight-color:transparent;
+    box-shadow:inset 0 1px 0 #fff,0 1px 2px rgba(0,0,0,.35),0 8px 16px -8px rgba(0,0,0,.7);
+    transition:transform .15s,box-shadow .15s}
+  .smArmBtn:active{transform:translateY(1px) scale(.99)}
+  .smArmBtn.on{box-shadow:0 0 0 2px rgba(0,230,118,.65),0 0 16px rgba(0,230,118,.30),
+    inset 0 1px 0 #fff,0 8px 18px -9px rgba(0,0,0,.75)}
+  .smArmBtn.on:after{content:"";position:absolute;left:50%;bottom:4px;width:4px;height:4px;border-radius:50%;
+    transform:translateX(-50%);background:#00d95f;box-shadow:0 0 8px rgba(0,230,118,.95)}
+  @media(max-width:400px){ .smArmBtn{font-size:8.5px;letter-spacing:.3px;padding:8px 4px} }
   /* ===== QUICK POSE (premium white) ===== */
   .qpWrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
   .qpTitle{display:flex;align-items:center;gap:7px;font-size:10.5px;letter-spacing:1.6px;font-weight:800;color:#9ca3af;margin-bottom:9px}
@@ -362,6 +381,13 @@
               <b class="smWalkVal" id="smWalkVal">39%</b>
             </div>
             <input class="ppRange" id="smWalkSlider" type="range" min="0" max="100" value="39" step="1" aria-label="Leg stretch range">
+            <div class="smArm">
+              <div class="smArmLab"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v6c0 4.2-2.9 7.6-7 9-4.1-1.4-7-4.8-7-9V6l7-3z"/></svg></span> Arm Motion Style</div>
+              <div class="smArmBtns">
+                <button type="button" class="smArmBtn on" id="smArmSwing" data-arm="swing">Momentum Swing</button>
+                <button type="button" class="smArmBtn" id="smArmFixed" data-arm="fixed">No Momentum (Fixed)</button>
+              </div>
+            </div>
           </div>
           <div class="qpRow" id="qpRow">
             <button class="qp" data-pose="idle">Idle</button>
@@ -1619,6 +1645,7 @@
   /* ================= WALK CYCLE ENGINE (mirror + spread + speed) ================= */
   const Anim = {
     on: false, raf: 0, phase: 0, last: 0, kind: 'walk',
+    armMode: 'swing',      /* 'swing' | 'fixed'  (arm motion style) */
     spread: 0.22,          /* legs amplitude (rad) */
     armAmp: 0.30,
     speed: 1.0,            /* cycles per second base */
@@ -1631,11 +1658,13 @@
     Anim.last = ts;
     Anim.phase += dt * Anim.speed * Math.PI * 2;      /* 1 cycle = 2π */
     const a = Math.sin(Anim.phase) * Anim.spread;      /* legs: perfectly mirrored */
-    const b = Math.sin(Anim.phase) * Anim.armAmp;      /* arms: opposite of legs */
+    const fixedArms = (Anim.armMode === 'fixed');
+    const b = fixedArms ? 0 : Math.sin(Anim.phase) * Anim.armAmp;   /* arms: opposite of legs */
     try {
       RIG.Pose.setPair({
         legL: -a, legR: a,                              /* left/right exact mirror */
-        armL:  b, armR: -b,                             /* arms counter-swing */
+        armL: fixedArms ? -ARM_DOWN_LOCK : b,
+        armR: fixedArms ?  ARM_DOWN_LOCK : -b,          /* arms counter-swing */
         torso: Anim.torso * (0.6 + 0.4 * Math.cos(Anim.phase * 2)),
         head: 0
       });
@@ -1673,6 +1702,8 @@
     val: document.getElementById('smWalkVal')
   };
   const SPREAD_MIN = 0.04, SPREAD_SPAN = 0.46;
+  const ARM_DOWN_LOCK = 1.40;      /* ~80° neeche — arms torso ke saath seedhe latak jate hain */
+  const ARM_SWING_AMP = 0.2356;    /* ~13.5° low-amplitude pendulum */
   function spreadToPct(v) { return Math.max(0, Math.min(100, Math.round(((v - SPREAD_MIN) / SPREAD_SPAN) * 100))); }
   function syncWalkPanel() {
     if (!smWalk.slider) return;
@@ -1727,6 +1758,25 @@
     }
     syncWalkPanel();
   });
+  /* ---------- ARM MOTION STYLE (swing / fixed) ---------- */
+  const smArmBtns = [document.getElementById('smArmSwing'), document.getElementById('smArmFixed')];
+  function setArmMode(mode) {
+    Anim.armMode = mode;
+    smArmBtns.forEach(function (b) { if (b) b.classList.toggle('on', b.dataset.arm === mode); });
+    if (mode === 'swing') Anim.armAmp = ARM_SWING_AMP;
+    if (!Anim.on) {   /* animation band hai to turant preview */
+      try {
+        if (mode === 'fixed') RIG.Pose.setPair({ armL: -ARM_DOWN_LOCK, armR: ARM_DOWN_LOCK });
+        else RIG.Pose.setPair({ armL: 0, armR: 0 });
+        RIG.Studio.render();
+      } catch (e) {}
+    }
+  }
+  smArmBtns.forEach(function (b) {
+    if (!b) return;
+    b.addEventListener('click', function () { setArmMode(b.dataset.arm); });
+  });
+
   if (smWalk.slider) smWalk.slider.addEventListener('input', function () {
     Anim.spread = SPREAD_MIN + (this.value / 100) * SPREAD_SPAN;
     if (smWalk.val) smWalk.val.textContent = this.value + '%';
@@ -1756,7 +1806,7 @@
     const p = b.dataset.pose;
     if (p === 'walk' || p === 'run') {
       Anim.spread = p === 'walk' ? 0.22 : 0.30;
-      Anim.armAmp = p === 'walk' ? 0.30 : 0.55;
+      Anim.armAmp = p === 'walk' ? ARM_SWING_AMP : ARM_SWING_AMP * 2.2;
       Anim.torso  = p === 'walk' ? 0.03 : 0.09;
       Anim.speed  = p === 'walk' ? 1.0 : 1.6;
       startAnim(p);                 /* instant walk pose + 60fps rAF loop */
