@@ -2465,7 +2465,11 @@ function wire(){
  document.addEventListener('visibilitychange',()=>{if(document.hidden&&audioEl)audioEl.pause();else if(playing&&audioEl){syncAudioTime();audioEl.play().catch(()=>{});}});
  new ResizeObserver(resize).observe($('previewShell'));window.addEventListener('resize',()=>{if(!timelineUserZoom){timelineScale=defaultTimelineScale();renderTimeline();}resize();});
 }
-async function boot(){try{await initAssets();project=defaultProject();try{const saves=await dbAll(),auto=saves.find(s=>s.id==='autosave');if(auto?.project?.scenes?.length){project=auto.project;await restoreCustom();dirty=false;}}catch{}renderer=new Renderer(preview);wire();syncProjectFields();refresh();$('loading').hidden=true;$('saveState').textContent=dirty?'Unsaved changes':'Local project';if(!hasCharacter())setTimeout(()=>toast('Background ready hai. Character jodne ke liye neeche Character dabao.'),600);requestAnimationFrame(animate);}catch(e){$('loading').textContent='Studio load nahi hua. Page refresh karo.';console.error(e);}}
+async function boot(){try{await initAssets();project=defaultProject();try{const saves=await dbAll(),auto=saves.find(s=>s.id==='autosave');
+/* Order 56 (user ne chuna A): editor hamesha KHAALI khule. Purana autosave
+   delete nahi hota — ek baar "Saved version" me copy hota hai (History me
+   "Restore" se wapas), uske baad editor blank shuru hota hai. */
+if(auto?.project?.scenes?.length){if(!auto.__arch){try{await dbPut({id:uid(),date:Date.now(),project:clone(auto.project)});await dbPut({...auto,__arch:1});}catch(e){}}}}catch{}renderer=new Renderer(preview);wire();syncProjectFields();refresh();$('loading').hidden=true;$('saveState').textContent=dirty?'Unsaved changes':'Local project';if(!hasCharacter())setTimeout(()=>toast('Background ready hai. Character jodne ke liye neeche Character dabao.'),600);requestAnimationFrame(animate);}catch(e){$('loading').textContent='Studio load nahi hua. Page refresh karo.';console.error(e);}}
 /* ═════════ smAutoEditor · PATH-TOOL ENGINE (AutoDraft-style movement) ═════════
    Scene ke andar smPath = {on,x0,y0,x1,y1,ease} rakhta hai (x/y = stage ke fraction).
    Render aur export dono me character path par chalta hai (panX/panY offset). */
@@ -3314,7 +3318,7 @@ boot();
       attempts = 99;
       return;
     }
-    if (!document.getElementById('smBgAnim') && !e.hasChar) return;   /* koi ghost layer hi nahi */
+    if (!document.getElementById('smBgAnim') && typeof e.hasChar !== 'function') return;   /* koi ghost layer hi nahi */
 
     converting = true; attempts++;
     try {
@@ -3385,10 +3389,14 @@ boot();
   }
   function boot(){
     if(!ed()){ setTimeout(boot,150); return; }
-    ensure(); hintBanner(); installTapSelect(); clearBtn(); topTitle(); setTimeout(ensureRealCharacter, 1200); setTimeout(autoUnlock, 1500);
+    ensure(); hintBanner(); installTapSelect(); clearBtn(); topTitle();
+    /* Order 56 (user A): editor khulte hi character apne aap NAHI aata.
+       Pehle ensureRealCharacter() yahan chalta tha aur localStorage charId se
+       character khud jod deta tha — wahi "munna" ka chakkar tha. */
+    setTimeout(autoUnlock, 1500);
     quickBtn(); menuBtn(); renderBar();
     new MutationObserver(()=>{ quickBtn(); menuBtn(); renderBar(); installTapSelect(); }).observe(document.body,{subtree:true,childList:true});
-    setInterval(()=>{ topTitle(); quickBtn(); clearBtn(); menuBtn(); renderBar(); installTapSelect(); ensureRealCharacter(); autoUnlock(); },800);
+    setInterval(()=>{ topTitle(); quickBtn(); clearBtn(); menuBtn(); renderBar(); installTapSelect(); autoUnlock(); },800);
     window.addEventListener('resize', ()=>{ fit(); draw(); });
     requestAnimationFrame(loop);
     window.__smPath={ set:v=>setMode(v), start:()=>setMode(true), get:()=>pth(safeScene()) };
