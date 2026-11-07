@@ -791,11 +791,9 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
   overflow-x:hidden !important;
   overscroll-behavior:contain;
   -webkit-overflow-scrolling:touch;
-  scrollbar-width:thin;
+  scrollbar-width:none;            /* mobile jaisa — bar dikhta nahi, scroll chalta hai */
 }
-#workspace::-webkit-scrollbar{ width:4px; }
-#workspace::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.22); border-radius:4px; }
-#workspace::-webkit-scrollbar-track{ background:transparent; }
+#workspace::-webkit-scrollbar{ width:0; height:0; }
 /* preview shell apni jagah, timeline apni — dono scroll me poore */
 #workspace > .preview-shell{ flex:0 0 auto; }
 #workspace > .timeline{ flex:0 0 auto; }
