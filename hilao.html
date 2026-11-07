@@ -3183,7 +3183,7 @@ boot();
     if(!pathMode||!down) return;
     const f=frac(ev); hover=f;
     if(dragMoved){
-      commit({ dx:f.x-down.x, dy:f.y-down.y });   /* direction = drag delta, start = character ke pair */
+      commit({ x:f.x, y:f.y });   /* Order 69 — path ka end = jahan ungli chhodi */
       down=null; hover=null; dragMoved=false; draw();
       return;
     }
@@ -3193,13 +3193,17 @@ boot();
     try{ ed().setLayer('character'); toast('Character select ho gaya'); }catch(e){}
     draw();
   }
-  function commit(delta){
+  function commit(end){
     const e=ed(), sc=safeScene(); if(!e||!sc) return;
-    if(Math.hypot(delta.dx,delta.dy) < 0.015){ toast('Line thodi lambi kheencho'); return; }
     const f=feet(); const a = f || {cx:0.5,cy:0.9};
+    /* Order 69 — character theek wahin jaye jahan line chhodi thi (pehle drag
+       delta use hota tha, isliye character ulti/zyada door taraf chala jata tha) */
+    const ddx = (end && end.x!=null ? end.x : a.cx) - a.cx;
+    const ddy = (end && end.y!=null ? end.y : a.cy) - a.cy;
+    if(Math.hypot(ddx,ddy) < 0.015){ toast('Line thodi lambi kheencho'); return; }
     e.pushUndo();
     const pv = sc.smPath || {};
-    sc.smPath = { on:true, x0:a.cx, y0:a.cy, dx:delta.dx, dy:delta.dy,
+    sc.smPath = { on:true, x0:a.cx, y0:a.cy, dx:ddx, dy:ddy,
                   ease: pv.ease!==false, dur: pv.dur||0, loop: !!pv.loop };
     e.markDirty(); e.refresh && e.refresh();
     setMode(false); renderBar();
@@ -3262,9 +3266,9 @@ boot();
     if(pathMode){
       const f=feet();
       if(f){
-        const dx = (hover&&down)? hover.x-down.x : 0;
-        const dy = (hover&&down)? hover.y-down.y : 0;
-        line(f.cx, f.cy, f.cx+dx, f.cy+dy, true);
+        const tx = (hover&&down)? hover.x : f.cx;
+        const ty = (hover&&down)? hover.y : f.cy;
+        line(f.cx, f.cy, tx, ty, true);   /* Order 69 — line end = ungli */
       }
       return;
     }
