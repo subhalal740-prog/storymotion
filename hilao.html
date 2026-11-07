@@ -880,6 +880,41 @@ html, body { height: 100dvh; max-height: 100dvh; overflow: hidden; }
 /* Bottom navigation ~10dvh */
 body .app > .dock, .app > nav.dock { height: 10dvh !important; min-height: 58px; max-height: 86px; }
 
+/* =======================================================================
+   Order 71 — Character page: chhota SAFED "Upload" button + safed Delete
+   ======================================================================= */
+#createCharBtn{
+  height: 30px !important;
+  padding: 0 13px 0 11px !important;
+  gap: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: #14161b !important;
+  border: 1px solid rgba(0,0,0,.10) !important;
+  font: 700 11.5px/1 Inter,system-ui,-apple-system,sans-serif !important;
+  letter-spacing: .2px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.35), 0 4px 14px rgba(0,0,0,.28);
+}
+#createCharBtn .icon{ width: 13px !important; height: 13px !important; color: #14161b !important; stroke-width: 2.6 !important; }
+#createCharBtn:active{ background: #eceef2 !important; transform: translateY(1px); }
+
+/* card ka delete — safed chhota square, hover par halka laal */
+.character-card .char-delete{
+  width: 26px !important; height: 26px !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #14161b !important;
+  border: 1px solid rgba(0,0,0,.10) !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+}
+.character-card .char-delete .icon{ width: 13px !important; height: 13px !important; color: #14161b !important; stroke-width: 2.2 !important; }
+.character-card .char-delete:hover{ background: #ffe8e8 !important; }
+.character-card .char-delete:hover .icon{ color: #c62828 !important; }
+.character-card .char-delete.restore{ background: #ffffff !important; }
+.character-card .char-delete.restore .icon{ color: #16733c !important; }
+
 </style>
 <style id="smMobile">
 /* ============================================================
@@ -1253,7 +1288,7 @@ try{ localStorage.removeItem('hilao.sel'); localStorage.removeItem('hilao.anim')
   </nav>
 </div>
 <div class="panel-backdrop" id="panelBackdrop" hidden></div>
-<aside class="panel" id="panel" hidden aria-label="Editor panel"><header class="panel-header"><div><span class="panel-eyebrow">HILAO STUDIO</span><h2 id="panelTitle">Characters</h2></div><div class="panel-header-actions"><button class="create-btn" id="createCharBtn" hidden><svg class="icon"><use href="#plus"/></svg>Create</button><button class="icon-btn" id="closePanel" aria-label="Close panel"><svg class="icon"><use href="#close"/></svg></button></div></header><div class="panel-body" id="panelBody"></div></aside>
+<aside class="panel" id="panel" hidden aria-label="Editor panel"><header class="panel-header"><div><span class="panel-eyebrow">HILAO STUDIO</span><h2 id="panelTitle">Characters</h2></div><div class="panel-header-actions"><button class="create-btn" id="createCharBtn" hidden aria-label="Upload character"><svg class="icon"><use href="#upload"/></svg>Upload</button><button class="icon-btn" id="closePanel" aria-label="Close panel"><svg class="icon"><use href="#close"/></svg></button></div></header><div class="panel-body" id="panelBody"></div></aside>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <input type="file" id="characterUpload" accept="image/png,image/jpeg,image/webp" hidden>
 <input type="file" id="backgroundUpload" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
