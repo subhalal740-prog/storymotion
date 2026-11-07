@@ -850,8 +850,10 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 .timeline-inner .track .char-clip,
 .timeline-inner .track .audio-clip{ height:auto; align-self:stretch; }
 
-/* Order 61 — asli character ho to "BG ..." ghost chip na dikhe */
-body.sm-has-char #smBgAnimChip{ display:none !important; }
+/* Order 62 — ghost layer aur uska "BG ..." chip kabhi na dikhe
+   (putla flow ab asli character layer banata hai) */
+#smBgAnimChip{ display:none !important; }
+#smBgAnim{ display:none !important; }
 
 </style>
 <style id="smMobile">
@@ -1111,6 +1113,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 </style>
 </head>
 <body>
+<script id="smStaleClear">
+/* Order 62 — "editor khulte hi character khada milta hai" ka asli karan:
+   purane background-animation selection (hilao.sel) localStorage me pada reh
+   jata tha aur ghost layer use parse hote hi utha leta tha. Putla flow ab
+   hilao.pickChar use karta hai, isliye ye keys har open par clear. */
+try{ localStorage.removeItem('hilao.sel'); localStorage.removeItem('hilao.anim'); }catch(e){}
+</script>
 <svg class="icons" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
 <symbol id="back" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6M8 12h12"/></symbol>
 <symbol id="gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="m10 3-.6 2.4-2 .9-2.2-.7-2 3.4 1.6 1.7-.2 2.3L3 15l2 3.4 2.3-.5 1.9 1.2L10 21h4l.8-2.1 2-1.1 2.2.6 2-3.5-1.6-1.7.2-2.3L21 9l-2-3.4-2.3.5-1.9-1.2L14 3Z"/></symbol>
@@ -3278,8 +3287,8 @@ boot();
     var g = document.getElementById('smBgAnim'), chip = document.getElementById('smBgAnimChip');
     var hasChar = false;
     try { hasChar = !!(window.__smEd && window.__smEd.current && window.__smEd.current().charVisible); } catch (e) {}
-    if (g) g.style.display = hasChar ? 'none' : '';
-    if (chip) chip.style.display = hasChar ? 'none' : '';
+    if (g) g.style.display = 'none';   /* ghost layer kabhi na dikhe */
+    if (chip) chip.style.display = 'none';   /* 'BG ...' chip bhi na dikhe */
     document.body.classList.toggle('sm-has-char', hasChar);
   }
 
