@@ -836,6 +836,20 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 .putla-card:active{ border-color:#f2f2f5; }
 .putla-hint{ margin:0; padding:0 4px 12px; text-align:center; font-size:11px; color:#8b939c; }
 
+/* ── Order 60 — timeline ke tracks khaali jagah bharte hain (AutoDraft jaisa) ── */
+.timeline-inner{ display:flex !important; flex-direction:column !important; min-height:100% !important; }
+.timeline-inner .track:not(.add-track-row){ flex:0 0 auto !important; min-height:46px !important; }
+/* bachi jagah "+ Track jodo" row leta hai — khaali black area jaisa nahi lagta */
+.timeline-inner .add-track-row{ flex:1 1 0 !important; min-height:64px !important; align-items:center !important; }
+.timeline-inner .add-track-row .clips{ align-items:center !important; justify-content:flex-start; }
+.timeline-inner .add-track-row .add-track-btn{ width:36px; height:36px; margin-left:10px; border-radius:10px;
+  background:#23262b !important; border:1px solid #3b4048 !important; color:#cfd6de !important; }
+.timeline-inner .add-track-row .add-track-btn .icon{ width:17px; height:17px; }
+.timeline-inner .track .clips{ align-items:stretch; padding:4px 0; }
+.timeline-inner .track .clip,
+.timeline-inner .track .char-clip,
+.timeline-inner .track .audio-clip{ height:auto; align-self:stretch; }
+
 </style>
 <style id="smMobile">
 /* ============================================================
@@ -2511,7 +2525,17 @@ async function boot(){try{await initAssets();project=defaultProject();try{const 
 /* Order 56 (user ne chuna A): editor hamesha KHAALI khule. Purana autosave
    delete nahi hota — ek baar "Saved version" me copy hota hai (History me
    "Restore" se wapas), uske baad editor blank shuru hota hai. */
-if(auto?.project?.scenes?.length){if(!auto.__arch){try{await dbPut({id:uid(),date:Date.now(),project:clone(auto.project)});await dbPut({...auto,__arch:1});}catch(e){}}}}catch{}renderer=new Renderer(preview);wire();syncProjectFields();refresh();$('loading').hidden=true;$('saveState').textContent=dirty?'Unsaved changes':'Local project';if(!hasCharacter())setTimeout(()=>toast('Background ready hai. Character jodne ke liye neeche Character dabao.'),600);requestAnimationFrame(animate);}catch(e){$('loading').textContent='Studio load nahi hua. Page refresh karo.';console.error(e);}}
+if(auto?.project?.scenes?.length){if(!auto.__arch){try{await dbPut({id:uid(),date:Date.now(),project:clone(auto.project)});await dbPut({...auto,__arch:1});}catch(e){}}}}catch{}renderer=new Renderer(preview);wire();syncProjectFields();refresh();
+/* Order 60 — putla page (animations.html) se aaya character: asli layer banao
+   (timeline me uski track aati hai). Sirf user ke tap par — khud se nahi. */
+try{
+  var __pc=JSON.parse(localStorage.getItem('hilao.pickChar')||'null');
+  if(__pc){ localStorage.removeItem('hilao.pickChar');
+    if(__pc.id&&assets.chars.get(__pc.id)){ pendingChar=__pc.id; applyCharacter(); markDirty(); }
+    else if(__pc.src){ window.__smEd&&window.__smEd.addCustomChar&&window.__smEd.addCustomChar(__pc.name||'Character',__pc.src).then(function(){ markDirty(); }); }
+  }
+}catch(e){}
+$('loading').hidden=true;$('saveState').textContent=dirty?'Unsaved changes':'Local project';if(!hasCharacter())setTimeout(()=>toast('Background ready hai. Character jodne ke liye neeche Character dabao.'),600);requestAnimationFrame(animate);}catch(e){$('loading').textContent='Studio load nahi hua. Page refresh karo.';console.error(e);}}
 /* ═════════ smAutoEditor · PATH-TOOL ENGINE (AutoDraft-style movement) ═════════
    Scene ke andar smPath = {on,x0,y0,x1,y1,ease} rakhta hai (x/y = stage ke fraction).
    Render aur export dono me character path par chalta hai (panX/panY offset). */
