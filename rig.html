@@ -728,12 +728,21 @@ img,canvas,video,svg{ max-width:100%; }
 button,input,select,textarea{ font-family:inherit; }
 
 /* ---------- 1. EDITOR (hilao.html) ---------- */
-/* topbar */
-.topbar{ height:44px !important; padding:0 4px !important; }
-.top-action{ min-width:44px !important; font-size:8.5px !important; padding:3px 4px !important; gap:2px !important; }
-.top-action .icon{ width:15px !important; height:15px !important; }
-.top-left .icon-btn{ width:26px !important; height:26px !important; }
-.topbar .icon-btn .icon, .topbar .icon{ width:15px !important; height:15px !important; }
+/* topbar — AutoDraft scale (48px, 16px icons, 10px labels, separators) */
+.topbar{
+  height:48px !important; padding:0 4px !important;
+  border-bottom:1px solid rgba(255,255,255,.10) !important;
+}
+.top-action{
+  min-width:56px !important; font-size:10px !important; padding:4px 8px !important; gap:3px !important;
+  border-left:1px solid rgba(255,255,255,.07) !important; border-radius:0 !important;
+}
+.top-action:last-of-type{ border-right:1px solid rgba(255,255,255,.07) !important; }
+.top-action .icon{ width:16px !important; height:16px !important; }
+.top-action[on], .top-action.on, .top-action:active{ background:rgba(255,255,255,.10) !important; }
+.top-left{ gap:2px !important; }
+.top-left .icon-btn{ width:32px !important; height:32px !important; }
+.topbar .icon-btn .icon, .topbar .icon{ width:16px !important; height:16px !important; }
 
 /* playbar */
 .playbar{ height:32px !important; padding:0 6px !important; gap:4px !important; }
@@ -935,9 +944,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
 /* ---------- 5. very small phones ---------- */
 @media (max-width:360px){
-  .topbar{ height:40px !important; }
-  .top-action{ min-width:38px !important; font-size:7.5px !important; }
-  .top-action .icon{ width:14px !important; height:14px !important; }
+  .topbar{ height:44px !important; }
+  .top-action{ min-width:48px !important; font-size:9px !important; padding:3px 5px !important; }
+  .top-action .icon{ width:15px !important; height:15px !important; }
+  .top-left .icon-btn{ width:28px !important; height:28px !important; }
   .stage{ max-height:36vh !important; }
   .timeline{ height:clamp(132px,20dvh,172px) !important; }
   .track{ min-height:31px !important; }
@@ -1048,38 +1058,6 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       <svg class="boy" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="19" fill="#0e2a4a" stroke="#fbbf24" stroke-opacity=".45"/><path d="M20 9c-4.4 0-7.4 3-7.4 7.4 0 4.4 3 8.6 7.4 8.6s7.4-4.2 7.4-8.6C27.4 12 24.4 9 20 9z" fill="#f6c9a0"/><path d="M12.4 17.2c0-4.6 3.2-8.2 7.6-8.2s7.6 3.6 7.6 8.2c-1.4-2.2-4-3.4-7.6-3.4s-6.2 1.2-7.6 3.4z" fill="#2b1b12"/><circle cx="17" cy="17" r="1.1" fill="#2b1b12"/><circle cx="23" cy="17" r="1.1" fill="#2b1b12"/><path d="M17.8 21.2c1.4 1.2 3 1.2 4.4 0" stroke="#a1583a" stroke-width="1.2" stroke-linecap="round"/><path d="M11.5 31.5c1.6-3.4 4.8-5 8.5-5s6.9 1.6 8.5 5z" fill="#ffd75e"/></svg>
     </div>
 
-    <div class="card inspCard" id="inspCard">
-      <div class="cHead"><h3>Pose Inspiration</h3><span class="pill" id="inspPill">REFERENCE</span></div>
-      <div class="inspRow">
-        <div class="inspTile"><img src="pose-walk.png" alt="Walk pose"><b>Walk</b><i>Slow, natural steps</i></div>
-        <div class="inspTile"><img src="pose-run.png" alt="Run pose"><b>Run</b><i>Fast, big stride</i></div>
-        <div class="inspTile"><img src="pose-cycle.png" alt="Cycle pose"><b>Cycle</b><i>Short, quick pedal</i></div>
-      </div>
-      <p class="note">Ye sirf reference images hain — inhe dekh kar apne character ka rig banao. Koi button nahi, koi setting nahi.</p>
-    </div>
-
-  </section>
-
-  <!-- ================= PAGE 2 · AUTO-CUT & LAYERS ================= -->
-  <section id="pg2" class="hidden">
-    <div class="card acCard" style="margin-bottom:14px">
-      <div class="acHead">
-        <span class="acIcon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.6 15.4"/><path d="M8.6 8.6 20 20"/></svg></span>
-        <div class="acTT"><h3>Auto-Cut</h3><p id="acSub">6 Body Parts Extracted Successfully</p></div>
-        <span class="acOk off" id="acOk">&#10003;</span>
-        <span class="pill" id="partPill" style="display:none">6/6</span>
-      </div>
-      <div class="partGrid" id="partGrid" data-partgrid="2"></div>
-      <div class="scrollHint" id="scrollHint">
-        <span class="arr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v13"/><path d="M6.5 12.5 12 18l5.5-5.5"/></svg></span>
-        <span>Scroll down to verify / adjust Z-Index Layer order before going Next</span>
-      </div>
-      <div class="iconRow">
-        <button class="icoAct" id="btnMirrorFlip2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h9a3.5 3.5 0 0 1 0 7H9"/><path d="M6.6 5.4 4 8l2.6 2.6"/><path d="M4 16h9a3.5 3.5 0 0 0 0-7H9"/><path d="M6.6 13.4 4 16l2.6 2.6"/></svg> Mirror Flip</button>
-        <button class="icoAct" id="btnEditPos2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M3 12h18"/><circle cx="12" cy="12" r="3.2"/></svg> Edit Position</button>
-        <button class="icoAct" id="btnPreview2"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5.5v13l11-6.5z"/></svg> Preview</button>
-      </div>
-    </div>
     
     <div class="grid2 two">
       <div class="card">
