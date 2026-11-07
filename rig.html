@@ -228,8 +228,8 @@
     html,body{height:auto!important;min-height:100%!important;overflow-y:auto!important;overflow-x:hidden!important}
     body{padding-bottom:calc(16px + env(safe-area-inset-bottom))!important}
     /* canvas par ungli rakh ke neeche kheencho -> page scroll ho (ring ghumane ke liye horizontal drag) */
-    #studio{touch-action:pan-y!important;max-height:40vh!important}
-    #studioWrap{touch-action:pan-y!important;max-height:40vh!important;overflow:hidden!important}
+    #studio{touch-action:pan-y!important;max-height:54vh!important}
+    #studioWrap{touch-action:pan-y!important;max-height:54vh!important;overflow:hidden!important}
     #mobilePad{display:block}
   }
   /* chhoti screen (height<700): developer HUD line hata do — buttons jagah bache */
@@ -699,7 +699,7 @@ body{padding-bottom:40px!important}
 <style id="v16short">
 /* v16.0: chhoti screen (<=720px height) — Quick Pose buttons bina scroll ke fit */
 @media (max-height:720px){
-  #studioWrap{max-height:32vh!important}
+  #studioWrap{max-height:54vh!important}
   .qpRow .qp{padding:10px 4px!important;font-size:12px!important}
   .qp.stop{padding:0!important}
   .qpWrap{margin-top:6px!important;padding-top:6px!important}
@@ -4369,7 +4369,43 @@ a.note, .note{ color: rgba(255,255,255,.55) !important; }
 }
 .upIcon svg{ width: 18px !important; height: 18px !important; }
 .poseTile.on{ border-color: rgba(255,255,255,.55) !important; box-shadow: 0 0 12px rgba(255,255,255,.10) !important; }
+
+/* ---------- 7 · SIZE / "FULL ON" PASS (v4) — chhote na lagein ---------- */
+:root{ --sk-mut: rgba(255,255,255,.78); }
+.btn, .btn.primary, .btn.ghost, .btn.tiny, .icoAct, .qp, .smArmBtn, .posKey, .posKey.mid,
+.step, .tab, .chip, .segBtn, .miniBtn{
+  font-size: 12.5px !important;
+  padding: 9px 14px !important;
+  border-radius: 6px !important;
+  min-height: 38px !important;
+}
+.btn.tiny{ font-size: 11.5px !important; padding: 7px 11px !important; min-height: 32px !important; }
+.icoAct{ height: 38px !important; font-size: 12px !important; padding: 0 12px !important; }
+.icoAct svg, .btn svg, .smArmBtn svg, .qp svg, .miniBtn svg{ width: 16px !important; height: 16px !important; }
+.pill, .tag{ font-size: 10px !important; padding: 5px 9px !important; color: rgba(255,255,255,.82) !important; }
+/* step circles thode bade */
+#steps .step b{ width: 34px !important; height: 34px !important; line-height: 32px !important; font-size: 13px !important; }
+#steps .step i{ font-size: 9.5px !important; }
+/* header icons */
+.icoBtn, #menuBtn{ width: 40px !important; height: 40px !important; }
+.icoBtn svg, #menuBtn svg{ width: 19px !important; height: 19px !important; }
+/* back button */
+.pgBack{ font-size: 12.5px !important; padding: 8px 14px !important; min-height: 36px !important; }
+/* cards thode khule */
+.card{ padding: 13px !important; }
+/* koi bhi text "off" na lage */
+.kv .k, .note, .gateMsg, .upMeta span, .hint{ color: rgba(255,255,255,.78) !important; }
+.qp, .smArmBtn, .posKey{ color: #fff !important; }
+
+
+/* disabled bhi padhne layak — but clearly inactive */
+.btn[disabled], button[disabled], .qp[disabled], .icoAct[disabled]{
+  color: rgba(255,255,255,.45) !important; opacity: 1 !important;
+  border-color: rgba(255,255,255,.12) !important; background: rgba(255,255,255,.04) !important;
+}
 </style>
+
+
 
 
 
