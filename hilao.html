@@ -719,17 +719,24 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 }
 #smPathBtn.on{ background:rgba(255,255,255,.16); border-color:rgba(255,255,255,.6); }
 /* path status bar */
+/* path options — floating popover (Path button ke upar), layout space ZERO */
 #smPathBar{
-  position:static;left:auto;right:auto;top:auto;transform:none;
-  margin-top:6px;width:100%;max-width:none;flex-wrap:wrap;justify-content:center;padding:5px 6px;
-  display:flex;align-items:center;gap:6px;z-index:10;
-  background:rgba(14,16,20,.97);border:1px solid rgba(255,255,255,.18);
-  border-radius:8px;padding:6px 8px;box-shadow:0 14px 34px rgba(0,0,0,.7);
+  position:fixed;left:8px;right:8px;bottom:56px;top:auto;
+  margin:0;width:auto;max-width:none;
+  display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;
+  overflow:visible;
+  padding:6px 7px;z-index:80;
+  background:rgba(14,16,20,.985);border:1px solid rgba(255,255,255,.20);
+  border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.75);
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  animation:smPopIn .16s ease-out;
 }
+@keyframes smPopIn{ from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
 #smPathBar .t{font-size:10px;color:rgba(255,255,255,.8);font-weight:600;letter-spacing:.3px;padding:0 2px;white-space:nowrap}
 #smPathBar button{
-  font:600 10px/1 inherit;color:#fff;background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:6px 7px;cursor:pointer;white-space:nowrap;
+  font:600 11px/1 inherit;color:#fff;background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.18);border-radius:5px;padding:7px 8px;cursor:pointer;white-space:nowrap;
+  min-height:30px;
 }
 #smPathBar button.on{ background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.55); }
 #smPathLayer{ border-radius:6px; }
@@ -776,6 +783,22 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 .topbar .top-left{ flex:1 1 auto; min-width:0; overflow:hidden; }
 .topbar .top-actions{ flex:0 0 auto; }
 @media (max-width:360px){ .smTopTitle{ max-width:64px; font-size:10px; } }
+
+
+/* ── workspace scroll: chhoti screen par timeline tak pahunch sako ── */
+#workspace{
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+}
+#workspace::-webkit-scrollbar{ width:4px; }
+#workspace::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.22); border-radius:4px; }
+#workspace::-webkit-scrollbar-track{ background:transparent; }
+/* preview shell apni jagah, timeline apni — dono scroll me poore */
+#workspace > .preview-shell{ flex:0 0 auto; }
+#workspace > .timeline{ flex:0 0 auto; }
 
 </style>
 <style id="smMobile">
@@ -2987,7 +3010,12 @@ boot();
     $('smPathQuick')?.classList.toggle('on', v);
     $('smPathBtn')?.classList.toggle('on', v);
     const hint=$('smPathHint'); if(hint) hint.hidden=!v;
-    if(v) toast('Character se line kheencho — jahan chhodo wahan pahunchega');
+    if(v){
+      const sc0 = safeScene();
+      if(sc0 && !sc0.smPath) sc0.smPath = { on:false, x0:0, y0:0, dx:0, dy:0, ease:true, dur:0, loop:false };
+      toast('Character se line kheencho — jahan chhodo wahan pahunchega');
+    }
+    renderBar();
     draw();
   }
   function onDown(ev){
@@ -3019,7 +3047,9 @@ boot();
     if(Math.hypot(delta.dx,delta.dy) < 0.015){ toast('Line thodi lambi kheencho'); return; }
     const f=feet(); const a = f || {cx:0.5,cy:0.9};
     e.pushUndo();
-    sc.smPath = { on:true, x0:a.cx, y0:a.cy, dx:delta.dx, dy:delta.dy, ease:true, dur:0, loop:false };
+    const pv = sc.smPath || {};
+    sc.smPath = { on:true, x0:a.cx, y0:a.cy, dx:delta.dx, dy:delta.dy,
+                  ease: pv.ease!==false, dur: pv.dur||0, loop: !!pv.loop };
     e.markDirty(); e.refresh && e.refresh();
     setMode(false); renderBar();
     toast('Path set — ab play karo, character chalega');
@@ -3090,7 +3120,7 @@ boot();
   function renderBar(){
     const sc=safeScene(), p=pth(sc);
     let bar=$('smPathBar');
-    if(!p||!p.on){ if(bar) bar.hidden=true; return; }
+    if(!(pathMode || (p && p.on))){ if(bar) bar.hidden=true; return; }
     if(!bar){
       bar=document.createElement('div'); bar.id='smPathBar';
       bar.innerHTML=
@@ -3104,13 +3134,14 @@ boot();
         '<button data-a="rev">Rev</button>'+
         '<button data-a="walk">Walk</button>'+
         '<button data-a="clear">Clear</button>';
-      ($('previewShell')||document.body).appendChild(bar);
+      document.body.appendChild(bar);          /* popover — layout space nahi leta */
+      bar.classList.add('smPop');
       bar.addEventListener('click', ev=>{
         const b=ev.target.closest('button'); if(!b) return;
-        const e=ed(), s=safeScene(), q=pth(s); if(!q) return;
+        const e=ed(), s=safeScene(); let q=pth(s); if(!q){ q = s.smPath = { on:false, x0:0, y0:0, dx:0, dy:0, ease:true, dur:0, loop:false }; }
         const a=b.dataset.a;
         e.pushUndo();
-        if(a==='clear'){ delete s.smPath; toast('Path hata diya'); }
+        if(a==='clear'){ delete s.smPath; toast('Path hata diya'); setMode(false); e.markDirty(); e.refresh && e.refresh(); return; }
         if(a==='dur'){ q.dur = Number(b.dataset.v)||0; }
         if(a==='ease'){ q.ease = q.ease===false; }
         if(a==='loop'){ q.loop = !q.loop; }
@@ -3119,12 +3150,25 @@ boot();
         e.markDirty(); e.refresh && e.refresh(); renderBar(); lastKey='';
       });
     }
-    bar.hidden=false; bar.scrollLeft=0;
+    bar.hidden=false; bar.scrollLeft=0; placeBar(bar);
     const q=p, dur=q.dur||0;
     bar.querySelectorAll('[data-a="dur"]').forEach(b=>b.classList.toggle('on', Number(b.dataset.v)===dur));
     bar.querySelector('[data-a="ease"]').classList.toggle('on', q.ease!==false);
     bar.querySelector('[data-a="loop"]').classList.toggle('on', !!q.loop);
     bar.querySelector('[data-a="walk"]').classList.toggle('on', sc && sc.mode==='body');
+  }
+
+  /* popover ko Path button ke ठीक upar rakho (fixed, koi layout shift nahi) */
+  function placeBar(bar){
+    bar = bar || $('smPathBar'); if(!bar) return;
+    const btn = $('smPathQuick');
+    const vh = window.innerHeight || 0;
+    if(!btn){ bar.style.left='8px'; bar.style.right='8px'; bar.style.bottom='56px'; bar.style.top='auto'; return; }
+    const r = btn.getBoundingClientRect();
+    bar.style.left = '8px';
+    bar.style.right = '8px';
+    bar.style.top = 'auto';
+    bar.style.bottom = Math.max(8, Math.round(vh - r.top + 6)) + 'px';
   }
 
   /* ───────── buttons ───────── */
@@ -3309,6 +3353,8 @@ boot();
     window.addEventListener('resize', ()=>{ fit(); draw(); });
     requestAnimationFrame(loop);
     window.__smPath={ set:v=>setMode(v), start:()=>setMode(true), get:()=>pth(safeScene()) };
+  window.addEventListener('resize', ()=>{ const b=$('smPathBar'); if(b && !b.hidden) placeBar(b); });
+  window.addEventListener('scroll', ()=>{ const b=$('smPathBar'); if(b && !b.hidden) placeBar(b); }, true);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();
