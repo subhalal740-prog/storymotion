@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="hi-Latn">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#121212"><title>Hilao Studio — Cartoon Story Editor</title>
 <meta name="description" content="Hilao Studio — 2D cartoon ko gardan ring se hilao, 2 character ek scene mein, aankh jhapakna aur audio lip-sync. Scenes, timeline, camera aur bina watermark video export. No login, sab browser mein.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23151719'/%3E%3Cpath d='M17 24v16m8-23v30m8-25v20m8-28v36m8-25v14' stroke='%234c8dff' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -765,6 +765,200 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 #smPathHint span{font:600 11px/1.2 inherit;color:#fff}
 #smPathHint button{font:600 10.5px/1 inherit;color:#fff;background:rgba(255,255,255,.10);
   border:1px solid rgba(255,255,255,.28);border-radius:4px;padding:6px 9px;cursor:pointer}
+
+</style>
+<style id="smMobile">
+/* ============================================================
+   skin-mobile.css — GLOBAL MOBILE COMPACT PASS (v1)
+   Har site page par inject hota hai (<style id="smMobile">).
+   Maqsad: mobile par UI ka scale chhota, sab kuch screen ke andar,
+   koi horizontal overflow nahi, canvas 16:9 hi rahe.
+   Features/layout structure ko chheda nahi gaya — sirf sizes.
+   ============================================================ */
+
+/* ---------- 0. base guard (har page) ---------- */
+html{
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+  -webkit-tap-highlight-color:transparent;
+}
+html,body{ max-width:100%; overflow-x:hidden; }
+*,*::before,*::after{ box-sizing:border-box; }
+img,canvas,video,svg{ max-width:100%; }
+button,input,select,textarea{ font-family:inherit; }
+
+/* ---------- 1. EDITOR (hilao.html) ---------- */
+/* topbar */
+.topbar{ height:44px !important; padding:0 4px !important; }
+.top-action{ min-width:44px !important; font-size:8.5px !important; padding:3px 4px !important; gap:2px !important; }
+.top-action .icon{ width:15px !important; height:15px !important; }
+.top-left .icon-btn{ width:26px !important; height:26px !important; }
+.topbar .icon-btn .icon, .topbar .icon{ width:15px !important; height:15px !important; }
+
+/* playbar */
+.playbar{ height:32px !important; padding:0 6px !important; gap:4px !important; }
+.playbar .icon-btn{ width:20px !important; height:20px !important; }
+.playbar .icon{ width:13px !important; height:13px !important; }
+.play-round{ width:24px !important; height:24px !important; }
+.play-round .icon{ width:14px !important; height:14px !important; }
+.speed-btn{ font-size:9.5px !important; padding:2px 6px !important; min-width:26px !important; }
+.timecode{ font-size:9.5px !important; }
+
+/* quick tools row */
+.quick-tools{ height:32px !important; padding:0 5px !important; gap:3px !important; }
+.quick-left,.quick-right{ gap:3px !important; }
+.quick-tools .icon-btn{ width:21px !important; height:21px !important; }
+.quick-tools .icon{ width:13px !important; height:13px !important; }
+#smPathQuick{ height:24px !important; padding:0 8px !important; font-size:10px !important; gap:3px !important; }
+#smPathQuick svg{ width:12px !important; height:12px !important; }
+#smClearBtn{ width:22px !important; height:22px !important; }
+#smClearBtn svg{ width:13px !important; height:13px !important; }
+
+/* scenebar */
+.scenebar{ height:32px !important; padding:0 4px !important; gap:3px !important; }
+.scene-chip{ height:22px !important; font-size:10.5px !important; padding:0 6px !important; max-width:38vw !important; }
+.scene-chip .icon{ width:12px !important; height:12px !important; }
+.box-btn{ width:22px !important; height:22px !important; }
+.box-btn .icon{ width:13px !important; height:13px !important; }
+.scenebar .icon-btn{ width:22px !important; height:22px !important; }
+.scenebar .icon{ width:14px !important; height:14px !important; }
+
+/* stage / canvas — 16:9, thodi jagah timeline ko */
+.preview-shell{ padding:3px !important; }
+.stage{ max-height:40vh !important; }
+
+/* timeline — bachi hui vertical jagah timeline le leta hai (neeche khaali void nahi) */
+.timeline{
+  height:auto !important; flex:1 1 auto !important;
+  min-height:148px !important; max-height:min(330px,42dvh) !important;
+  padding-top:12px !important;
+}
+.ruler{ height:22px !important; margin-left:40px !important; }
+.ruler-gutter{ width:40px !important; height:22px !important; font-size:10px !important; }
+.tick label{ font-size:9px !important; top:10px !important; }
+.track{ min-height:34px !important; }
+.track-icon{ width:40px !important; }
+.track-icon .icon{ width:13px !important; height:13px !important; }
+.clips{ padding:2px 0 !important; }
+.clip{ height:28px !important; font-size:9px !important; padding:2px 4px !important; gap:1px !important; }
+.clip .icon{ width:11px !important; height:11px !important; }
+.clip-tile{ width:15px !important; height:15px !important; }
+.audio-clip{ height:22px !important; font-size:9px !important; margin:3px 0 !important; }
+.timeline-footer{ height:14px !important; font-size:7px !important; }
+
+/* dock */
+.dock{ height:48px !important; padding:2px 4px max(2px,env(safe-area-inset-bottom)) !important; gap:1px !important; }
+.dock button{ min-width:54px !important; font-size:9px !important; gap:2px !important; padding:2px !important; }
+.dock button .icon{ width:17px !important; height:17px !important; }
+
+/* bg-anim chip (stage ke upar) */
+#smBgAnimChip{ font-size:8.5px !important; padding:3px 7px !important; border-radius:4px !important; }
+#smBgAnimChip b{ font-size:8.5px !important; }
+
+/* path hint banner */
+#smPathHint{ padding:5px 7px !important; top:4px !important; }
+#smPathHint span{ font-size:10px !important; }
+#smPathHint button{ font-size:9.5px !important; }
+#smPathBar button{ min-height:24px !important; font-size:10px !important; padding:0 7px !important; }
+
+/* panels / sheets */
+.panel-header{ padding:10px 12px 8px !important; }
+.panel-header h2{ font-size:16px !important; }
+.panel-body{ padding:10px 12px 14px !important; }
+.panel-body .btn, .panel-body button.btn{ min-height:32px !important; font-size:11.5px !important; }
+.character-art{ height:112px !important; }
+.chip{ font-size:10.5px !important; padding:5px 9px !important; }
+.chips-row{ gap:6px !important; padding-bottom:4px !important; margin-bottom:8px !important; }
+.character-grid{ gap:9px !important; }
+.layer-action{ font-size:11px !important; padding:6px 8px !important; }
+.toast{ font-size:11px !important; bottom:58px !important; padding:7px 11px !important; }
+
+/* ---------- 2. PUPPET / RIG pages (rig, studio, stage5) ---------- */
+header.top{ height:34px !important; }
+.logo{ width:26px !important; height:26px !important; flex:0 0 26px !important; }
+.brandRow b{ font-size:13.5px !important; letter-spacing:-.2px !important; }
+.brandRow small, .brandRow span small{ font-size:8.5px !important; }
+#steps{ margin:2px 0 8px !important; padding:0 !important; }
+#steps .step{ height:32px !important; }
+#steps .step b{ width:26px !important; height:26px !important; font-size:10.5px !important; line-height:26px !important; }
+#steps .step span{ font-size:8px !important; margin-top:2px !important; }
+.card{ padding:10px !important; border-radius:9px !important; margin-bottom:8px !important; }
+.card h3, .upTT h3, .cHead h3, .acTT h3{ font-size:9.5px !important; letter-spacing:.5px !important; }
+.upTT p, .acTT p{ font-size:8.5px !important; margin-top:2px !important; }
+.upHead{ height:26px !important; }
+.upPrev{ width:76px !important; height:76px !important; }
+.upChk{ font-size:9.5px !important; }
+.upRow{ gap:8px !important; }
+.chooseBtn{ min-height:32px !important; font-size:11px !important; padding:0 18px !important; margin-top:9px !important; border-radius:6px !important; }
+.gateMsg, .note, .kv{ font-size:8.5px !important; margin-top:6px !important; }
+.tipBar{ padding:6px 8px !important; margin-top:9px !important; border-radius:8px !important; }
+.tipBar p{ font-size:9px !important; line-height:1.35 !important; }
+.inspRow{ gap:6px !important; margin-top:8px !important; }
+.inspTile{ height:112px !important; }
+.inspTile b{ font-size:9px !important; margin-top:4px !important; }
+.inspTile i{ font-size:7.5px !important; }
+.pill{ font-size:7px !important; padding:2px 6px !important; }
+.voiceBtn{ width:24px !important; height:24px !important; }
+.icoAct{ padding:0 9px !important; font-size:10.5px !important; min-height:28px !important; }
+.upIcon, .acIcon{ width:24px !important; height:24px !important; }
+header.top h1, header.top .brand, .brandRow b{ font-size:12.5px !important; }
+.btn, .qp, .icoAct{
+  font-size:11.5px !important; min-height:32px !important; padding:5px 10px !important;
+}
+.btn .icon, .qp .icon, .icoAct .icon{ width:13px !important; height:13px !important; }
+#steps .step b{ font-size:24px !important; }
+#steps .step small, #steps .step span{ font-size:9.5px !important; }
+.stage{ max-height:44vh !important; }
+.dock{ height:52px !important; }
+.dock button{ min-width:54px !important; font-size:9.5px !important; }
+.speed-btn, .timecode, .preview-meta, .ratio-chip{ font-size:9.5px !important; }
+.scene-chip{ font-size:10.5px !important; }
+.panel h2, .panel-header h2{ font-size:16px !important; }
+.clip, .clip-label, .track-icon{ font-size:9.5px !important; }
+
+/* ---------- 3. ANIMATIONS page ---------- */
+.top h1{ font-size:16px !important; letter-spacing:-.2px !important; }
+.selRow .nm b{ font-size:13px !important; }
+.selRow .nm small{ font-size:9.5px !important; margin-top:1px !important; }
+.badgeSel{ font-size:10px !important; padding:5px 9px !important; }
+.search{ margin:9px 0 8px !important; padding:8px 11px !important; border-radius:8px !important; gap:7px !important; }
+.search input{ font-size:12px !important; }
+.tab{ padding:6px 11px !important; font-size:10px !important; border-radius:6px !important; }
+.tile .lb{ font-size:11px !important; }
+.tile .lb .pill{ font-size:7.5px !important; padding:3px 5px !important; }
+.tile .up{ padding:6px 10px !important; font-size:10.5px !important; }
+.cta button{ min-height:38px !important; font-size:12.5px !important; padding:10px !important; }
+.empty{ font-size:11.5px !important; padding:20px 8px !important; }
+
+/* ---------- 4. INDEX / launcher ---------- */
+.eyebrow{ font-size:9px !important; letter-spacing:1.8px !important; }
+h1{ font-size:20px !important; letter-spacing:-.4px !important; }
+.sub{ font-size:11.5px !important; margin-bottom:14px !important; }
+.sec{ font-size:9px !important; letter-spacing:1.4px !important; margin-bottom:7px !important; }
+.ico{ width:34px !important; height:34px !important; flex:0 0 34px !important; border-radius:10px !important; }
+.ico svg{ width:18px !important; height:18px !important; }
+.ttl{ font-size:13.5px !important; }
+.desc{ font-size:10.5px !important; line-height:1.4 !important; }
+.tag{ font-size:8px !important; }
+.arrow{ font-size:13px !important; right:12px !important; bottom:11px !important; }
+
+/* ---------- 5. very small phones ---------- */
+@media (max-width:360px){
+  .topbar{ height:40px !important; }
+  .top-action{ min-width:38px !important; font-size:7.5px !important; }
+  .top-action .icon{ width:14px !important; height:14px !important; }
+  .stage{ max-height:36vh !important; }
+  .timeline{ height:clamp(132px,20dvh,172px) !important; }
+  .track{ min-height:31px !important; }
+  .clip{ height:26px !important; }
+  .dock button{ min-width:48px !important; font-size:8.5px !important; }
+  .dock button .icon{ width:16px !important; height:16px !important; }
+  .quick-tools .icon-btn{ width:19px !important; height:19px !important; }
+  .btn, .qp, .icoAct{ font-size:10.5px !important; min-height:30px !important; }
+  .upPrev{ width:66px !important; height:66px !important; }
+  .inspTile{ height:98px !important; }
+  .brandRow b{ font-size:12.5px !important; }
+}
 
 </style>
 </head>
