@@ -725,7 +725,7 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
   margin:0;width:auto;max-width:none;
   display:flex;align-items:center;gap:5px;flex-wrap:wrap;justify-content:center;
   overflow:visible;
-  padding:6px 7px;z-index:80;
+  padding:6px 7px;z-index:999;
   background:rgba(14,16,20,.985);border:1px solid rgba(255,255,255,.20);
   border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.75);
   scrollbar-width:none;-webkit-overflow-scrolling:touch;
@@ -3005,7 +3005,7 @@ boot();
     pathMode=v; down=null; start=null; hover=null; dragMoved=false;
     if(layer) layer.style.pointerEvents = v?'auto':'none';
     const st=$('stage'); if(st) st.style.cursor = v?'crosshair':'';
-    $('smPathQuick')?.classList.toggle('on', v);
+    $('smPathQuick')?.classList.toggle('on', v);   /* legacy — ab dock item hi asli button hai */
     $('smPathBtn')?.classList.toggle('on', v);
     const hint=$('smPathHint'); if(hint) hint.hidden=!v;
     if(v){
@@ -3118,7 +3118,7 @@ boot();
   function renderBar(){
     const sc=safeScene(), p=pth(sc);
     let bar=$('smPathBar');
-    if(!(pathMode || (p && p.on))){ if(bar) bar.hidden=true; return; }
+    if(!(pathMode || (p && p.on))){ if(bar) bar.hidden=true; hideFloat(false); return; }
     if(!bar){
       bar=document.createElement('div'); bar.id='smPathBar';
       bar.innerHTML=
@@ -3139,7 +3139,7 @@ boot();
         const e=ed(), s=safeScene(); let q=pth(s); if(!q){ q = s.smPath = { on:false, x0:0, y0:0, dx:0, dy:0, ease:true, dur:0, loop:false }; }
         const a=b.dataset.a;
         e.pushUndo();
-        if(a==='clear'){ delete s.smPath; toast('Path hata diya'); setMode(false); e.markDirty(); e.refresh && e.refresh(); return; }
+        if(a==='clear'){ delete s.smPath; toast('Path hata diya'); setMode(false); hideFloat(false); e.markDirty(); e.refresh && e.refresh(); return; }
         if(a==='dur'){ q.dur = Number(b.dataset.v)||0; }
         if(a==='ease'){ q.ease = q.ease===false; }
         if(a==='loop'){ q.loop = !q.loop; }
@@ -3149,6 +3149,7 @@ boot();
       });
     }
     bar.hidden=false; bar.scrollLeft=0; placeBar(bar);
+    hideFloat(true);
     const q=p, dur=q.dur||0;
     bar.querySelectorAll('[data-a="dur"]').forEach(b=>b.classList.toggle('on', Number(b.dataset.v)===dur));
     bar.querySelector('[data-a="ease"]').classList.toggle('on', q.ease!==false);
@@ -3156,13 +3157,22 @@ boot();
     bar.querySelector('[data-a="walk"]').classList.toggle('on', sc && sc.mode==='body');
   }
 
+  /* panel khula ho to floating Back/Home buttons chhupao (overlap avoid) */
+  function hideFloat(on){
+    ['smNav','smBack','smHome'].forEach(id=>{ const el=$(id); if(!el) return;
+      el.style.visibility = on ? 'hidden' : '';
+      el.style.opacity = on ? '0' : '';
+      el.style.pointerEvents = on ? 'none' : '';
+    });
+  }
+
   /* popover ko Path button ke ठीक upar rakho (fixed, koi layout shift nahi) */
   function placeBar(bar){
     bar = bar || $('smPathBar'); if(!bar) return;
-    const btn = $('smPathQuick');
+    const anchorEl = $('layerMenu') && !$('layerMenu').hidden ? $('layerMenu') : ($('smPathBtn') || $('smPathQuick'));
     const vh = window.innerHeight || 0;
-    if(!btn){ bar.style.left='8px'; bar.style.right='8px'; bar.style.bottom='56px'; bar.style.top='auto'; return; }
-    const r = btn.getBoundingClientRect();
+    if(!anchorEl){ bar.style.left='8px'; bar.style.right='8px'; bar.style.bottom='120px'; bar.style.top='auto'; return; }
+    const r = anchorEl.getBoundingClientRect();
     bar.style.left = '8px';
     bar.style.right = '8px';
     bar.style.top = 'auto';
@@ -3173,7 +3183,12 @@ boot();
   const ICON='<svg viewBox="0 0 24 24" style="width:16px;height:16px" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19c5 0 4-8 9-8"/><circle cx="4" cy="19" r="2"/><circle cx="19" cy="11" r="2"/><path d="M14 8h5v3"/></svg>';
 
   function quickBtn(){
-    if($('smPathQuick')) return;
+    /* AutoDraft mobile me Path bottom layer-dock me hota hai, quick-tools row me nahi.
+       Isliye purana quick-tools button hata dete hain (agar pehle se ho). */
+    const stale = $('smPathQuick');
+    if(stale){ try{ stale.remove(); }catch(e){} }
+    return;
+    /* eslint-disable no-unreachable */
     const row=document.querySelector('.quick-tools .quick-left') || document.querySelector('.quick-tools');
     if(!row) return;
     const b=document.createElement('button');
@@ -3231,7 +3246,9 @@ boot();
     b.id='smPathBtn'; b.type='button'; b.className='layer-action';
     b.innerHTML=ICON+'<span>Path</span>';
     b.onclick=()=> setMode(!pathMode);
-    items.insertBefore(b, items.querySelector('#laDelete'));
+    /* AutoDraft jaisa: Path dock me shuru me hi dikhe (scroll na karna pade) */
+    const before = items.querySelector('#laSpeed') || items.querySelector('#laTransform') || items.querySelector('#laDelete');
+    items.insertBefore(b, before);
   }
 
   /* ───────── BG-anim character ko asli scene character banao ─────────
