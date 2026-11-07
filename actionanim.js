@@ -578,13 +578,13 @@
       const sw = SIN(a), sw2 = SIN(a + PI);
       const bob = Math.abs(SIN(a * 2));
       return {
-        legL: [sw * 22 * D2R, clamp(-Math.max(0, SIN(a + 1.0)) * 32, -34, 0) * D2R],
-        legR: [sw2 * 22 * D2R, clamp(-Math.max(0, SIN(a + 1.0 + PI)) * 32, -34, 0) * D2R],
+        legL: [sw * 8 * D2R, clamp(-Math.max(0, SIN(a + 1.0)) * 14, -16, 0) * D2R],
+        legR: [sw2 * 8 * D2R, clamp(-Math.max(0, SIN(a + 1.0 + PI)) * 14, -16, 0) * D2R],
         armL: [sw * 14 * D2R, 10 * D2R],
         armR: [sw2 * 14 * D2R, 10 * D2R],
         torsoRot: sw * 1.2, torsoSquash: -0.008 * bob,
         headRot: -sw * 0.8, headY: bob * 1.2,
-        rootY: -bob * 4, rootX: 0, shadowScale: 1 + bob * 0.05
+        rootY: -bob * 5, rootX: 0, shadowScale: 1 + bob * 0.05
       };
     },
     run(t) {
@@ -592,8 +592,8 @@
       const sw = SIN(a), sw2 = SIN(a + PI);
       const bob = Math.abs(SIN(a * 2));
       return {
-        legL: [sw * 40 * D2R, clamp(-Math.max(0, SIN(a + 0.8)) * 62, -66, 0) * D2R],
-        legR: [sw2 * 40 * D2R, clamp(-Math.max(0, SIN(a + 0.8 + PI)) * 62, -66, 0) * D2R],
+        legL: [sw * 13 * D2R, clamp(-Math.max(0, SIN(a + 0.8)) * 26, -28, 0) * D2R],
+        legR: [sw2 * 13 * D2R, clamp(-Math.max(0, SIN(a + 0.8 + PI)) * 26, -28, 0) * D2R],
         armL: [sw * 34 * D2R, (55 + sw * 12) * D2R],
         armR: [sw2 * 34 * D2R, (55 + sw2 * 12) * D2R],
         torsoRot: sw * 2.4, torsoSquash: -0.02 * bob,
