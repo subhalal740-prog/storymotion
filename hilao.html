@@ -2179,6 +2179,20 @@ window.__smEd = {
   set time(v){ currentTime = v; },
   get playing(){ return playing; },
   get rect(){ try { return charRect(); } catch(e) { return null; } },
+  /* character ko scene ka asli layer banao (library id se) */
+  useChar: (id) => { try { pendingChar = id; applyCharacter(); return true; } catch(e) { return false; } },
+  hasChar: (id) => { try { return assets.chars.has(id); } catch(e) { return false; } },
+  addCustomChar: async (name, src) => {
+    try {
+      const id = 'custom-' + uid();
+      const meta = { id, name: String(name || 'Character').slice(0, 24), category: 'My uploads',
+                     head: { x: .25, y: .01, w: .5, h: .32 }, ring: { x: .5, y: .35 } };
+      const a = await addCharacter(meta, src, true);
+      project.customChars.push({ id: a.id, name: a.name, category: a.category, head: a.head, ring: a.ring, src: a.src });
+      markDirty();
+      return a.id;
+    } catch(e) { return null; }
+  },
   get rectBase(){   /* path offset ke bina character ki asli jagah */
     try { const sc = current(), keep = sc.smPath; if(keep) delete sc.smPath;
       const r = charRect(); if(keep) sc.smPath = keep; return r; } catch(e) { return null; }
@@ -2585,7 +2599,9 @@ boot();
   /* ---------------- public API (flip / state) ---------------- */
   window.__smBgAnim = {
     flip: function (v) { flipped = (v === undefined) ? !flipped : !!v; drawFrame(); return flipped; },
-    state: function () { return { keyed: keyed, key: key, T: Math.round(T), size: [mediaW, mediaH], flipped: flipped, media: sel && sel.media }; },
+    state: function () { return { keyed: keyed, key: key, T: Math.round(T), size: [mediaW, mediaH], flipped: flipped, media: sel && sel.media, name: sel && sel.name }; },
+    texture: function () { return (imgEl && imgEl.src) ? imgEl.src : ''; },
+    meta: function () { return sel ? { kind: sel.media && sel.media.kind, charId: sel.media && sel.media.charId, name: sel.name } : null; },
     remove: cleanup
   };
 
@@ -2829,6 +2845,39 @@ boot();
     b.onclick=()=> setMode(!pathMode);
     items.insertBefore(b, items.querySelector('#laDelete'));
   }
+
+  /* ───────── BG-anim character ko asli scene character banao ─────────
+     Puppet/animation flow se aaya character pehle sirf background layer me
+     draw hota tha (path/export/selection kaam nahi karta tha). */
+  let converting=false, convertTried=false;
+  async function ensureRealCharacter(){
+    if(converting || convertTried) return;
+    const bg = window.__smBgAnim, e = ed();
+    if(!bg || !bg.state || !e) return;
+    const st = bg.state(); const sc = safeScene();
+    if(!st || !st.media || !sc) return;
+    if(sc.charVisible !== false){
+      convertTried = true;
+      /* asli character pehle se hai — static bg-anim layer hatao (warna do character dikhenge) */
+      const kind = (st.media && st.media.kind) || '';
+      if(kind === 'idbchar' || kind === 'svg'){ try{ bg.remove && bg.remove(); }catch(err){} }
+      return;
+    }
+    convertTried=true; converting=true;
+    try{
+      const m = bg.meta ? bg.meta() : (st.media||{});
+      let id = (m && m.charId && e.hasChar(m.charId)) ? m.charId : null;
+      if(!id){
+        const tex = bg.texture ? bg.texture() : '';
+        if(tex && tex.length > 200) id = await e.addCustomChar((m && (m.charId || st.name)) || 'Character', tex);
+      }
+      if(id && e.useChar(id)){
+        try{ bg.remove && bg.remove(); }catch(err){}
+        toast('Character editor layer me aa gaya — Path/Play/Download ab chalega');
+      } else { converting=false; convertTried=false; setTimeout(ensureRealCharacter, 1200); return; }
+    }catch(err){ converting=false; convertTried=false; return; }
+    converting=false;
+  }
   function hintBanner(){
     if($('smPathHint')) return;
     const host=$('previewShell')||document.body;
@@ -2862,10 +2911,10 @@ boot();
   }
   function boot(){
     if(!ed()){ setTimeout(boot,150); return; }
-    ensure(); hintBanner(); installTapSelect();
+    ensure(); hintBanner(); installTapSelect(); setTimeout(ensureRealCharacter, 1200);
     quickBtn(); menuBtn(); renderBar();
     new MutationObserver(()=>{ quickBtn(); menuBtn(); renderBar(); installTapSelect(); }).observe(document.body,{subtree:true,childList:true});
-    setInterval(()=>{ quickBtn(); menuBtn(); renderBar(); installTapSelect(); },800);
+    setInterval(()=>{ quickBtn(); menuBtn(); renderBar(); installTapSelect(); ensureRealCharacter(); },800);
     window.addEventListener('resize', ()=>{ fit(); draw(); });
     requestAnimationFrame(loop);
     window.__smPath={ set:v=>setMode(v), start:()=>setMode(true), get:()=>pth(safeScene()) };
