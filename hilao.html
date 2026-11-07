@@ -685,7 +685,8 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 .favorite.active, .favorite.active .icon{ color: #fff !important; fill: #fff !important; }
 .character-bottom{ color: rgba(255,255,255,.62) !important; }
 </style>
-<style id="smAutoCSS">/* ══════════ smAutoEditor · AutoDraft-style context controls ══════════ */
+<style id="smAutoCSS">
+/* ══════════ smAutoEditor · AutoDraft-style context controls ══════════ */
 /* layer context panel — bottom sheet, AutoDraft jaisa saaf */
 .layer-menu{
   background: rgba(14,16,20,.97) !important;
@@ -740,6 +741,16 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
   color:#fff;font:600 11.5px/1 inherit;cursor:pointer;
 }
 #smPathQuick svg{ opacity:.95; }
+
+/* Clear (blank editor) — chhota icon button, quick-tools row me */
+#smClearBtn{
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+  width:26px;height:26px;padding:0;border-radius:6px;
+  background:transparent;border:1px solid transparent;color:#8e8e93;cursor:pointer;
+}
+#smClearBtn svg{ width:15px;height:15px;display:block; }
+#smClearBtn:hover{ color:#fff;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.14); }
+#smClearBtn:active{ background:rgba(255,255,255,.14); }
 #smPathQuick.on{ background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.6); box-shadow:0 0 12px rgba(255,255,255,.10); }
 #smPathBar{ overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
 #smPathBar::-webkit-scrollbar{ display:none; }
@@ -754,6 +765,7 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 #smPathHint span{font:600 11px/1.2 inherit;color:#fff}
 #smPathHint button{font:600 10.5px/1 inherit;color:#fff;background:rgba(255,255,255,.10);
   border:1px solid rgba(255,255,255,.28);border-radius:4px;padding:6px 9px;cursor:pointer}
+
 </style>
 </head>
 <body>
@@ -2873,7 +2885,7 @@ boot();
     if(!row) return;
     const b=document.createElement('button');
     b.id='smClearBtn'; b.type='button'; b.title='Editor khaali karo (naya blank project)';
-    b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6 7l1 12h10l1-12"/></svg><span>Clear</span>';
+    b.innerHTML='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6 7l1 12h10l1-12"/></svg>';
     b.onclick=()=>{
       const e=ed(); if(!e||!e.resetBlank) return;
       if(!confirm('Editor khaali karna hai? Character, background aur locks sab hat jayenge.')) return;
