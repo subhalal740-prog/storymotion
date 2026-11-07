@@ -719,19 +719,31 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 #smPathBtn.on{ background:rgba(255,255,255,.16); border-color:rgba(255,255,255,.6); }
 /* path status bar */
 #smPathBar{
-  position:absolute;left:50%;top:6px;transform:translateX(-50%);
-  max-width:calc(100% - 16px);flex-wrap:nowrap;justify-content:center;padding:5px 6px;
+  position:static;left:auto;right:auto;top:auto;transform:none;
+  margin-top:6px;width:100%;max-width:none;flex-wrap:wrap;justify-content:center;padding:5px 6px;
   display:flex;align-items:center;gap:6px;z-index:10;
   background:rgba(14,16,20,.97);border:1px solid rgba(255,255,255,.18);
   border-radius:8px;padding:6px 8px;box-shadow:0 14px 34px rgba(0,0,0,.7);
 }
 #smPathBar .t{font-size:10px;color:rgba(255,255,255,.8);font-weight:600;letter-spacing:.3px;padding:0 2px;white-space:nowrap}
 #smPathBar button{
-  font:600 10.5px/1 inherit;color:#fff;background:rgba(255,255,255,.08);
-  border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:6px 9px;cursor:pointer;white-space:nowrap;
+  font:600 10px/1 inherit;color:#fff;background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:6px 7px;cursor:pointer;white-space:nowrap;
 }
 #smPathBar button.on{ background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.55); }
 #smPathLayer{ border-radius:6px; }
+
+/* quick-tools ka Path button (hamesha visible) */
+#smPathQuick{
+  display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 11px;
+  border-radius:6px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.18);
+  color:#fff;font:600 11.5px/1 inherit;cursor:pointer;
+}
+#smPathQuick svg{ opacity:.95; }
+#smPathQuick.on{ background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.6); box-shadow:0 0 12px rgba(255,255,255,.10); }
+#smPathBar{ overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+#smPathBar::-webkit-scrollbar{ display:none; }
+#smPathBar button{ min-height:28px; }
 </style>
 </head>
 <body>
@@ -2127,8 +2139,9 @@ async function boot(){try{await initAssets();project=defaultProject();try{const 
 function smPathApply(scene, local){
   const p = scene && scene.smPath;
   if(!p || !p.on) return scene;
-  const d = Math.max(.001, scene.duration || 8);
-  let t = clamp(local / d, 0, 1);
+  const d = (p.dur > 0) ? p.dur : Math.max(.001, scene.duration || 8);
+  let t = local / d;
+  if(p.loop) t = t - Math.floor(t); else t = clamp(t, 0, 1);
   if(p.ease !== false) t = t*t*(3-2*t);
   const dx = (p.dx != null) ? p.dx : (p.x1 - p.x0);
   const dy = (p.dy != null) ? p.dy : (p.y1 - p.y0);
@@ -2577,200 +2590,223 @@ boot();
 </script>
 <script id="smAutoEditorJS">
 /* ══════════════════════════════════════════════════════════════════════════
-   smAutoEditor · AutoDraft-style controls (AI features chhod ke)
-   1) Path Tool  — character ko canvas par kheenchi hui line par chalata hai
-   2) Context layer panel — jo select ho uska control (AutoDraft jaisa)
-   Koi AI call nahi, sab local. Preview + export dono me chalta hai.
+   smAutoEditor · AutoDraft-style PATH (AI features ke bina)
+   • Path button toolbar me hamesha dikhta hai
+   • Drag karo (ya 2 tap) → character us line par chalta hai
+   • Speed (2s / 4s / 8s / Full), Ease, Loop, Reverse, Walk bounce, Clear
+   • Preview + Export dono me chalta hai, save ke saath persist
    ══════════════════════════════════════════════════════════════════════════ */
 (function(){
   'use strict';
   const $ = id => document.getElementById(id);
   const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
-  function ed(){ return window.__smEd; }
-  function toast(m){ try{ ed().toast(m); }catch(e){} }
+  const ed = () => window.__smEd;
+  const toast = m => { try { ed().toast(m); } catch(e){} };
+  const safeScene = () => { try { return ed() && ed().current() || null; } catch(e){ return null; } };
+  const pth = sc => sc && sc.smPath;
 
-  /* ─────────────── 1 · PATH OVERLAY CANVAS ─────────────── */
-  let layer=null, ctx=null, pathMode=false, pending=null;
-  function ensureLayer(){
+  let layer=null, ctx=null, pathMode=false, start=null, hover=null, dragMoved=false, awaiting=false, raf=0, lastKey='';
+
+  /* ───────── overlay canvas ───────── */
+  function ensure(){
     const stage = $('stage'); if(!stage) return null;
     if(layer && layer.isConnected) return layer;
     layer = document.createElement('canvas');
-    layer.id = 'smPathLayer';
-    layer.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:6;pointer-events:none;touch-action:none';
+    layer.id='smPathLayer';
+    layer.style.cssText='position:absolute;inset:0;width:100%;height:100%;z-index:6;pointer-events:none;touch-action:none;border-radius:6px';
     stage.appendChild(layer);
     ctx = layer.getContext('2d');
     layer.addEventListener('pointerdown', onDown);
     layer.addEventListener('pointermove', onMove);
     layer.addEventListener('pointerup', onUp);
-    layer.addEventListener('pointercancel', ()=>{ pending=null; });
+    layer.addEventListener('pointercancel', ()=>{ start=null; hover=null; });
     return layer;
   }
   function fit(){
-    const stage = $('stage'); if(!layer || !stage) return;
-    const r = stage.getBoundingClientRect(), dpr = Math.min(devicePixelRatio||1,2);
-    const w = Math.round(r.width*dpr), h = Math.round(r.height*dpr);
-    if(layer.width!==w || layer.height!==h){ layer.width=w; layer.height=h; }
+    const st=$('stage'); if(!layer||!st) return;
+    const r=st.getBoundingClientRect(), dpr=Math.min(devicePixelRatio||1,2);
+    const w=Math.round(r.width*dpr), h=Math.round(r.height*dpr);
+    if(layer.width!==w||layer.height!==h){ layer.width=w; layer.height=h; }
   }
   function frac(e){
-    const r = layer.getBoundingClientRect();
+    const r=layer.getBoundingClientRect();
     return { x: clamp((e.clientX-r.left)/r.width,0,1), y: clamp((e.clientY-r.top)/r.height,0,1) };
   }
-  function path(scene){ return scene && scene.smPath; }
-  function safeScene(){ try { return ed() && ed().current() || null; } catch(e){ return null; } }
-  function charFeet(){
-    const e = ed(), st = $('stage'), ov = $('overlay');
-    const r = e.rect; if(!st || !ov || !r) return null;
-    return { cx:( r.x + r.w*0.5 ) / ov.width, cy:( r.y + r.h*0.94 ) / ov.height };
+  function feet(){
+    const st=$('stage'), ov=$('overlay'); const r = ed() && ed().rect;
+    if(!st||!ov||!r) return null;
+    return { cx:(r.x + r.w*0.5)/ov.width, cy:(r.y + r.h*0.95)/ov.height };
   }
-  function commit(p){
-    const e = ed(), sc = e.current();
-    const f = charFeet();
-    e.pushUndo();
-    if(f){                       /* character ko start point par le jao, phir delta store karo */
-      sc.panX = (sc.panX||0) + (p.x0 - f.cx);
-      sc.panY = (sc.panY||0) + (p.y0 - f.cy);
-      p = { on:true, x0:p.x0, y0:p.y0, dx:p.x1-p.x0, dy:p.y1-p.y0, ease:true };
-    } else {
-      p = { on:true, x0:p.x0, y0:p.y0, dx:p.x1-p.x0, dy:p.y1-p.y0, ease:true };
-    }
-    sc.smPath = p;
-    e.markDirty(); e.refresh && e.refresh();
-    try{ localStorage.setItem('hilao.pathOn','1'); }catch(err){}
-  }
-  let tapStarted=false;
-  function onDown(ev){
-    if(!pathMode) return; ev.preventDefault();
-    const f = frac(ev);
-    if(!pathStart){ pathStart=f; pending=f; tapStarted=true; draw(); toast('Ab end point dabao'); }
-    else { pathHover=f; draw(); }
-  }
-  function onMove(ev){ if(!pathMode || !pending) return; pathHover = frac(ev); draw(); }
-  function onUp(ev){
-    if(!pathMode) return;
-    if(tapStarted){ tapStarted=false; return; }
-    if(!pathStart) return;
-    const p = frac(ev);
-    const pal = { on:true, x0:pathStart.x, y0:pathStart.y, x1:p.x, y1:p.y, ease:true };  /* commit me delta banta hai */
-    commit(pal);
-    pathStart=null; pending=null; pathHover=null;
-    setPathMode(false);
-    toast('Path set — character ab line par chalega');
-    renderBar();
-  }
-  let pathStart=null, pathHover=null;
 
-  function setPathMode(v){
-    pathMode = v;
-    ensureLayer(); fit();
-    if(layer) layer.style.pointerEvents = v ? 'auto' : 'none';
-    const b = $('smPathBtn'); if(b) b.classList.toggle('on', v);
-    const st = $('stage'); if(st) st.style.cursor = v ? 'crosshair' : '';
-    if(v){ pathStart=null; toast('Start point dabao, phir end point'); }
+  /* ───────── path mode ───────── */
+  function setMode(v){
+    ensure(); fit();
+    pathMode=v; start=null; hover=null; awaiting=false; dragMoved=false;
+    if(layer) layer.style.pointerEvents = v?'auto':'none';
+    const st=$('stage'); if(st) st.style.cursor = v?'crosshair':'';
+    $('smPathQuick')?.classList.toggle('on', v);
+    $('smPathBtn')?.classList.toggle('on', v);
+    if(v) toast('Path: canvas par line kheencho (ya 2 tap)');
     draw();
   }
+  function onDown(ev){
+    if(!pathMode) return; ev.preventDefault();
+    const f=frac(ev);
+    if(!start){ start=f; dragMoved=false; awaiting=false; }
+    hover=f; draw();
+  }
+  function onMove(ev){
+    if(!pathMode||!start) return;
+    hover=frac(ev);
+    if(Math.hypot(hover.x-start.x,hover.y-start.y) > 0.02) dragMoved=true;
+    draw();
+  }
+  function onUp(ev){
+    if(!pathMode||!start) return;
+    const f=frac(ev); hover=f;
+    if(dragMoved){ commit(start,f); start=null; hover=null; awaiting=false; dragMoved=false; draw(); return; }
+    if(!awaiting){ awaiting=true; toast('Ab end point tap karo'); draw(); return; }
+    commit(start,f); start=null; hover=null; awaiting=false; draw();
+  }
+  function commit(a,b){
+    const e=ed(), sc=safeScene(); if(!e||!sc) return;
+    if(Math.hypot(b.x-a.x,b.y-a.y) < 0.02){ toast('Line thodi lambi kheencho'); return; }
+    const f=feet(); e.pushUndo();
+    if(f){ sc.panX=(sc.panX||0)+(a.x-f.cx); sc.panY=(sc.panY||0)+(a.y-f.cy); }
+    sc.smPath = { on:true, x0:a.x, y0:a.y, dx:b.x-a.x, dy:b.y-a.y, ease:true, dur:0, loop:false };
+    e.markDirty(); e.refresh && e.refresh();
+    setMode(false); renderBar();
+    toast('Path set — ab play karo, character chalega');
+  }
 
-  /* ─────────────── 2 · DRAW (line + live marker) ─────────────── */
-  let raf=0, lastKey='';
-  function draw(){
-    if(!layer) return;
-    fit();
-    const c=ctx, W=layer.width, H=layer.height, u = W/Math.max(1,layer.clientWidth);
-    c.clearRect(0,0,W,H);
-    const e = ed(); if(!e) return;
-    const scene = safeScene(); if(!scene) return;
-    const p = path(scene);
-    const drawLine = (x0,y0,x1,y1,ghost)=>{
-      c.save();
-      c.setLineDash([7*u,6*u]); c.lineWidth=2*u;
-      c.strokeStyle = ghost ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.85)';
-      c.beginPath(); c.moveTo(x0*W,y0*H); c.lineTo(x1*W,y1*H); c.stroke();
-      c.setLineDash([]);
-      for(const [x,y] of [[x0,y0],[x1,y1]]){
-        c.beginPath(); c.arc(x*W,y*H,6*u,0,Math.PI*2);
-        c.fillStyle='rgba(10,14,20,.85)'; c.fill();
-        c.lineWidth=2*u; c.strokeStyle='#fff'; c.stroke();
-      }
-      c.restore();
-    };
-    if(pathMode){
-      if(pathStart && pathHover) drawLine(pathStart.x,pathStart.y,pathHover.x,pathHover.y,true);
-      else if(pathStart) drawLine(pathStart.x,pathStart.y,pathStart.x,pathStart.y,false);
-      return;
-    }
-    if(!p || !p.on) return;
-    const dx = (p.dx!=null)?p.dx:(p.x1-p.x0), dy = (p.dy!=null)?p.dy:(p.y1-p.y0);
-    drawLine(p.x0,p.y0,p.x0+dx,p.y0+dy,false);
-    /* live position dot */
-    const d = Math.max(.001, scene.duration||8);
-    let t = clamp((e.time % d)/d, 0, 1);
-    if(p.ease!==false) t = t*t*(3-2*t);
-    const mx=(p.x0+dx*t)*W, my=(p.y0+dy*t)*H;
+  /* ───────── draw ───────── */
+  function line(x0,y0,x1,y1,ghost){
+    const c=ctx,W=layer.width,H=layer.height,u=W/Math.max(1,layer.clientWidth);
     c.save();
-    c.beginPath(); c.arc(mx,my,7*u,0,Math.PI*2);
-    c.fillStyle='rgba(255,255,255,.9)'; c.fill();
-    c.beginPath(); c.arc(mx,my,12*u,0,Math.PI*2);
-    c.strokeStyle='rgba(255,255,255,.35)'; c.lineWidth=2*u; c.stroke();
+    c.setLineDash([7*u,6*u]); c.lineWidth=2*u;
+    c.strokeStyle = ghost? 'rgba(255,255,255,.45)':'rgba(255,255,255,.9)';
+    c.beginPath(); c.moveTo(x0*W,y0*H); c.lineTo(x1*W,y1*H); c.stroke();
+    c.setLineDash([]);
+    for(const [x,y] of [[x0,y0],[x1,y1]]){
+      c.beginPath(); c.arc(x*W,y*H,6.5*u,0,Math.PI*2);
+      c.fillStyle='rgba(10,14,20,.9)'; c.fill();
+      c.lineWidth=2*u; c.strokeStyle='#fff'; c.stroke();
+    }
     c.restore();
   }
-  function loop(){
-    const e = ed();
-    try { if(e && !safeScene()) { requestAnimationFrame(loop); return; } } catch(err){ requestAnimationFrame(loop); return; }
-    if(e){
-      const key = [safeScene()?'1':'0', e.time.toFixed(2), pathMode?1:0, pathStart?pathStart.x.toFixed(3)+pathStart.y.toFixed(3):'', JSON.stringify(path(safeScene())||0)].join('|');
-      if(key!==lastKey){ lastKey=key; draw(); }
+  function draw(){
+    if(!layer||!ctx) return;
+    fit();
+    const W=layer.width,H=layer.height,u=W/Math.max(1,layer.clientWidth);
+    ctx.clearRect(0,0,W,H);
+    if(pathMode){
+      if(start&&hover) line(start.x,start.y,hover.x,hover.y,true);
+      else if(start) line(start.x,start.y,start.x,start.y,false);
+      return;
     }
+    const sc=safeScene(); if(!sc) return;
+    const p=pth(sc); if(!p||!p.on) return;
+    const dx = p.dx!=null?p.dx:(p.x1-p.x0), dy = p.dy!=null?p.dy:(p.y1-p.y0);
+    line(p.x0,p.y0,p.x0+dx,p.y0+dy,false);
+    /* current position dot */
+    const e=ed(), dur = p.dur>0?p.dur:(sc.duration||8);
+    let t = e.time/dur; if(p.loop) t = t-Math.floor(t); else t = clamp(t,0,1);
+    if(p.ease!==false) t = t*t*(3-2*t);
+    const mx=(p.x0+dx*t)*W, my=(p.y0+dy*t)*H;
+    ctx.save();
+    ctx.beginPath(); ctx.arc(p.x0*W,p.y0*H,9*u,0,Math.PI*2); ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=2*u; ctx.stroke();
+    ctx.beginPath(); ctx.arc(mx,my,7*u,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+    ctx.restore();
+  }
+  function loop(){
+    const e=ed();
+    try{
+      const sc=safeScene();
+      const key=[sc?e.time.toFixed(2):'x', pathMode?1:0, start?start.x.toFixed(2):'', JSON.stringify(sc?(sc.smPath||0):0)].join('|');
+      if(key!==lastKey){ lastKey=key; draw(); renderBar(); }
+    }catch(err){}
     requestAnimationFrame(loop);
   }
 
-  /* ─────────────── 3 · PATH BUTTON + SMALL BAR ─────────────── */
-  function injectBtn(){
-    const items = $('layerMenuItems'); if(!items) return;
-    if(items.querySelector('#smPathBtn')) return;
-    const isChar = !!items.querySelector('#laDelete') && !!items.querySelector('#laFlip');
-    if(!isChar) return;
-    const b = document.createElement('button');
-    b.id='smPathBtn'; b.type='button'; b.title='Path tool — character ko line par chalao';
-    b.innerHTML = '<svg class="icon" style="width:16px;height:16px"><use href="#route"/></svg><span>Path</span>';
-    b.onclick = ()=> setPathMode(!pathMode);
-    items.insertBefore(b, items.querySelector('#laDelete'));
-  }
+  /* ───────── bar ───────── */
   function renderBar(){
-    let bar = $('smPathBar');
-    const sc = safeScene(), p = path(sc);
-    if(!p || !p.on){ if(bar) bar.hidden=true; return; }
+    const sc=safeScene(), p=pth(sc);
+    let bar=$('smPathBar');
+    if(!p||!p.on){ if(bar) bar.hidden=true; return; }
     if(!bar){
-      bar = document.createElement('div');
-      bar.id='smPathBar';
-      bar.innerHTML = '<span class="t">Path chal raha hai</span>'+
-        '<button type="button" data-a="ease">Ease</button>'+
-        '<button type="button" data-a="flip">Reverse</button>'+
-        '<button type="button" data-a="clear">Clear</button>';
+      bar=document.createElement('div'); bar.id='smPathBar';
+      bar.innerHTML=
+        '<span class="t">Path</span>'+
+        '<button data-a="dur" data-v="2">2s</button>'+
+        '<button data-a="dur" data-v="4">4s</button>'+
+        '<button data-a="dur" data-v="8">8s</button>'+
+        '<button data-a="dur" data-v="0">Full</button>'+
+        '<button data-a="ease">Ease</button>'+
+        '<button data-a="loop">Loop</button>'+
+        '<button data-a="rev">Rev</button>'+
+        '<button data-a="walk">Walk</button>'+
+        '<button data-a="clear">Clear</button>';
       ($('previewShell')||document.body).appendChild(bar);
       bar.addEventListener('click', ev=>{
-        const a = ev.target.closest('button'); if(!a) return;
-        const act = a.dataset.a, e = ed(), s = e.current(), q = s.smPath; if(!q) return;
+        const b=ev.target.closest('button'); if(!b) return;
+        const e=ed(), s=safeScene(), q=pth(s); if(!q) return;
+        const a=b.dataset.a;
         e.pushUndo();
-        if(act==='clear'){ delete s.smPath; toast('Path hata diya'); }
-        if(act==='ease'){ q.ease = q.ease===false; }
-        if(act==='flip'){ q.dx = -(q.dx!=null?q.dx:(q.x1-q.x0)); q.dy = -(q.dy!=null?q.dy:(q.y1-q.y0)); }
+        if(a==='clear'){ delete s.smPath; toast('Path hata diya'); }
+        if(a==='dur'){ q.dur = Number(b.dataset.v)||0; }
+        if(a==='ease'){ q.ease = q.ease===false; }
+        if(a==='loop'){ q.loop = !q.loop; }
+        if(a==='rev'){ q.dx = -(q.dx!=null?q.dx:(q.x1-q.x0)); q.dy = -(q.dy!=null?q.dy:(q.y1-q.y0)); }
+        if(a==='walk'){ s.mode = (s.mode==='body')?'still':'body'; }
         e.markDirty(); e.refresh && e.refresh(); renderBar(); lastKey='';
       });
     }
-    bar.hidden=false;
-    const eb = bar.querySelector('[data-a="ease"]'); if(eb) eb.classList.toggle('on', p.ease!==false);
+    bar.hidden=false; bar.scrollLeft=0;
+    const q=p, dur=q.dur||0;
+    bar.querySelectorAll('[data-a="dur"]').forEach(b=>b.classList.toggle('on', Number(b.dataset.v)===dur));
+    bar.querySelector('[data-a="ease"]').classList.toggle('on', q.ease!==false);
+    bar.querySelector('[data-a="loop"]').classList.toggle('on', !!q.loop);
+    bar.querySelector('[data-a="walk"]').classList.toggle('on', sc && sc.mode==='body');
   }
 
-  function boot(){
-    if(!window.__smEd){ setTimeout(boot,150); return; }
-    ensureLayer();
-    new MutationObserver(()=>{ injectBtn(); renderBar(); }).observe(document.body,{subtree:true,childList:true});
-    setInterval(()=>{ injectBtn(); renderBar(); },700);
-    window.addEventListener('resize', ()=>{ fit(); draw(); });
-    document.addEventListener('pointerup', ()=>{ if(pathMode && pathStart && !pending) {} });
-    requestAnimationFrame(loop);
-    window.__smPath = { set:v=>setPathMode(v), get:()=>path(ed().current()) };
+  /* ───────── buttons ───────── */
+  const ICON='<svg viewBox="0 0 24 24" style="width:16px;height:16px" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 19c5 0 4-8 9-8"/><circle cx="4" cy="19" r="2"/><circle cx="19" cy="11" r="2"/><path d="M14 8h5v3"/></svg>';
+
+  function quickBtn(){
+    if($('smPathQuick')) return;
+    const row=document.querySelector('.quick-tools .quick-left') || document.querySelector('.quick-tools');
+    if(!row) return;
+    const b=document.createElement('button');
+    b.id='smPathQuick'; b.type='button'; b.title='Path — character ko line par chalao';
+    b.innerHTML=ICON+'<span>Path</span>';
+    b.onclick=()=>{
+      const sc=safeScene();
+      if(!sc || sc.charVisible===false){ toast('Pehle Character jodo'); if(window.openPanel) try{ }catch(e){} return; }
+      setMode(!pathMode);
+    };
+    row.appendChild(b);
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+  function menuBtn(){
+    const items=$('layerMenuItems'); if(!items||items.querySelector('#smPathBtn')) return;
+    const isChar = !!items.querySelector('#laFlip');
+    if(!isChar) return;
+    const b=document.createElement('button');
+    b.id='smPathBtn'; b.type='button'; b.className='layer-action';
+    b.innerHTML=ICON+'<span>Path</span>';
+    b.onclick=()=> setMode(!pathMode);
+    items.insertBefore(b, items.querySelector('#laDelete'));
+  }
+  function boot(){
+    if(!ed()){ setTimeout(boot,150); return; }
+    ensure();
+    quickBtn(); menuBtn(); renderBar();
+    new MutationObserver(()=>{ quickBtn(); menuBtn(); renderBar(); }).observe(document.body,{subtree:true,childList:true});
+    setInterval(()=>{ quickBtn(); menuBtn(); renderBar(); },800);
+    window.addEventListener('resize', ()=>{ fit(); draw(); });
+    requestAnimationFrame(loop);
+    window.__smPath={ set:v=>setMode(v), start:()=>setMode(true), get:()=>pth(safeScene()) };
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();
 
 </script>
