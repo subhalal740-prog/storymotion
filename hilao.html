@@ -2179,6 +2179,36 @@ window.__smEd = {
   set time(v){ currentTime = v; },
   get playing(){ return playing; },
   get rect(){ try { return charRect(); } catch(e) { return null; } },
+  /* saare locks kholo (scene / character / bg / camera) */
+  unlockAll: (silent) => {
+    try {
+      let any = false;
+      (project.scenes || []).forEach(s => {
+        if (s.locked || s.charLocked || s.bgLocked || (s.cam && s.cam.locked) ||
+            (Array.isArray(s.cast) && s.cast.some(m => m.charLocked))) any = true;
+        s.locked = false; s.charLocked = false; s.bgLocked = false;
+        if (s.cam) s.cam.locked = false;
+        if (Array.isArray(s.cast)) s.cast.forEach(m => { m.charLocked = false; });
+      });
+      if (!any) return false;
+      try { if (!silent) pushUndo(); } catch(e) {}
+      try { refresh(); } catch(e) {}
+      return true;
+    } catch(e) { return false; }
+  },
+  /* editor ko khaali karo — naya blank project, koi character/bg-anim/lock nahi */
+  resetBlank: () => {
+    try { window.__smBgAnim && window.__smBgAnim.remove && window.__smBgAnim.remove(); } catch(e) {}
+    try { localStorage.removeItem('hilao.sel'); localStorage.removeItem('hilao.charId'); localStorage.removeItem('hilao.charName'); } catch(e) {}
+    try {
+      project = defaultProject(); currentTime = 0; undoStack = []; redoStack = [];
+      syncProjectFields(); refresh();
+      try { closePanel(); } catch(e) {}
+      try { dbPut({ id:'autosave', date: Date.now(), project: snapshot() }); } catch(e) {}
+      dirty = false; try { $('saveState').textContent = 'Saved locally'; } catch(e) {}
+      return true;
+    } catch(e) { return false; }
+  },
   /* character ko scene ka asli layer banao (library id se) */
   useChar: (id) => { try { pendingChar = id; applyCharacter(); return true; } catch(e) { return false; } },
   hasChar: (id) => { try { return assets.chars.has(id); } catch(e) { return false; } },
@@ -2835,6 +2865,28 @@ boot();
     };
     row.appendChild(b);
   }
+
+  /* ───────── editor khaali karne ka button + auto-unlock ───────── */
+  function clearBtn(){
+    if($('smClearBtn')) return;
+    const row=document.querySelector('.quick-tools .quick-left') || document.querySelector('.quick-tools');
+    if(!row) return;
+    const b=document.createElement('button');
+    b.id='smClearBtn'; b.type='button'; b.title='Editor khaali karo (naya blank project)';
+    b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6 7l1 12h10l1-12"/></svg><span>Clear</span>';
+    b.onclick=()=>{
+      const e=ed(); if(!e||!e.resetBlank) return;
+      if(!confirm('Editor khaali karna hai? Character, background aur locks sab hat jayenge.')) return;
+      setMode(false); e.resetBlank(); renderBar(); toast('Editor khaali — ab Character chuno');
+    };
+    row.appendChild(b);
+  }
+  let unlockDone=false;
+  function autoUnlock(){
+    if(unlockDone) return; const e=ed(); if(!e||!e.unlockAll) return;
+    unlockDone=true;
+    if(e.unlockAll(true)) toast('Lock khul gaya — ab edit kar sakte ho');
+  }
   function menuBtn(){
     const items=$('layerMenuItems'); if(!items||items.querySelector('#smPathBtn')) return;
     const isChar = !!items.querySelector('#laFlip');
@@ -2911,10 +2963,10 @@ boot();
   }
   function boot(){
     if(!ed()){ setTimeout(boot,150); return; }
-    ensure(); hintBanner(); installTapSelect(); setTimeout(ensureRealCharacter, 1200);
+    ensure(); hintBanner(); installTapSelect(); clearBtn(); setTimeout(ensureRealCharacter, 1200); setTimeout(autoUnlock, 1500);
     quickBtn(); menuBtn(); renderBar();
     new MutationObserver(()=>{ quickBtn(); menuBtn(); renderBar(); installTapSelect(); }).observe(document.body,{subtree:true,childList:true});
-    setInterval(()=>{ quickBtn(); menuBtn(); renderBar(); installTapSelect(); ensureRealCharacter(); },800);
+    setInterval(()=>{ quickBtn(); clearBtn(); menuBtn(); renderBar(); installTapSelect(); ensureRealCharacter(); autoUnlock(); },800);
     window.addEventListener('resize', ()=>{ fit(); draw(); });
     requestAnimationFrame(loop);
     window.__smPath={ set:v=>setMode(v), start:()=>setMode(true), get:()=>pth(safeScene()) };
