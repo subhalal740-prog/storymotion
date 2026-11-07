@@ -766,6 +766,17 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 #smPathHint button{font:600 10.5px/1 inherit;color:#fff;background:rgba(255,255,255,.10);
   border:1px solid rgba(255,255,255,.28);border-radius:4px;padding:6px 9px;cursor:pointer}
 
+/* top bar project title (AutoDraft style) */
+.smTopTitle{
+  font-size:10.5px;font-weight:600;color:rgba(255,255,255,.72);
+  margin-left:4px;flex:0 1 auto;min-width:0;max-width:104px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.topbar{ gap:2px; }
+.topbar .top-left{ flex:1 1 auto; min-width:0; overflow:hidden; }
+.topbar .top-actions{ flex:0 0 auto; }
+@media (max-width:360px){ .smTopTitle{ max-width:64px; font-size:10px; } }
+
 </style>
 <style id="smMobile">
 /* ============================================================
@@ -788,12 +799,21 @@ img,canvas,video,svg{ max-width:100%; }
 button,input,select,textarea{ font-family:inherit; }
 
 /* ---------- 1. EDITOR (hilao.html) ---------- */
-/* topbar */
-.topbar{ height:44px !important; padding:0 4px !important; }
-.top-action{ min-width:44px !important; font-size:8.5px !important; padding:3px 4px !important; gap:2px !important; }
-.top-action .icon{ width:15px !important; height:15px !important; }
-.top-left .icon-btn{ width:26px !important; height:26px !important; }
-.topbar .icon-btn .icon, .topbar .icon{ width:15px !important; height:15px !important; }
+/* topbar — AutoDraft scale (48px, 16px icons, 10px labels, separators) */
+.topbar{
+  height:48px !important; padding:0 4px !important;
+  border-bottom:1px solid rgba(255,255,255,.10) !important;
+}
+.top-action{
+  min-width:56px !important; font-size:10px !important; padding:4px 8px !important; gap:3px !important;
+  border-left:1px solid rgba(255,255,255,.07) !important; border-radius:0 !important;
+}
+.top-action:last-of-type{ border-right:1px solid rgba(255,255,255,.07) !important; }
+.top-action .icon{ width:16px !important; height:16px !important; }
+.top-action[on], .top-action.on, .top-action:active{ background:rgba(255,255,255,.10) !important; }
+.top-left{ gap:2px !important; }
+.top-left .icon-btn{ width:32px !important; height:32px !important; }
+.topbar .icon-btn .icon, .topbar .icon{ width:16px !important; height:16px !important; }
 
 /* playbar */
 .playbar{ height:32px !important; padding:0 6px !important; gap:4px !important; }
@@ -995,9 +1015,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
 /* ---------- 5. very small phones ---------- */
 @media (max-width:360px){
-  .topbar{ height:40px !important; }
-  .top-action{ min-width:38px !important; font-size:7.5px !important; }
-  .top-action .icon{ width:14px !important; height:14px !important; }
+  .topbar{ height:44px !important; }
+  .top-action{ min-width:48px !important; font-size:9px !important; padding:3px 5px !important; }
+  .top-action .icon{ width:15px !important; height:15px !important; }
+  .top-left .icon-btn{ width:28px !important; height:28px !important; }
   .stage{ max-height:36vh !important; }
   .timeline{ height:clamp(132px,20dvh,172px) !important; }
   .track{ min-height:31px !important; }
@@ -2436,6 +2457,7 @@ window.__smEd = {
   set time(v){ currentTime = v; },
   get playing(){ return playing; },
   get rect(){ try { return charRect(); } catch(e) { return null; } },
+  title: () => { try { return (project && project.title) || 'Untitled'; } catch(e) { return 'Untitled'; } },
   /* saare locks kholo (scene / character / bg / camera) */
   unlockAll: (silent) => {
     try {
@@ -3124,6 +3146,21 @@ boot();
   }
 
   /* ───────── editor khaali karne ka button + auto-unlock ───────── */
+
+  /* ── top bar me project ka naam (AutoDraft jaisa) ── */
+  function topTitle(){
+    const bar=document.querySelector('.topbar'); if(!bar) return;
+    let el=document.getElementById('smTopTitle');
+    if(!el){
+      el=document.createElement('span');
+      el.id='smTopTitle'; el.className='smTopTitle';
+      const left=bar.querySelector('.top-left') || bar;
+      left.appendChild(el);
+    }
+    const e=ed();
+    const t=(e&&e.title)?e.title():'';
+    if(t && el.textContent!==t) el.textContent=t;
+  }
   function clearBtn(){
     if($('smClearBtn')) return;
     const row=document.querySelector('.quick-tools .quick-left') || document.querySelector('.quick-tools');
@@ -3157,36 +3194,81 @@ boot();
 
   /* ───────── BG-anim character ko asli scene character banao ─────────
      Puppet/animation flow se aaya character pehle sirf background layer me
-     draw hota tha (path/export/selection kaam nahi karta tha). */
-  let converting=false, convertTried=false;
-  async function ensureRealCharacter(){
-    if(converting || convertTried) return;
+     draw hota tha (path/export/timeline kaam nahi karta tha).
+     Root-cause fix: bg layer ke 3 case handle — (1) media.idbchar/svg,
+     (2) media null par IDB `char.tex` fallback ("BG AARAV" ghost),
+     (3) video layer (convert nahi hota — chup-chaap chhod dete hain). */
+  let converting = false, attempts = 0;
+
+  function idbGetCharTex() {
+    return new Promise((res) => {
+      try {
+        const r = indexedDB.open('hilao-pose', 1);
+        r.onupgradeneeded = () => { try { r.result.createObjectStore('blobs'); } catch (e) {} };
+        r.onsuccess = () => {
+          const db = r.result;
+          if (!db.objectStoreNames.contains('blobs')) return res(null);
+          const q = db.transaction('blobs', 'readonly').objectStore('blobs').get('char.tex');
+          q.onsuccess = () => res(q.result || null);
+          q.onerror = () => res(null);
+        };
+        r.onerror = () => res(null);
+      } catch (e) { res(null); }
+    });
+  }
+
+  async function ensureRealCharacter() {
+    if (converting || attempts >= 3) return;
     const bg = window.__smBgAnim, e = ed();
-    if(!bg || !bg.state || !e) return;
-    const st = bg.state(); const sc = safeScene();
-    if(!st || !st.media || !sc) return;
-    if(sc.charVisible !== false){
-      convertTried = true;
-      /* asli character pehle se hai — static bg-anim layer hatao (warna do character dikhenge) */
+    if (!bg || !e || !bg.state) return;
+    const sc = safeScene(); if (!sc) return;
+
+    /* asli character pehle se hai → sirf static ghost layer hatao */
+    if (sc.charVisible !== false) {
+      const st = bg.state() || {};
       const kind = (st.media && st.media.kind) || '';
-      if(kind === 'idbchar' || kind === 'svg'){ try{ bg.remove && bg.remove(); }catch(err){} }
+      if (!st.media || kind === 'idbchar' || kind === 'svg') { try { bg.remove && bg.remove(); } catch (err) {} }
+      attempts = 99;
       return;
     }
-    convertTried=true; converting=true;
-    try{
-      const m = bg.meta ? bg.meta() : (st.media||{});
-      let id = (m && m.charId && e.hasChar(m.charId)) ? m.charId : null;
-      if(!id){
-        const tex = bg.texture ? bg.texture() : '';
-        if(tex && tex.length > 200) id = await e.addCustomChar((m && (m.charId || st.name)) || 'Character', tex);
+    if (!document.getElementById('smBgAnim') && !e.hasChar) return;   /* koi ghost layer hi nahi */
+
+    converting = true; attempts++;
+    try {
+      if (e.unlockAll) e.unlockAll(true);                     /* lock race se bachao */
+      const st = bg.state() || {};
+      const m = (bg.meta && bg.meta()) || st.media || {};
+      const kind = m.kind || '';
+
+      /* video/url layer ko character me convert nahi karte — honest chhodo */
+      if (kind === 'idb' || kind === 'url' || kind === 'video') { converting = false; return; }
+
+      let id = null, tex = '';
+      const cands = [m.charId, (function () { try { return localStorage.getItem('hilao.charId'); } catch (e) { return ''; } })()];
+      for (let i = 0; i < cands.length; i++) {
+        if (cands[i] && e.hasChar && e.hasChar(cands[i])) { id = cands[i]; break; }
       }
-      if(id && e.useChar(id)){
-        try{ bg.remove && bg.remove(); }catch(err){}
-        toast('Character editor layer me aa gaya — Path/Play/Download ab chalega');
-      } else { converting=false; convertTried=false; setTimeout(ensureRealCharacter, 1200); return; }
-    }catch(err){ converting=false; convertTried=false; return; }
-    converting=false;
+      if (!id) {
+        tex = (bg.texture && bg.texture()) || '';
+        if (!tex || tex.length < 200) {
+          const rec = await idbGetCharTex();
+          tex = (rec && (typeof rec === 'string' ? rec : rec.src)) || '';
+        }
+        if (tex && tex.length > 200) id = await e.addCustomChar((m.charId || 'Character'), tex);
+      }
+      if (id && e.useChar(id) && e.current().charVisible !== false) {
+        try { bg.remove && bg.remove(); } catch (err) {}
+        toast('Character editor layer me aa gaya — timeline/Path/Download ab chalega');
+        attempts = 99;
+      } else {
+        /* fail — ghost layer mat hatao, dobara koshish */
+        converting = false;
+        return;
+      }
+    } catch (err) { converting = false; return; }
+    converting = false;
   }
+
   function hintBanner(){
     if($('smPathHint')) return;
     const host=$('previewShell')||document.body;
@@ -3220,10 +3302,10 @@ boot();
   }
   function boot(){
     if(!ed()){ setTimeout(boot,150); return; }
-    ensure(); hintBanner(); installTapSelect(); clearBtn(); setTimeout(ensureRealCharacter, 1200); setTimeout(autoUnlock, 1500);
+    ensure(); hintBanner(); installTapSelect(); clearBtn(); topTitle(); setTimeout(ensureRealCharacter, 1200); setTimeout(autoUnlock, 1500);
     quickBtn(); menuBtn(); renderBar();
     new MutationObserver(()=>{ quickBtn(); menuBtn(); renderBar(); installTapSelect(); }).observe(document.body,{subtree:true,childList:true});
-    setInterval(()=>{ quickBtn(); clearBtn(); menuBtn(); renderBar(); installTapSelect(); ensureRealCharacter(); autoUnlock(); },800);
+    setInterval(()=>{ topTitle(); quickBtn(); clearBtn(); menuBtn(); renderBar(); installTapSelect(); ensureRealCharacter(); autoUnlock(); },800);
     window.addEventListener('resize', ()=>{ fit(); draw(); });
     requestAnimationFrame(loop);
     window.__smPath={ set:v=>setMode(v), start:()=>setMode(true), get:()=>pth(safeScene()) };
