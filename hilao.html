@@ -3771,7 +3771,7 @@ boot();
     let b=$('smKeyBar'); if(b) return b;
     b=document.createElement('div');
     b.id='smKeyBar';
-    b.style.cssText='position:fixed;left:8px;right:8px;bottom:calc(118px + env(safe-area-inset-bottom));z-index:60;display:flex;'+
+    b.style.cssText='position:fixed;left:8px;right:8px;bottom:calc(184px + env(safe-area-inset-bottom));z-index:60;display:none;'+
       'align-items:center;gap:6px;padding:7px 8px;border-radius:14px;background:rgba(18,20,24,.92);'+
       'border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px);box-shadow:0 10px 26px rgba(0,0,0,.45);'+
       'font:600 11px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#e9edf3;overflow-x:auto;scrollbar-width:none';
@@ -3828,8 +3828,13 @@ boot();
     const b=bar(), sc=scene();
     const info=$('smKeyInfo');
     if(!sc){ b.style.display='none'; return; }
-    const hasChar = (()=>{ try { return ed().current().charVisible!==false; } catch(e){ return false; } })();
-    b.style.display = hasChar ? 'flex' : 'none';
+    const editMode = (()=>{ try {
+      const st=document.getElementById('stage');
+      if(st && st.classList.contains('editing')) return true;
+      const rd=document.getElementById('ringDock');
+      return !!(rd && !rd.hidden);
+    } catch(e){ return false; } })();
+    b.style.display = editMode ? 'flex' : 'none';
     if(info){
       const n=(sc.keys||[]).length;
       const pose=['Leg 1','Leg 2','Leg 3','Leg 4'][Math.floor(((sc.posePhase||0)%1)*4)%4]||'';
@@ -3838,7 +3843,7 @@ boot();
   }
   function tick(){
     const b=bar(), sc=scene();
-    const sig = sc ? ((sc.keys||[]).length+'|'+Math.round((sc.posePhase||0)*4)+'|'+(ed().time||0).toFixed(2)+'|'+(sc.charVisible!==false)) : 'x';
+    const sig = sc ? ((sc.keys||[]).length+'|'+Math.round((sc.posePhase||0)*4)+'|'+(ed().time||0).toFixed(2)+'|'+(()=>{try{return !!document.getElementById('stage')?.classList.contains('editing')||!!(document.getElementById('ringDock')&&!document.getElementById('ringDock').hidden);}catch(e){return false;}})()) : 'x';
     if(sig!==lastSig){ lastSig=sig; paint(); }
     rAF(tick);
   }
