@@ -850,6 +850,9 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 .timeline-inner .track .char-clip,
 .timeline-inner .track .audio-clip{ height:auto; align-self:stretch; }
 
+/* Order 61 — asli character ho to "BG ..." ghost chip na dikhe */
+body.sm-has-char #smBgAnimChip{ display:none !important; }
+
 </style>
 <style id="smMobile">
 /* ============================================================
@@ -2533,6 +2536,10 @@ try{
   if(__pc){ localStorage.removeItem('hilao.pickChar');
     if(__pc.id&&assets.chars.get(__pc.id)){ pendingChar=__pc.id; applyCharacter(); markDirty(); }
     else if(__pc.src){ window.__smEd&&window.__smEd.addCustomChar&&window.__smEd.addCustomChar(__pc.name||'Character',__pc.src).then(function(){ markDirty(); }); }
+    /* background ghost (BG chip wala duplicate character) hata do */
+    try{ if(window.__smBgAnim&&window.__smBgAnim.remove) window.__smBgAnim.remove(); }catch(e){}
+    try{ localStorage.removeItem('hilao.sel'); localStorage.removeItem('hilao.anim'); }catch(e){}
+    try{ var __chp=document.getElementById('smBgAnimChip'); if(__chp) __chp.remove(); }catch(e){}
   }
 }catch(e){}
 $('loading').hidden=true;$('saveState').textContent=dirty?'Unsaved changes':'Local project';if(!hasCharacter())setTimeout(()=>toast('Background ready hai. Character jodne ke liye neeche Character dabao.'),600);requestAnimationFrame(animate);}catch(e){$('loading').textContent='Studio load nahi hua. Page refresh karo.';console.error(e);}}
@@ -2785,6 +2792,17 @@ boot();
     if (!canvas || !ctx || !mediaW || !mediaH) return;
     var cw = canvas.width, ch = canvas.height;
     ctx.clearRect(0, 0, cw, ch);
+    /* Order 61 — agar scene me asli character hai to yeh background-ghost
+       duplicate NAHI banti (do character dikhte the). */
+    try {
+      var _hasChar = false;
+      try { _hasChar = !!(window.__smEd && window.__smEd.current && window.__smEd.current().charVisible); } catch (e) {}
+      if (_hasChar) {
+        var _chp = document.getElementById('smBgAnimChip'); if (_chp) _chp.style.display = 'none';
+        return;
+      }
+      var _chp2 = document.getElementById('smBgAnimChip'); if (_chp2) _chp2.style.display = '';
+    } catch (e) {}
 
     var src = video || imgEl;
     if (!src) return;
@@ -3254,6 +3272,17 @@ boot();
     bar.querySelector('[data-a="walk"]').classList.toggle('on', sc && sc.mode==='body');
   }
 
+  /* Order 61 — scene me asli character ho to background-ghost (duplicate
+     character + "BG ..." chip) chhupao. Do character dikhna band. */
+  function hideDupGhost(){
+    var g = document.getElementById('smBgAnim'), chip = document.getElementById('smBgAnimChip');
+    var hasChar = false;
+    try { hasChar = !!(window.__smEd && window.__smEd.current && window.__smEd.current().charVisible); } catch (e) {}
+    if (g) g.style.display = hasChar ? 'none' : '';
+    if (chip) chip.style.display = hasChar ? 'none' : '';
+    document.body.classList.toggle('sm-has-char', hasChar);
+  }
+
   /* panel khula ho to floating Back/Home buttons chhupao (overlap avoid) */
   function hideFloat(on){
     ['smNav','smBack','smHome'].forEach(id=>{ const el=$(id); if(!el) return;
@@ -3465,7 +3494,7 @@ boot();
     setTimeout(autoUnlock, 1500);
     quickBtn(); menuBtn(); renderBar();
     new MutationObserver(()=>{ quickBtn(); menuBtn(); renderBar(); installTapSelect(); }).observe(document.body,{subtree:true,childList:true});
-    setInterval(()=>{ topTitle(); quickBtn(); clearBtn(); menuBtn(); renderBar(); installTapSelect(); autoUnlock(); },800);
+    setInterval(()=>{ topTitle(); quickBtn(); clearBtn(); menuBtn(); renderBar(); installTapSelect(); autoUnlock(); hideDupGhost(); },800);
     window.addEventListener('resize', ()=>{ fit(); draw(); });
     requestAnimationFrame(loop);
     window.__smPath={ set:v=>setMode(v), start:()=>setMode(true), get:()=>pth(safeScene()) };
