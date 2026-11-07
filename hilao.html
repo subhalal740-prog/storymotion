@@ -1867,7 +1867,25 @@ function syncProjectFields(){$('projectTitle').value=project.title;syncAudio();}
 function removeWhite(img){const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0);const im=x.getImageData(0,0,c.width,c.height),d=im.data,w=c.width,h=c.height,n=w*h,seen=new Uint8Array(n),q=new Uint32Array(n);let head=0,tail=0;const white=p=>{const i=p*4;return d[i+3]<12||(d[i]>232&&d[i+1]>232&&d[i+2]>232&&Math.max(d[i],d[i+1],d[i+2])-Math.min(d[i],d[i+1],d[i+2])<25);};const add=p=>{if(!seen[p]&&white(p)){seen[p]=1;q[tail++]=p;}};for(let i=0;i<w;i++){add(i);add((h-1)*w+i);}for(let i=0;i<h;i++){add(i*w);add(i*w+w-1);}while(head<tail){const p=q[head++];d[p*4+3]=0;if(p%w>0)add(p-1);if(p%w<w-1)add(p+1);if(p>=w)add(p-w);if(p<n-w)add(p+w);}for(let p=0;p<n;p++){if(seen[p]||!d[p*4+3])continue;const i=p*4,m=Math.min(d[i],d[i+1],d[i+2]);if(m>200&&((p%w>0&&seen[p-1])||(p%w<w-1&&seen[p+1])||(p>=w&&seen[p-w])||(p<n-w&&seen[p+w]))){const a=clamp((250-m)/50,0,1);d[i+3]*=a;if(a>0)for(let k=0;k<3;k++)d[i+k]=clamp((d[i+k]-255*(1-a))/a,0,255);}}x.putImageData(im,0,0);return c;}
 function loadImage(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=()=>rej(new Error('Image load nahi hui.'));i.src=src;});}
 function scaled(img,max=1600){const s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement('canvas');c.width=Math.round(img.naturalWidth*s);c.height=Math.round(img.naturalHeight*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);return c;}
-async function addCharacter(meta,src,custom=false){const img=await loadImage(src),raw=scaled(img),canvas=removeWhite(raw);const a={...meta,src:custom?canvas.toDataURL('image/png'):src,canvas,thumb:canvas.toDataURL('image/png'),custom};assets.chars.set(a.id,a);return a;}
+/* Order 72 — upload kiya character theek usi tarah khada ho jaisa library ka:
+   alpha se crop, left/right barabar margin, pair neeche — mirror flip par
+   character side me nahi khisakta. */
+function normalizeSprite(c){
+  try{
+    const sg=c.getContext('2d',{willReadFrequently:true});
+    const im=sg.getImageData(0,0,c.width,c.height), d=im.data, W0=c.width, H0=c.height;
+    let x0=W0,x1=-1,y0=H0,y1=-1;
+    for(let y=0;y<H0;y++){const row=y*W0;for(let x=0;x<W0;x++){if(d[(row+x)*4+3]>16){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}}}
+    if(x1<0) return c;
+    const bw=x1-x0+1, bh=y1-y0+1;
+    const m=Math.round(Math.max(6,bh*0.0375));           /* library jaisa ~3.75% margin */
+    const W=bw+m*2, H=bh+m*2;
+    const out=document.createElement('canvas'); out.width=W; out.height=H;
+    out.getContext('2d').drawImage(c,x0,y0,bw,bh,Math.round((W-bw)/2),m,bw,bh);
+    return out;
+  }catch(e){ return c; }
+}
+async function addCharacter(meta,src,custom=false){const img=await loadImage(src),raw=scaled(img);let canvas=removeWhite(raw);if(custom)canvas=normalizeSprite(canvas);const a={...meta,src:custom?canvas.toDataURL('image/png'):src,canvas,thumb:canvas.toDataURL('image/png'),custom};assets.chars.set(a.id,a);return a;}
 async function addBackground(meta,src,custom=false){const img=await loadImage(src),canvas=scaled(img,1920);const a={...meta,src,canvas,custom};assets.backgrounds.set(a.id,a);return a;}
 async function initAssets(){for(const c of DEFAULT_CHARS)await addCharacter(c,SOURCES[c.id]);await addBackground({id:'village',name:'Gaon ka aangan'},SOURCES.village);}
 async function restoreCustom(){for(const c of project.customChars||[])await addCharacter(c,c.src,true);for(const b of project.customBackgrounds||[])await addBackground(b,b.src,true);}
