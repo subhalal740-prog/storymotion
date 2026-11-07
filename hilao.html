@@ -685,6 +685,54 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 .favorite.active, .favorite.active .icon{ color: #fff !important; fill: #fff !important; }
 .character-bottom{ color: rgba(255,255,255,.62) !important; }
 </style>
+<style id="smAutoCSS">/* ══════════ smAutoEditor · AutoDraft-style context controls ══════════ */
+/* layer context panel — bottom sheet, AutoDraft jaisa saaf */
+.layer-menu{
+  background: rgba(14,16,20,.97) !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  border-radius: 12px !important;
+  padding: 6px 8px 8px !important;
+  box-shadow: 0 18px 48px rgba(0,0,0,.75) !important;
+  bottom: calc(74px + env(safe-area-inset-bottom)) !important;
+}
+.layer-menu-items{ gap: 8px !important; padding: 4px 2px !important; }
+.layer-menu .layer-action{
+  min-width: 54px !important; max-width: 72px !important;
+  padding: 7px 4px !important; border-radius: 6px !important;
+  font-size: 10.5px !important; color: #fff !important;
+  background: rgba(255,255,255,.06) !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+}
+.layer-menu .layer-action .icon{ width: 17px !important; height: 17px !important; }
+.layer-menu .layer-action.on{
+  background: rgba(255,255,255,.14) !important;
+  border-color: rgba(255,255,255,.55) !important;
+  box-shadow: 0 0 12px rgba(255,255,255,.10) !important;
+}
+.layer-menu .layer-action.layer-danger{ border-color: rgba(255,255,255,.22) !important; }
+#smPathBtn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  min-width:54px;padding:7px 4px;border-radius:6px;font-size:10.5px;line-height:1;
+  color:#fff;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);
+  cursor:pointer;flex:0 0 auto;
+}
+#smPathBtn.on{ background:rgba(255,255,255,.16); border-color:rgba(255,255,255,.6); }
+/* path status bar */
+#smPathBar{
+  position:absolute;left:50%;top:6px;transform:translateX(-50%);
+  max-width:calc(100% - 16px);flex-wrap:nowrap;justify-content:center;padding:5px 6px;
+  display:flex;align-items:center;gap:6px;z-index:10;
+  background:rgba(14,16,20,.97);border:1px solid rgba(255,255,255,.18);
+  border-radius:8px;padding:6px 8px;box-shadow:0 14px 34px rgba(0,0,0,.7);
+}
+#smPathBar .t{font-size:10px;color:rgba(255,255,255,.8);font-weight:600;letter-spacing:.3px;padding:0 2px;white-space:nowrap}
+#smPathBar button{
+  font:600 10.5px/1 inherit;color:#fff;background:rgba(255,255,255,.08);
+  border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:6px 9px;cursor:pointer;white-space:nowrap;
+}
+#smPathBar button.on{ background:rgba(255,255,255,.18); border-color:rgba(255,255,255,.55); }
+#smPathLayer{ border-radius:6px; }
+</style>
 </head>
 <body>
 <svg class="icons" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -2073,6 +2121,37 @@ function wire(){
  new ResizeObserver(resize).observe($('previewShell'));window.addEventListener('resize',()=>{if(!timelineUserZoom){timelineScale=defaultTimelineScale();renderTimeline();}resize();});
 }
 async function boot(){try{await initAssets();project=defaultProject();try{const saves=await dbAll(),auto=saves.find(s=>s.id==='autosave');if(auto?.project?.scenes?.length){project=auto.project;await restoreCustom();dirty=false;}}catch{}renderer=new Renderer(preview);wire();syncProjectFields();refresh();$('loading').hidden=true;$('saveState').textContent=dirty?'Unsaved changes':'Local project';if(!hasCharacter())setTimeout(()=>toast('Background ready hai. Character jodne ke liye neeche Character dabao.'),600);requestAnimationFrame(animate);}catch(e){$('loading').textContent='Studio load nahi hua. Page refresh karo.';console.error(e);}}
+/* ═════════ smAutoEditor · PATH-TOOL ENGINE (AutoDraft-style movement) ═════════
+   Scene ke andar smPath = {on,x0,y0,x1,y1,ease} rakhta hai (x/y = stage ke fraction).
+   Render aur export dono me character path par chalta hai (panX/panY offset). */
+function smPathApply(scene, local){
+  const p = scene && scene.smPath;
+  if(!p || !p.on) return scene;
+  const d = Math.max(.001, scene.duration || 8);
+  let t = clamp(local / d, 0, 1);
+  if(p.ease !== false) t = t*t*(3-2*t);
+  const out = Object.assign({}, scene);
+  out.panX = (scene.panX || 0) + (p.x1 - p.x0) * t;
+  out.panY = (scene.panY || 0) + (p.y1 - p.y0) * t;
+  return out;
+}
+const __smDraw = Renderer.prototype.draw, __smLayout = Renderer.prototype.layout;
+Renderer.prototype.draw = function(scene, local){ return __smDraw.call(this, smPathApply(scene, local), local); };
+Renderer.prototype.layout = function(scene, w, h){
+  let l = 0; try { l = sceneAt(currentTime).local; } catch(e) {}
+  return __smLayout.call(this, smPathApply(scene, l), w, h);
+};
+window.__smEd = {
+  sceneAt, current, markDirty, pushUndo, toast, refresh, renderNow, drawOverlay,
+  totalDuration, seek,
+  getLayer: () => selectedLayer, setLayer: l => selectLayer(l), clearLayer,
+  get time(){ return currentTime; },
+  set time(v){ currentTime = v; },
+  get playing(){ return playing; },
+  get rect(){ try { return charRect(); } catch(e) { return null; } },
+  pathApply: smPathApply
+};
+
 boot();
 })();
 
@@ -2486,6 +2565,191 @@ boot();
     if (tries > 120) return;
     setTimeout(function () { withStage(cb, tries + 1); }, 100);
   }
+})();
+
+</script>
+<script id="smAutoEditorJS">
+/* ══════════════════════════════════════════════════════════════════════════
+   smAutoEditor · AutoDraft-style controls (AI features chhod ke)
+   1) Path Tool  — character ko canvas par kheenchi hui line par chalata hai
+   2) Context layer panel — jo select ho uska control (AutoDraft jaisa)
+   Koi AI call nahi, sab local. Preview + export dono me chalta hai.
+   ══════════════════════════════════════════════════════════════════════════ */
+(function(){
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  function ed(){ return window.__smEd; }
+  function toast(m){ try{ ed().toast(m); }catch(e){} }
+
+  /* ─────────────── 1 · PATH OVERLAY CANVAS ─────────────── */
+  let layer=null, ctx=null, pathMode=false, pending=null;
+  function ensureLayer(){
+    const stage = $('stage'); if(!stage) return null;
+    if(layer && layer.isConnected) return layer;
+    layer = document.createElement('canvas');
+    layer.id = 'smPathLayer';
+    layer.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:6;pointer-events:none;touch-action:none';
+    stage.appendChild(layer);
+    ctx = layer.getContext('2d');
+    layer.addEventListener('pointerdown', onDown);
+    layer.addEventListener('pointermove', onMove);
+    layer.addEventListener('pointerup', onUp);
+    layer.addEventListener('pointercancel', ()=>{ pending=null; });
+    return layer;
+  }
+  function fit(){
+    const stage = $('stage'); if(!layer || !stage) return;
+    const r = stage.getBoundingClientRect(), dpr = Math.min(devicePixelRatio||1,2);
+    const w = Math.round(r.width*dpr), h = Math.round(r.height*dpr);
+    if(layer.width!==w || layer.height!==h){ layer.width=w; layer.height=h; }
+  }
+  function frac(e){
+    const r = layer.getBoundingClientRect();
+    return { x: clamp((e.clientX-r.left)/r.width,0,1), y: clamp((e.clientY-r.top)/r.height,0,1) };
+  }
+  function path(scene){ return scene && scene.smPath; }
+  function safeScene(){ try { return ed() && ed().current() || null; } catch(e){ return null; } }
+  function commit(p){
+    const e = ed(), sc = e.current();
+    e.pushUndo();
+    sc.smPath = p;
+    e.markDirty(); e.refresh && e.refresh();
+    try{ localStorage.setItem('hilao.pathOn','1'); }catch(err){}
+  }
+  let tapStarted=false;
+  function onDown(ev){
+    if(!pathMode) return; ev.preventDefault();
+    const f = frac(ev);
+    if(!pathStart){ pathStart=f; pending=f; tapStarted=true; draw(); toast('Ab end point dabao'); }
+    else { pathHover=f; draw(); }
+  }
+  function onMove(ev){ if(!pathMode || !pending) return; pathHover = frac(ev); draw(); }
+  function onUp(ev){
+    if(!pathMode) return;
+    if(tapStarted){ tapStarted=false; return; }
+    if(!pathStart) return;
+    const p = frac(ev);
+    const pal = { on:true, x0:pathStart.x, y0:pathStart.y, x1:p.x, y1:p.y, ease:true };
+    commit(pal);
+    pathStart=null; pending=null; pathHover=null;
+    setPathMode(false);
+    toast('Path set — character ab line par chalega');
+    renderBar();
+  }
+  let pathStart=null, pathHover=null;
+
+  function setPathMode(v){
+    pathMode = v;
+    ensureLayer(); fit();
+    if(layer) layer.style.pointerEvents = v ? 'auto' : 'none';
+    const b = $('smPathBtn'); if(b) b.classList.toggle('on', v);
+    const st = $('stage'); if(st) st.style.cursor = v ? 'crosshair' : '';
+    if(v){ pathStart=null; toast('Start point dabao, phir end point'); }
+    draw();
+  }
+
+  /* ─────────────── 2 · DRAW (line + live marker) ─────────────── */
+  let raf=0, lastKey='';
+  function draw(){
+    if(!layer) return;
+    fit();
+    const c=ctx, W=layer.width, H=layer.height, u = W/Math.max(1,layer.clientWidth);
+    c.clearRect(0,0,W,H);
+    const e = ed(); if(!e) return;
+    const scene = safeScene(); if(!scene) return;
+    const p = path(scene);
+    const drawLine = (x0,y0,x1,y1,ghost)=>{
+      c.save();
+      c.setLineDash([7*u,6*u]); c.lineWidth=2*u;
+      c.strokeStyle = ghost ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.85)';
+      c.beginPath(); c.moveTo(x0*W,y0*H); c.lineTo(x1*W,y1*H); c.stroke();
+      c.setLineDash([]);
+      for(const [x,y] of [[x0,y0],[x1,y1]]){
+        c.beginPath(); c.arc(x*W,y*H,6*u,0,Math.PI*2);
+        c.fillStyle='rgba(10,14,20,.85)'; c.fill();
+        c.lineWidth=2*u; c.strokeStyle='#fff'; c.stroke();
+      }
+      c.restore();
+    };
+    if(pathMode){
+      if(pathStart && pathHover) drawLine(pathStart.x,pathStart.y,pathHover.x,pathHover.y,true);
+      else if(pathStart) drawLine(pathStart.x,pathStart.y,pathStart.x,pathStart.y,false);
+      return;
+    }
+    if(!p || !p.on) return;
+    drawLine(p.x0,p.y0,p.x1,p.y1,false);
+    /* live position dot */
+    const d = Math.max(.001, scene.duration||8);
+    let t = clamp((e.time % d)/d, 0, 1);
+    if(p.ease!==false) t = t*t*(3-2*t);
+    const mx=(p.x0+(p.x1-p.x0)*t)*W, my=(p.y0+(p.y1-p.y0)*t)*H;
+    c.save();
+    c.beginPath(); c.arc(mx,my,7*u,0,Math.PI*2);
+    c.fillStyle='rgba(255,255,255,.9)'; c.fill();
+    c.beginPath(); c.arc(mx,my,12*u,0,Math.PI*2);
+    c.strokeStyle='rgba(255,255,255,.35)'; c.lineWidth=2*u; c.stroke();
+    c.restore();
+  }
+  function loop(){
+    const e = ed();
+    try { if(e && !safeScene()) { requestAnimationFrame(loop); return; } } catch(err){ requestAnimationFrame(loop); return; }
+    if(e){
+      const key = [safeScene()?'1':'0', e.time.toFixed(2), pathMode?1:0, pathStart?pathStart.x.toFixed(3)+pathStart.y.toFixed(3):'', JSON.stringify(path(safeScene())||0)].join('|');
+      if(key!==lastKey){ lastKey=key; draw(); }
+    }
+    requestAnimationFrame(loop);
+  }
+
+  /* ─────────────── 3 · PATH BUTTON + SMALL BAR ─────────────── */
+  function injectBtn(){
+    const items = $('layerMenuItems'); if(!items) return;
+    if(items.querySelector('#smPathBtn')) return;
+    const isChar = !!items.querySelector('#laDelete') && !!items.querySelector('#laFlip');
+    if(!isChar) return;
+    const b = document.createElement('button');
+    b.id='smPathBtn'; b.type='button'; b.title='Path tool — character ko line par chalao';
+    b.innerHTML = '<svg class="icon" style="width:16px;height:16px"><use href="#route"/></svg><span>Path</span>';
+    b.onclick = ()=> setPathMode(!pathMode);
+    items.insertBefore(b, items.querySelector('#laDelete'));
+  }
+  function renderBar(){
+    let bar = $('smPathBar');
+    const sc = safeScene(), p = path(sc);
+    if(!p || !p.on){ if(bar) bar.hidden=true; return; }
+    if(!bar){
+      bar = document.createElement('div');
+      bar.id='smPathBar';
+      bar.innerHTML = '<span class="t">Path chal raha hai</span>'+
+        '<button type="button" data-a="ease">Ease</button>'+
+        '<button type="button" data-a="flip">Reverse</button>'+
+        '<button type="button" data-a="clear">Clear</button>';
+      ($('previewShell')||document.body).appendChild(bar);
+      bar.addEventListener('click', ev=>{
+        const a = ev.target.closest('button'); if(!a) return;
+        const act = a.dataset.a, e = ed(), s = e.current(), q = s.smPath; if(!q) return;
+        e.pushUndo();
+        if(act==='clear'){ delete s.smPath; toast('Path hata diya'); }
+        if(act==='ease'){ q.ease = q.ease===false; }
+        if(act==='flip'){ const t={x0:q.x1,y0:q.y1,x1:q.x0,y1:q.y0}; Object.assign(q,t); }
+        e.markDirty(); e.refresh && e.refresh(); renderBar(); lastKey='';
+      });
+    }
+    bar.hidden=false;
+    const eb = bar.querySelector('[data-a="ease"]'); if(eb) eb.classList.toggle('on', p.ease!==false);
+  }
+
+  function boot(){
+    if(!window.__smEd){ setTimeout(boot,150); return; }
+    ensureLayer();
+    new MutationObserver(()=>{ injectBtn(); renderBar(); }).observe(document.body,{subtree:true,childList:true});
+    setInterval(()=>{ injectBtn(); renderBar(); },700);
+    window.addEventListener('resize', ()=>{ fit(); draw(); });
+    document.addEventListener('pointerup', ()=>{ if(pathMode && pathStart && !pending) {} });
+    requestAnimationFrame(loop);
+    window.__smPath = { set:v=>setPathMode(v), get:()=>path(ed().current()) };
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 
 </script>
