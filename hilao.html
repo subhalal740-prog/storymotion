@@ -3771,9 +3771,9 @@ boot();
     let b=$('smKeyBar'); if(b) return b;
     b=document.createElement('div');
     b.id='smKeyBar';
-    b.style.cssText='position:fixed;left:8px;right:8px;bottom:calc(184px + env(safe-area-inset-bottom));z-index:60;display:none;'+
-      'align-items:center;gap:6px;padding:7px 8px;border-radius:14px;background:rgba(18,20,24,.92);'+
-      'border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px);box-shadow:0 10px 26px rgba(0,0,0,.45);'+
+    b.style.cssText='box-sizing:border-box;width:100%;margin:8px 0 0;display:none;'+
+      'align-items:center;gap:6px;padding:7px 8px;border-radius:12px;background:rgba(255,255,255,.05);'+
+      'border:1px solid rgba(255,255,255,.12);'+
       'font:600 11px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#e9edf3;overflow-x:auto;scrollbar-width:none';
     b.innerHTML =
       '<span style="opacity:.7;letter-spacing:.3px">KEY</span>'+
@@ -3784,10 +3784,15 @@ boot();
       '<button data-k="next" style="flex:0 0 auto">Leg &#9654;</button>'+
       '<span id="smKeyInfo" style="margin-left:auto;opacity:.75;white-space:nowrap;padding-left:6px"></span>';
     b.querySelectorAll('button').forEach(bt=>{
-      bt.style.cssText='min-height:30px;padding:0 10px;border-radius:9px;border:1px solid rgba(255,255,255,.18);'+
-        'background:rgba(255,255,255,.07);color:#fff;font:600 11px/1 inherit;cursor:pointer';
+      bt.style.cssText='flex:0 0 auto;min-height:28px;padding:0 9px;border-radius:8px;border:1px solid rgba(255,255,255,.16);'+
+        'background:rgba(255,255,255,.06);color:#fff;font:600 11px/1 inherit;cursor:pointer;white-space:nowrap';
     });
-    document.body.appendChild(b);
+    /* Order 87 — KEY bar character editor ke andar (ring dock ke neeche), float nahi */
+    (function(){
+      const rd=document.getElementById('ringDock');
+      if(rd && rd.parentNode) rd.parentNode.insertBefore(b, rd.nextSibling);
+      else document.body.appendChild(b);
+    })();
     b.addEventListener('click', e=>{
       const bt=e.target.closest('button'); if(!bt) return;
       const sc=scene(); if(!sc) return;
