@@ -2658,6 +2658,9 @@ window.__smEd = {
       return a.id;
     } catch(e) { return null; }
   },
+  get charTex(){    /* red start-clone ke liye character ka canvas */
+    try { const c = assets.chars.get(current().charId); return c ? c.canvas : null; } catch(e) { return null; }
+  },
   get rectBase(){   /* path offset ke bina character ki asli jagah */
     try { const sc = current(), keep = sc.smPath; if(keep) delete sc.smPath;
       const r = charRect(); if(keep) sc.smPath = keep; return r; } catch(e) { return null; }
@@ -3160,6 +3163,7 @@ boot();
     if(v){
       const sc0 = safeScene();
       if(sc0 && !sc0.smPath) sc0.smPath = { on:false, x0:0, y0:0, dx:0, dy:0, ease:true, dur:0, loop:false };
+      pausePlay();   /* Order 68 — path mode me apne aap play na ho */
       toast('Character se line kheencho — jahan chhodo wahan pahunchega');
     }
     renderBar();
@@ -3199,7 +3203,39 @@ boot();
                   ease: pv.ease!==false, dur: pv.dur||0, loop: !!pv.loop };
     e.markDirty(); e.refresh && e.refresh();
     setMode(false); renderBar();
+    pausePlay();   /* Order 68 — play user dabaye tab hi */
     toast('Path set — ab play karo, character chalega');
+  }
+
+  /* Order 68 — path ke waqt playback apne aap na chale (sirf Play par chale) */
+  function pausePlay(){
+    try { const e=ed(); if(e && e.playing){ const b=$('playBtn'); if(b) b.click(); } } catch(err){}
+  }
+
+  /* Order 68 — path ke start par character ka laal clone (ghost) */
+  let cloneCv=null, cloneKey='';
+  function redClone(sc){
+    const e=ed(), c = e.charTex; if(!c || !c.width) return;
+    const k = (sc.charId||'')+'|'+c.width+'x'+c.height;
+    if(k!==cloneKey){
+      cloneCv = cloneCv || document.createElement('canvas');
+      cloneCv.width=c.width; cloneCv.height=c.height;
+      const cc=cloneCv.getContext('2d');
+      cc.clearRect(0,0,c.width,c.height);
+      cc.drawImage(c,0,0);
+      cc.globalCompositeOperation='source-in';
+      cc.fillStyle='rgba(255,36,36,.9)';
+      cc.fillRect(0,0,c.width,c.height);
+      cc.globalCompositeOperation='source-over';
+      cloneKey=k;
+    }
+    const r=e.rectBase, ov=$('overlay'); if(!r||!ov) return;
+    const sx=layer.width/ov.width, sy=layer.height/ov.height;
+    const x=r.x*sx, y=r.y*sy, w=r.w*sx, h=r.h*sy;
+    ctx.save(); ctx.globalAlpha=.38;
+    if(sc.flip){ ctx.translate(x+w,y); ctx.scale(-1,1); ctx.drawImage(cloneCv,0,0,w,h); }
+    else ctx.drawImage(cloneCv,x,y,w,h);
+    ctx.restore();
   }
 
   /* ───────── draw ───────── */
@@ -3245,6 +3281,8 @@ boot();
     ctx.beginPath(); ctx.arc(p.x0*W,p.y0*H,9*u,0,Math.PI*2); ctx.strokeStyle='rgba(255,0,0,.28)'; ctx.lineWidth=2*u; ctx.stroke();
     ctx.beginPath(); ctx.arc(mx,my,7*u,0,Math.PI*2); ctx.fillStyle='rgba(255,0,0,.40)'; ctx.fill();
     ctx.restore();
+    /* Order 68 — start par laal clone; character jab thoda chal chuka ho */
+    if(t>0.03) redClone(sc);
   }
   function loop(){
     const e=ed();
@@ -3288,6 +3326,7 @@ boot();
         const b=ev.target.closest('button'); if(!b) return;
         const e=ed(), s=safeScene(); let q=pth(s); if(!q){ q = s.smPath = { on:false, x0:0, y0:0, dx:0, dy:0, ease:true, dur:0, loop:false }; }
         const a=b.dataset.a;
+        if(a!=='clear') pausePlay();   /* Order 68 */
         e.pushUndo();
         if(a==='clear'){ delete s.smPath; toast('Path hata diya'); setMode(false); hideFloat(false); e.markDirty(); e.refresh && e.refresh(); return; }
         if(a==='dur'){ q.dur = Number(b.dataset.v)||0; }
