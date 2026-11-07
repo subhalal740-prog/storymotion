@@ -2747,8 +2747,16 @@ boot();
     const e=ed();
     try{
       const sc=safeScene();
-      const key=[sc?e.time.toFixed(2):'x', pathMode?1:0, start?start.x.toFixed(2):'', JSON.stringify(sc?(sc.smPath||0):0)].join('|');
+      const key=[sc?e.time.toFixed(2):'x', pathMode?1:0, down?down.x.toFixed(2):'', JSON.stringify(sc?(sc.smPath||0):0)].join('|');
       if(key!==lastKey){ lastKey=key; draw(); renderBar(); }
+      /* selection box character ke saath chale (path/playback me stale na rahe) */
+      if(sc){
+        const sel=e.getLayer && e.getLayer();
+        const ok = sel || document.getElementById('stage')?.classList.contains('editing');
+        const k2 = sel+'|'+e.time.toFixed(2);
+        if(ok && k2!==window.__smOvKey){ window.__smOvKey=k2; try{ e.drawOverlay(); }catch(err){} }
+        if(!ok) window.__smOvKey='';
+      }
     }catch(err){}
     requestAnimationFrame(loop);
   }
