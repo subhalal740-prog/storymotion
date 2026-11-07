@@ -2829,12 +2829,35 @@ boot();
     d.querySelector('button').onclick=()=>setMode(false);
     host.appendChild(d);
   }
+
+  /* ───────── tap-to-select fallback (app handler fail ho to bhi select ho) ───────── */
+  function installTapSelect(){
+    const ov=$('overlay'); if(!ov || ov.__smTapBound) return; ov.__smTapBound=true;
+    ov.addEventListener('pointerup', ev=>{
+      if(pathMode || !ev.isPrimary) return;
+      const cx=ev.clientX, cy=ev.clientY;
+      setTimeout(()=>{
+        const e=ed(); if(!e) return;
+        try{ if(e.getLayer()) return; }catch(err){ return; }        /* app ne khud select kar liya */
+        const r=e.rect; if(!r) return;
+        const box=ov.getBoundingClientRect(); if(!box.width||!box.height) return;
+        const sx=ov.width/box.width, sy=ov.height/box.height;
+        const x=(cx-box.left)*sx, y=(cy-box.top)*sy;
+        const pad=22*sx;
+        if(x>=r.x-pad && x<=r.x+r.w+pad && y>=r.y-pad && y<=r.y+r.h+pad){
+          const sc=safeScene();
+          if(sc && (sc.charLocked)) toast('Character locked hai — timeline ka lock kholo, phir tap karo');
+          try{ e.setLayer('character'); }catch(err){}
+        }
+      }, 140);
+    }, true);
+  }
   function boot(){
     if(!ed()){ setTimeout(boot,150); return; }
-    ensure(); hintBanner();
+    ensure(); hintBanner(); installTapSelect();
     quickBtn(); menuBtn(); renderBar();
-    new MutationObserver(()=>{ quickBtn(); menuBtn(); renderBar(); }).observe(document.body,{subtree:true,childList:true});
-    setInterval(()=>{ quickBtn(); menuBtn(); renderBar(); },800);
+    new MutationObserver(()=>{ quickBtn(); menuBtn(); renderBar(); installTapSelect(); }).observe(document.body,{subtree:true,childList:true});
+    setInterval(()=>{ quickBtn(); menuBtn(); renderBar(); installTapSelect(); },800);
     window.addEventListener('resize', ()=>{ fit(); draw(); });
     requestAnimationFrame(loop);
     window.__smPath={ set:v=>setMode(v), start:()=>setMode(true), get:()=>pth(safeScene()) };
