@@ -798,6 +798,30 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 #workspace > .preview-shell{ flex:0 0 auto; }
 #workspace > .timeline{ flex:0 0 auto; }
 
+/* ── Order 65 — AutoDraft jaisa page balance ───────────────────────────
+   AutoDraft mobile (video) me timeline sirf 170px leta hai aur neeche
+   dock float karta hai. Hamare page me .timeline stretch hoke 330px ka
+   khaali black box ban raha tha (measure: timeline 330 vs content 91).
+   Fix: timeline content ke hisaab se, aur bachi jagah canvas ko. */
+/* B (user ne chuna): canvas upar chipka, timeline neeche rail tak bhare —
+   video me bilkul aisa hi hai, aur layer dock uske upar float karta hai. */
+#workspace > .preview-shell{ flex:0 0 auto !important; justify-content:flex-start !important; }
+#workspace > .preview-shell > .stage{ margin:0 !important; }
+#workspace > .timeline{ flex:1 1 auto !important; min-height:150px !important; max-height:none !important; }
+.timeline{ height:auto !important; min-height:150px !important; max-height:none !important; }
+.timeline-scroll{ flex:1 1 auto !important; }
+
+/* Tool row kabhi 2 line me na toote (user ke phone par 9 buttons wrap ho rahe the) */
+.quick-tools{ flex-wrap:nowrap !important; overflow:hidden; }
+.quick-left, .quick-right{ flex-wrap:nowrap !important; min-width:0; }
+
+/* Editor me floating ‹ ⌂ duplicate the (top bar ka ← asli BACK hai) aur
+   timeline ke khaali area par tair rahe the → hata diya. */
+#smNav{ display:none !important; }
+/* injected Clear button baaki tool buttons ke barabar */
+.quick-tools #smClearBtn{ width:19px !important; height:19px !important; }
+@media (min-width:400px){ .quick-tools #smClearBtn{ width:21px !important; height:21px !important; } }
+
 </style>
 <style id="smMobile">
 /* ============================================================
