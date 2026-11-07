@@ -2277,8 +2277,8 @@ body{padding-bottom:40px!important}
       const availW = Math.min(460, ((wrapEl && wrapEl.clientWidth) || 460) - 20, window.innerWidth - 44);
       /* mobile: viewport ki 40vh se zyada nahi + zoom max 50% (character poora frame me) */
       const shortScreen = window.innerHeight < 700;
-      const maxH = wide ? 520
-        : Math.max(150, Math.round(window.innerHeight * (shortScreen ? 0.34 : 0.40)));
+      const maxH = wide ? 540
+        : Math.max(150, Math.round(window.innerHeight * (shortScreen ? 0.38 : 0.46)));
       /* v17: stage = character se 1.55x chaudi — walk/run me aage badhne ki jagah */
       baseScale = Math.min(availW / (bbox.w * STAGE_MUL), maxH / bbox.h);
       if (!wide) baseScale = Math.min(baseScale, 0.50);
@@ -4135,5 +4135,235 @@ body{padding-bottom:40px!important}
   window.__rigVoice = { play: playHint, isOn: function(){ return on; } };
 })();
 </script>
+<style id="smSkin">
+/* =========================================================================
+   smSkin v1 · "Autodraft" minimalist skin — 07-Nov-2026
+   Rule: chhote, flat, faint-white controls. Koi bhari blue/green fill nahi.
+   Sirf look badalta hai — koi id/class/behaviour nahi badla.
+   ========================================================================= */
+:root{
+  --sk-bg: rgba(255,255,255,.08);
+  --sk-bg-soft: rgba(255,255,255,.05);
+  --sk-line: rgba(255,255,255,.15);
+  --sk-line-hi: rgba(255,255,255,.55);
+  --sk-txt: #ffffff;
+  --sk-mut: rgba(255,255,255,.62);
+}
+
+/* ---------- 1 · saare tool buttons: chhote, flat, faint ---------- */
+.btn, .btn.primary, .btn.ghost, .btn.tiny,
+.icoAct, .qp, .smArmBtn, .posKey, .posKey.mid,
+.step, .pill, .tag, .tab, .chip, .segBtn, .miniBtn{
+  background: var(--sk-bg) !important;
+  background-image: none !important;
+  border: 1px solid var(--sk-line) !important;
+  border-radius: 4px !important;
+  color: var(--sk-txt) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  letter-spacing: .2px !important;
+  padding: 6px 12px !important;
+  transform: none !important;
+  filter: none !important;
+}
+.btn.tiny{ padding: 5px 10px !important; font-size: 11px !important; }
+.icoAct{ height: 32px !important; font-size: 11.5px !important; padding: 0 10px !important; }
+.icoAct svg, .btn svg, .smArmBtn svg, .qp svg{ width: 14px !important; height: 14px !important; color: var(--sk-txt) !important; }
+.pill, .tag{ font-size: 9.5px !important; letter-spacing: .8px !important; padding: 4px 8px !important; color: var(--sk-mut) !important; }
+
+/* hover / active ------------------------------- */
+.btn:hover, .icoAct:hover, .qp:hover, .smArmBtn:hover, .posKey:hover, .step:hover{
+  background: rgba(255,255,255,.12) !important;
+  border-color: rgba(255,255,255,.26) !important;
+  color: #fff !important;
+}
+.btn:active, .icoAct:active, .qp:active, .smArmBtn:active, .posKey:active{ background: rgba(255,255,255,.16) !important; }
+
+/* selected state = patli safed border + halka glow, koi solid colour nahi */
+.btn.primary, .qp.on, .smArmBtn.on, .step.on, .posKey.mid, .partCard.sel, .tab.on{
+  background: rgba(255,255,255,.13) !important;
+  background-image: none !important;
+  border-color: var(--sk-line-hi) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.20), 0 0 12px rgba(255,255,255,.10) !important;
+}
+/* purane green dot / coloured after-elements hatao */
+.qp.on:after, .qp.stop:after, .step.on:after, .smArmBtn.on:after, .pill:before{ display: none !important; content: none !important; }
+
+/* ---------- 2 · step rail (1..5) — patle safed circles ---------- */
+.stepRail:before{ background: rgba(255,255,255,.12) !important; height: 1px !important; }
+.step{
+  border-radius: 999px !important;
+  width: 34px !important; height: 34px !important;
+  padding: 0 !important;
+  color: var(--sk-mut) !important;
+  background: rgba(255,255,255,.05) !important;
+  font-size: 12px !important;
+}
+.step.on{ color: #fff !important; background: rgba(255,255,255,.15) !important; }
+.step.done{ color: rgba(255,255,255,.85) !important; border-color: rgba(255,255,255,.30) !important; }
+.stepLab, .step-label{ color: var(--sk-mut) !important; font-size: 9.5px !important; letter-spacing: .6px !important; }
+
+/* ---------- 3 · cards / panels — halka, kam padding (canvas ko jagah) ---------- */
+.card{
+  background: rgba(255,255,255,.03) !important;
+  border: 1px solid rgba(255,255,255,.08) !important;
+  border-radius: 12px !important;
+  padding: 11px !important;
+  box-shadow: none !important;
+  margin-bottom: 10px !important;
+}
+.card h3{ color: rgba(255,255,255,.72) !important; font-size: 10.5px !important; letter-spacing: 1.4px !important; }
+.cHead{ margin-bottom: 6px !important; }
+.btnRow, .smArmBtns, .qpRow{ gap: 6px !important; }
+.btnRow{ margin-top: 8px !important; }
+.qpWrap{ margin-top: 10px !important; padding-top: 9px !important; }
+.qpTitle{ color: var(--sk-mut) !important; font-size: 9.5px !important; letter-spacing: 1.3px !important; margin-bottom: 7px !important; }
+.qpTitle:before{ background: #fff !important; box-shadow: 0 0 6px rgba(255,255,255,.5) !important; }
+
+/* quick pose row — chhota, ek hi line, label clip nahi */
+.qpRow .qp{ padding: 9px 4px !important; font-size: 11.5px !important; white-space: nowrap !important; }
+.smArmBtn{ padding: 8px 6px !important; font-size: 10.5px !important; letter-spacing: .3px !important; }
+.smArmLab{ color: var(--sk-mut) !important; font-size: 9.5px !important; }
+.smWalkVal{ color: #fff !important; background: rgba(255,255,255,.08) !important; border: 1px solid var(--sk-line) !important; border-radius: 4px !important; }
+.smWalkTxt{ color: #fff !important; font-size: 10.5px !important; }
+.smWalk, .smArm{ background: rgba(255,255,255,.03) !important; border: 1px solid rgba(255,255,255,.08) !important; border-radius: 8px !important; }
+
+/* sliders — safed thumb, halka track */
+input[type=range]{ accent-color: #ffffff !important; }
+.ppRange::-webkit-slider-runnable-track{ background: rgba(255,255,255,.14) !important; height: 3px !important; }
+.ppRange::-webkit-slider-thumb{ background: #fff !important; box-shadow: none !important; border: 0 !important; }
+
+/* position keys / part cards */
+.posKey{ color: #fff !important; font-size: 12px !important; padding: 0 !important; }
+.partCard{ background: rgba(255,255,255,.04) !important; border: 1px solid rgba(255,255,255,.10) !important; border-radius: 8px !important; }
+.partCard.sel{ border-color: var(--sk-line-hi) !important; }
+
+/* header / nav icons */
+.hdr, header{ background: rgba(255,255,255,.02) !important; border-bottom: 1px solid rgba(255,255,255,.07) !important; }
+#buildStamp{ color: rgba(255,255,255,.45) !important; }
+
+/* checklist / warnings — colour sirf text me, background faint */
+.layer.bad, .badRow{ background: rgba(255,80,80,.10) !important; border-color: rgba(255,120,120,.35) !important; }
+
+/* ---------- 4 · canvas area maximise ---------- */
+#pgRig .card:first-of-type, #pgCut .card:first-of-type{ padding-bottom: 8px !important; }
+#studio, #posStage, #cutStack{ max-width: 100% !important; }
+
+/* ---------- 5 · steps / toggles / header / back — sab faint white ---------- */
+#steps .step b{
+  width: 30px !important; height: 30px !important;
+  background: rgba(255,255,255,.05) !important;
+  border: 1px solid rgba(255,255,255,.22) !important;
+  box-shadow: 0 0 0 4px #04070f !important;
+  color: rgba(255,255,255,.75) !important;
+  font-size: 12px !important; font-weight: 600 !important;
+}
+#steps .step.on b{
+  background: rgba(255,255,255,.16) !important;
+  background-image: none !important;
+  border-color: rgba(255,255,255,.65) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 4px #04070f, 0 0 12px rgba(255,255,255,.16) !important;
+}
+#steps .step.done b{
+  background: rgba(255,255,255,.08) !important;
+  border-color: rgba(255,255,255,.35) !important;
+  color: #fff !important;
+  box-shadow: 0 0 0 4px #04070f !important;
+}
+#steps .step.done i{ color: rgba(255,255,255,.72) !important; }
+#steps .step.on i{ color: #fff !important; }
+#steps .step i{ font-size: 8.5px !important; letter-spacing: .4px !important; }
+.stepRail:before{ background: rgba(255,255,255,.12) !important; height: 1px !important; }
+
+/* toggle switches -> safed */
+.sw{ color: rgba(255,255,255,.72) !important; font-size: 10.5px !important; }
+.sw input{ background: rgba(255,255,255,.10) !important; border: 1px solid rgba(255,255,255,.18) !important; }
+.sw input:checked{ background: rgba(255,255,255,.28) !important; }
+.sw input:before{ background: rgba(255,255,255,.65) !important; }
+.sw input:checked:before{ background: #fff !important; }
+
+/* header icons + brand */
+.icoBtn, #menuBtn, #homeBtn{
+  width: 36px !important; height: 36px !important; border-radius: 8px !important;
+  background: rgba(255,255,255,.08) !important; background-image: none !important;
+  border: 1px solid rgba(255,255,255,.15) !important;
+  color: #fff !important; box-shadow: none !important;
+}
+.icoBtn svg{ width: 15px !important; height: 15px !important; }
+.brand b{ color: #fff !important; font-size: 17px !important; letter-spacing: -.2px !important; }
+.brand span{ color: rgba(255,255,255,.55) !important; font-size: 9.5px !important; letter-spacing: .8px !important; }
+
+/* page BACK button — chhota, faint */
+.pgBack{
+  display: inline-flex !important; align-items: center; justify-content: center; gap: 5px !important;
+  width: auto !important; min-width: 0 !important;
+  padding: 6px 12px !important; margin: 2px 0 8px !important;
+  font-size: 11.5px !important; font-weight: 600 !important; letter-spacing: .4px !important;
+  color: #fff !important;
+  background: rgba(255,255,255,.06) !important; background-image: none !important;
+  border: 1px solid rgba(255,255,255,.15) !important;
+  border-radius: 4px !important; box-shadow: none !important;
+}
+.pgBack svg{ width: 13px !important; height: 13px !important; }
+.pgBack:hover{ background: rgba(255,255,255,.12) !important; }
+
+/* status pills (traffic light) — sirf text colour, koi solid fill nahi */
+#trafficLight{ background: rgba(255,255,255,.06) !important; border-color: rgba(255,255,255,.15) !important; }
+#trafficLight:before{ display: none !important; }
+
+
+/* ---------- 6 · icons, checks, hints — sab neutral ---------- */
+.acIcon{
+  background: rgba(255,255,255,.06) !important; background-image: none !important;
+  border: 1px solid rgba(255,255,255,.15) !important;
+  color: #fff !important; border-radius: 8px !important;
+  width: 32px !important; height: 32px !important; flex: 0 0 32px !important;
+  box-shadow: none !important;
+}
+.acIcon svg{ width: 16px !important; height: 16px !important; }
+.acOk{
+  background: rgba(255,255,255,.10) !important; background-image: none !important;
+  border: 1px solid rgba(255,255,255,.35) !important;
+  color: #fff !important; box-shadow: none !important;
+  width: 22px !important; height: 22px !important; flex: 0 0 22px !important;
+  font-size: 11px !important;
+}
+.acOk.off{ background: rgba(255,255,255,.04) !important; color: rgba(255,255,255,.35) !important; border-color: rgba(255,255,255,.12) !important; }
+.tipBar{
+  background: rgba(255,255,255,.04) !important; background-image: none !important;
+  border: 1px dashed rgba(255,255,255,.20) !important; border-radius: 8px !important;
+  padding: 8px 10px !important;
+}
+.tipBar p{ color: rgba(255,255,255,.72) !important; font-size: 10px !important; font-weight: 600 !important; }
+.tipBar .ic{ color: rgba(255,255,255,.7) !important; filter: none !important; }
+.partCard{ background: rgba(255,255,255,.04) !important; background-image: none !important; border-color: rgba(255,255,255,.10) !important; }
+.chooseBtn{
+  background: rgba(255,255,255,.10) !important; background-image: none !important;
+  border: 1px solid rgba(255,255,255,.22) !important;
+  box-shadow: none !important; border-radius: 6px !important;
+  height: 40px !important; font-size: 12.5px !important; font-weight: 600 !important;
+}
+.chooseBtn svg{ width: 16px !important; height: 16px !important; }
+.upChecks .ok, .upChecks .bad, .upChecks span{ color: rgba(255,255,255,.75) !important; }
+.voiceBtn{ background: rgba(255,255,255,.08) !important; background-image: none !important; border: 1px solid rgba(255,255,255,.15) !important; color: #fff !important; box-shadow: none !important; }
+.hist, .layer, .kv{ background: rgba(255,255,255,.03) !important; border-color: rgba(255,255,255,.08) !important; }
+a.note, .note{ color: rgba(255,255,255,.55) !important; }
+
+
+.partCard .ok{
+  background: rgba(255,255,255,.14) !important; background-image: none !important;
+  border: 1px solid rgba(255,255,255,.45) !important; color: #fff !important;
+  box-shadow: none !important; width: 13px !important; height: 13px !important;
+  font-size: 8px !important;
+}
+</style>
+
+
+
+
 </body>
 </html>
