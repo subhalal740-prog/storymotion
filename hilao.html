@@ -611,6 +611,79 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 .top-action.download-action{ color: #fff !important; }
 .download-action{ color: #fff !important; }
 .topbar{ background: rgba(255,255,255,.02) !important; border-bottom: 1px solid rgba(255,255,255,.08) !important; }
+
+/* ══════════ v2 SIZE PASS — sab controls saaf ON dikhein, chhote na lagein ══════════ */
+:root{ --dim:#9aa3ad; --muted:#c3cad2; }
+/* top bar */
+.topbar{ height: 54px !important; }
+.top-action{
+  font-size: 10.5px !important; padding: 6px 10px !important; min-width: 56px !important;
+  color: #fff !important; gap: 4px !important; border-left-color: rgba(255,255,255,.10) !important;
+}
+.top-action .icon{ width: 20px !important; height: 20px !important; }
+.topbar .icon-btn, .top-left .icon-btn{ width: 38px !important; height: 38px !important; color: #fff !important; }
+.topbar .icon-btn .icon, .top-left .icon-btn .icon{ width: 20px !important; height: 20px !important; }
+/* transport / quick tools */
+.playbar .icon-btn, .quick-tools .icon-btn{
+  width: 34px !important; height: 34px !important; color: #fff !important;
+}
+.playbar, .quick-tools{ height: 42px !important; }
+.playbar .icon, .quick-tools .icon{ width: 19px !important; height: 19px !important; }
+.play-round{ width: 28px !important; height: 28px !important; }
+.play-round .icon{ width: 13px !important; height: 13px !important; }
+.speed-btn{ font-size: 11px !important; padding: 4px 9px !important; color: #fff !important; }
+.timecode, .preview-meta{ font-size: 10.5px !important; color: #c3cad2 !important; }
+.ratio-chip{ font-size: 10.5px !important; color: #fff !important; border-color: rgba(255,255,255,.20) !important; }
+/* scene bar */
+.scenebar{ height: 44px !important; }
+.scenebar .icon-btn{ width: 32px !important; height: 32px !important; color: #fff !important; }
+.scene-chip{ font-size: 12.5px !important; color: #fff !important; }
+/* buttons */
+.primary, .secondary, .danger{
+  padding: 9px 14px !important; font-size: 13px !important; min-height: 38px !important;
+  color: #fff !important;
+}
+.primary{ border-color: rgba(255,255,255,.34) !important; background: rgba(255,255,255,.14) !important; }
+.secondary{ border-color: rgba(255,255,255,.22) !important; background: rgba(255,255,255,.09) !important; }
+.danger{ border-color: rgba(255,255,255,.26) !important; background: rgba(255,255,255,.07) !important; color: #fff !important; }
+/* bottom dock */
+.dock{ height: 64px !important; }
+.dock button{ font-size: 11.5px !important; color: rgba(255,255,255,.80) !important; gap: 5px !important; min-width: 68px !important; }
+.dock button .icon{ width: 23px !important; height: 23px !important; }
+.dock button.active, .dock button:hover{ color: #fff !important; background: rgba(255,255,255,.12) !important; }
+/* timeline — thoda chhota taaki preview bada mile, content same */
+.timeline{ height: clamp(170px, 24dvh, 220px) !important; padding-top: 14px !important; }
+.track, .timeline-inner{ min-height: 34px !important; }
+.clip-label, .track-icon{ font-size: 10.5px !important; color: #fff !important; }
+/* preview ko zyada jagah */
+.preview-shell{ padding: 2px 4px !important; }
+.preview-shell > canvas, .preview-shell canvas{ max-width: 100% !important; }
+/* tools / cards */
+.char-tools .tool-tile{ padding: 12px 6px !important; font-size: 11px !important; color: #fff !important; }
+.char-tools .tool-tile .icon{ width: 22px !important; height: 22px !important; }
+.panel.sheet .chips-row .chip{ font-size: 11.5px !important; padding: 6px 11px !important; color: #fff !important; }
+.chip, .pinned-toggle{ font-size: 11.5px !important; color: #fff !important; }
+/* icons never look disabled */
+.icon-btn{ color: #fff !important; opacity: .92; }
+.icon-btn:hover{ opacity: 1; }
+
+/* dock ko overflow se bachao */
+.dock button{ min-width: 58px !important; font-size: 11px !important; }
+.dock button .icon{ width: 22px !important; height: 22px !important; }
+/* editor bg chip — blue → faint white */
+#smBgAnimChip{
+  background: rgba(10,14,20,.80) !important; background-image: none !important;
+  border: 1px solid rgba(255,255,255,.32) !important; color: #fff !important;
+  border-radius: 4px !important; box-shadow: none !important; font-size: 10.5px !important;
+}
+
+/* selection accents: blue → faint white (cards, checks, angle tabs) */
+.character-card.selected{ border-color: rgba(255,255,255,.55) !important; box-shadow: 0 0 0 1px rgba(255,255,255,.25) !important; }
+.character-card .check{ background: rgba(255,255,255,.20) !important; border: 1px solid rgba(255,255,255,.65) !important; color: #fff !important; }
+.char-angles button{ color: rgba(255,255,255,.62) !important; }
+.char-angles button.active{ color: #fff !important; background: rgba(255,255,255,.10) !important; }
+.favorite.active, .favorite.active .icon{ color: #fff !important; fill: #fff !important; }
+.character-bottom{ color: rgba(255,255,255,.62) !important; }
 </style>
 </head>
 <body>
