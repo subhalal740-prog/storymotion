@@ -1032,18 +1032,14 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     if (!a) a = { id: 'idle', name: 'Idle' };
     var view2 = (typeof view === 'string' && view) ? view : 'front';
     var tex = charImg || charTex;   /* selected character pehle, IDB ka purana tex baad me */
-    if (!tex) { goEditor(a); return; }
-    var payload = { v: 2, anim: a.id, name: a.name, char: charId || '', charName: charName,
-                    view: view2, key: true, flip: false, media: { kind: 'data', src: tex }, ts: Date.now() };
+    /* Order 60: editor me character ASLI layer ban kar jata hai (timeline me uski
+       apni track), background-ghost nahi. Isliye hilao.sel nahi likhte. */
     try {
-      localStorage.setItem('hilao.sel', JSON.stringify(payload));
-      localStorage.setItem('hilao.anim', a.id);
-      localStorage.setItem('hilao.char', charName);
+      localStorage.setItem('hilao.pickChar', JSON.stringify({ id: charId || '', name: charName, src: tex || '' , anim: a.id }));
+      localStorage.removeItem('hilao.sel');
     } catch (e) {}
-    showToast(charName + ' background par ja raha hai');
-    var url = 'hilao.html?anim=' + encodeURIComponent(a.id) +
-              (charId ? '&char=' + encodeURIComponent(charId) : '') +
-              '&view=' + encodeURIComponent(view2) + '&v=' + Date.now();
+    showToast(charName + ' editor me aa raha hai');
+    var url = 'hilao.html?v=' + Date.now();   /* character pickChar se jaata hai — ghost params nahi */
     setTimeout(function () { location.href = url; }, 260);
   }
 
