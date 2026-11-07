@@ -4636,5 +4636,139 @@ a.note, .note{ color: rgba(255,255,255,.55) !important; }
 
 
 
+
+<script id="smRigKeysJS">
+/* Order 88 — Keyframe panel for Rig Studio: leg-stretch ko time par key karo, Play par interpolate */
+(function(){
+  if(window.__smRigKeys) return; window.__smRigKeys = true;
+  const $ = id => document.getElementById(id);
+  const STORE='rigstudio.keys';
+  let keys=[], t=0, playing=false, raf=0, last=0, DUR=6;
+
+  try { const j=localStorage.getItem(STORE); if(j) keys=JSON.parse(j)||[]; } catch(e){}
+  const save = ()=>{ try{ localStorage.setItem(STORE, JSON.stringify(keys)); }catch(e){} };
+
+  const slider = ()=>$('smWalkSlider');
+  const rigAnim = ()=>window.__RIG_ANIM || null;
+
+  function setSpread(pct){
+    const s=slider(); if(!s) return;
+    const v=Math.max(0,Math.min(100,Math.round(pct)));
+    if(String(s.value)===String(v)) return;
+    s.value=v; s.dispatchEvent(new Event('input',{bubbles:true}));
+  }
+  function currentPct(){ const s=slider(); return s? Number(s.value):0; }
+
+  function interp(tt){
+    if(!keys.length) return currentPct();
+    const k=keys.slice().sort((a,b)=>a.t-b.t);
+    if(tt<=k[0].t) return k[0].v;
+    if(tt>=k[k.length-1].t) return k[k.length-1].v;
+    let i=0; while(i<k.length-1 && !(tt>=k[i].t && tt<=k[i+1].t)) i++;
+    const a=k[i], b=k[i+1], span=Math.max(.001,b.t-a.t);
+    let u=Math.max(0,Math.min(1,(tt-a.t)/span)); u=u*u*(3-2*u);
+    return a.v+(b.v-a.v)*u;
+  }
+
+  /* ── UI ── */
+  let bar=null;
+  function build(){
+    if(bar) return bar;
+    bar=document.createElement('div');
+    bar.id='smRigKeyBar';
+    bar.style.cssText='margin:10px 0 0;padding:8px;border-radius:12px;background:rgba(255,255,255,.045);'+
+      'border:1px solid rgba(255,255,255,.12);display:none;flex-direction:column;gap:8px;'+
+      'font:600 11px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#e7ecf3';
+    bar.innerHTML=
+      '<div style="display:flex;align-items:center;gap:6px;overflow-x:auto;scrollbar-width:none">'+
+        '<span style="opacity:.65;letter-spacing:.4px">KEYFRAME</span>'+
+        '<button data-k="add">Key +</button>'+
+        '<button data-k="del">Del</button>'+
+        '<button data-k="play">Play</button>'+
+        '<span id="smRigKeyInfo" style="margin-left:auto;opacity:.75;white-space:nowrap"></span>'+
+      '</div>'+
+      '<div style="position:relative;height:26px;border-radius:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);overflow:hidden">'+
+        '<div id="smRigPlay" style="position:absolute;top:0;bottom:0;width:2px;background:#7cc4ff;left:0"></div>'+
+        '<div id="smRigMarks" style="position:absolute;inset:0"></div>'+
+      '</div>'+
+      '<input id="smRigScrub" type="range" min="0" max="60" value="0" step="1" style="width:100%;accent-color:#7cc4ff">';
+    bar.querySelectorAll('button').forEach(b=>{
+      b.style.cssText='flex:0 0 auto;min-height:28px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.16);'+
+        'background:rgba(255,255,255,.07);color:#fff;font:600 11px/1 inherit;cursor:pointer';
+    });
+    const qpr=$('qpRow'), anchor=qpr||$('smWalkPanel');
+    if(anchor && anchor.parentNode) anchor.parentNode.insertBefore(bar, anchor.nextSibling);
+    else document.body.appendChild(bar);
+
+    bar.addEventListener('click',e=>{
+      const b=e.target.closest('button'); if(!b) return;
+      const a=b.dataset.k;
+      if(a==='add'){
+        const v=currentPct();
+        keys=keys.filter(k=>Math.abs(k.t-t)>0.06);
+        keys.push({t:+t.toFixed(2), v:v}); keys.sort((x,y)=>x.t-y.t); save(); paint();
+        toast('Key set @ '+t.toFixed(1)+'s · '+v+'%');
+      }
+      if(a==='del'){
+        if(!keys.length){ toast('Koi key nahi'); return; }
+        let bi=0,bd=1e9; keys.forEach((k,i)=>{const d=Math.abs(k.t-t); if(d<bd){bd=d;bi=i;}});
+        keys.splice(bi,1); save(); paint(); toast('Key hata diya');
+      }
+      if(a==='play'){ playing?stop():play(); }
+    });
+    const sc=$('smRigScrub');
+    if(sc) sc.addEventListener('input',function(){ var __v=Number(this.value)/10; stop(); t=__v; apply(); paint(); });
+    return bar;
+  }
+  function paint(){
+    if(!bar) return;
+    const info=$('smRigKeyInfo'); if(info) info.textContent=keys.length+' key · '+t.toFixed(1)+'s';
+    const marks=$('smRigMarks');
+    if(marks){
+      marks.innerHTML='';
+      keys.forEach(k=>{
+        const d=document.createElement('div');
+        d.style.cssText='position:absolute;top:6px;width:6px;height:14px;border-radius:2px;background:#7cc4ff;'+
+          'transform:translateX(-3px);left:'+Math.max(0,Math.min(100,(k.t/DUR)*100))+'%';
+        marks.appendChild(d);
+      });
+    }
+    const p=$('smRigPlay'); if(p) p.style.left=Math.max(0,Math.min(100,(t/DUR)*100))+'%';
+    const sc=$('smRigScrub'); if(sc && String(sc.value)!==String(Math.round(t*10))) sc.value=Math.round(t*10);
+    const pb=[...bar.querySelectorAll('button')].find(b=>b.dataset.k==='play');
+    if(pb) pb.textContent = playing?'Pause':'Play';
+  }
+  function apply(){ setSpread(interp(t)); }
+  function tick(){
+    if(!playing) return;
+    const now=performance.now(), dt=(now-last)/1000; last=now;
+    t+=dt; if(t>DUR) t=0;
+    apply(); paint();
+    raf=requestAnimationFrame(tick);
+  }
+  function play(){ if(keys.length && t>=keys[keys.length-1].t-0.001 && t>=DUR-0.001) t=0;
+    playing=true; last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(tick); paint(); }
+  function stop(){ playing=false; cancelAnimationFrame(raf); paint(); }
+  function toast(m){
+    let el=$('smRigKeyToast');
+    if(!el){ el=document.createElement('div'); el.id='smRigKeyToast';
+      el.style.cssText='position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:99;padding:8px 12px;'+
+        'border-radius:10px;background:rgba(20,22,26,.94);border:1px solid rgba(255,255,255,.14);color:#fff;'+
+        'font:600 11px/1.2 system-ui;max-width:80vw;text-align:center';
+      document.body.appendChild(el); }
+    el.textContent=m; el.style.opacity='1';
+    clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.opacity='0'; },1600);
+  }
+  function watch(){
+    const wp=$('smWalkPanel');
+    if(wp && bar) bar.style.display = wp.hidden ? 'none' : 'flex';
+    requestAnimationFrame(watch);
+  }
+  function boot(){
+    setTimeout(()=>{ try{ build(); paint(); requestAnimationFrame(watch); }catch(e){} }, 1200);
+  }
+  if(document.readyState==='complete') boot(); else window.addEventListener('load', boot);
+})();
+</script>
 </body>
 </html>
