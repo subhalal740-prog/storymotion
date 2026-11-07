@@ -2207,7 +2207,7 @@ ${pendingChar===c.id?`<span class="check">${icon('check')}</span>`:''}
 <span class="char-badge">${c.custom?'My upload':'Free'}</span>
 ${charCategory==='Hidden'?`<button class="char-delete restore" data-restore-char="${c.id}" aria-label="Restore ${esc(c.name)}">${icon('reset')}</button>`:`<button class="char-delete" data-delete-char="${c.id}" aria-label="${c.custom?'Delete':'Hide'} ${esc(c.name)}">${icon('trash')}</button>`}
 </div>
-<div class="char-angles"><button class="active" data-angle="front" data-angle-char="${c.id}">FRONT</button><button class="na" data-angle="34front">3/4 FRONT</button><button class="na" data-angle="34back">3/4 BACK</button></div>
+<div class="char-angles"><button class="active" data-angle="front" data-angle-char="${c.id}">FRONT</button></div>
 </div>`).join('')||'<div class="empty">Koi character nahi mila.</div>'}</div>
 <div class="notice">Pose standard: seedha front-facing A-pose — haath 15° khule aur khaali, pair shoulder-width flat, full body centered. Built-in sabhi characters isi rig-ready template par bane hain. Apni image mein zaroorat ho toh Edit se gardan ring adjust karo.</div><div class="char-tools"><button class="tool-tile" data-panel="animations">${icon('motion')}Animations</button><button class="tool-tile" data-panel="motion">${icon('ring')}Ring Motion</button><button class="tool-tile" data-panel="ratio">${icon('ratio')}Ratio</button></div><div class="panel-footer"><button class="primary" id="useCharacter">Use character ${icon('arrow')}</button></div>`;}
 /* Order 57 — CHARACTER tap -> PUTLA page -> putle par tap -> background par.
