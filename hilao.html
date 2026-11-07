@@ -3211,6 +3211,11 @@ boot();
     toast('Path set — ab play karo, character chalega');
   }
 
+  /* Order 70 — character layer na ho to path ka koi nishan na bache */
+  function charOn(){
+    try { const c=ed().current(); return !!(c && c.charVisible!==false && ((c.cast&&c.cast.some(m=>m.charVisible!==false))||!c.cast)); } catch(e){ return false; }
+  }
+
   /* Order 68 — path ke waqt playback apne aap na chale (sirf Play par chale) */
   function pausePlay(){
     try { const e=ed(); if(e && e.playing){ const b=$('playBtn'); if(b) b.click(); } } catch(err){}
@@ -3261,6 +3266,7 @@ boot();
   function draw(){
     if(!layer||!ctx) return;
     fit();
+    if(!charOn()){ ctx.clearRect(0,0,layer.width,layer.height); return; }   /* Order 70 */
     const W=layer.width,H=layer.height,u=W/Math.max(1,layer.clientWidth);
     ctx.clearRect(0,0,W,H);
     if(pathMode){
@@ -3294,6 +3300,10 @@ boot();
       const sc=safeScene();
       const key=[sc?e.time.toFixed(2):'x', pathMode?1:0, down?down.x.toFixed(2):'', JSON.stringify(sc?(sc.smPath||0):0)].join('|');
       if(key!==lastKey){ lastKey=key; draw(); renderBar(); }
+      if(!pathMode && !charOn()){
+        const so=safeScene();
+        if(so && so.smPath){ delete so.smPath; try{ e.markDirty(); }catch(err){} lastKey=''; draw(); renderBar(); }
+      }
       /* selection box character ke saath chale (path/playback me stale na rahe) */
       if(sc){
         const sel=e.getLayer && e.getLayer();
@@ -3309,6 +3319,7 @@ boot();
   /* ───────── bar ───────── */
   function renderBar(){
     const sc=safeScene(), p=pth(sc);
+    if(!charOn()){ const b0=$('smPathBar'); if(b0) b0.hidden=true; hideFloat(false); return; }   /* Order 70 */
     let bar=$('smPathBar');
     if(!(pathMode || (p && p.on))){ if(bar) bar.hidden=true; hideFloat(false); return; }
     if(!bar){
