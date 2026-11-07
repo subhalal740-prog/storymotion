@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Keyframe demo — Character Tool</title>
+<title>Walk + Keyframe demo — Character Tool</title>
 <style>
   *{box-sizing:border-box}
   html,body{margin:0;background:#060a12;color:#e7ecf3;
@@ -32,7 +32,7 @@
 <div class="wrap">
   <div class="top">
     <a class="back" href="start.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg> BACK</a>
-    <div><h1>Keyframe demo</h1><div class="sub">Character Tool · Rig step · QUICK POSE</div></div>
+    <div><h1>Walk v2 + Keyframe demo</h1><div class="sub">Character Tool · Rig step · QUICK POSE</div></div>
   </div>
 
   <div class="card">
@@ -46,11 +46,11 @@
   <div class="card">
     <h1 style="margin:0 0 4px">What the demo shows</h1>
     <ol>
-      <li>Character Tool → step <b class="k">4 · Rig</b> → QUICK POSE → <b class="k">KEYFRAME</b> bar (Walk tap nahi chahiye)</li>
-      <li>Leg slider <b class="k">15%</b> → <b class="k">Key +</b> (toast: “Key set @ 0.0s · 15%”)</li>
-      <li>Scrub <b class="k">3.0s</b> → slider <b class="k">82%</b> → <b class="k">Key +</b></li>
-      <li>Beech me scrub → value khud interpolate (1.5s ≈ 47%)</li>
-      <li><b class="k">Play</b> → time chalta hai, legs stride karti hain, stretch smooth 15→82</li>
+      <li>Rig step → <b class="k">Walk</b> — ab arms apne aap neeche (photo), T-pose zombie look nahi</li>
+      <li>Gait asli walk-cycle jaisa: <b class="k">stance 62%</b> (paon zameen par) + <b class="k">swing 38%</b> (pair uthana), body bob per step</li>
+      <li>Slider <b class="k">20%</b> → <b class="k">Key +</b> (0.0s), scrub <b class="k">3.0s</b> → slider <b class="k">70%</b> → <b class="k">Key +</b></li>
+      <li>Beech me scrub → value khud interpolate</li>
+      <li><b class="k">Play</b> → walk chalti rehti hai aur stride smoothly 20→70 badalta hai</li>
     </ol>
     <div class="note">Live build · keys <code>localStorage['rigstudio.keys']</code> me save rehti hain.</div>
   </div>
