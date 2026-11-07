@@ -744,6 +744,16 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 #smPathBar{ overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
 #smPathBar::-webkit-scrollbar{ display:none; }
 #smPathBar button{ min-height:28px; }
+
+#smPathHint{
+  position:absolute;left:8px;right:8px;top:6px;z-index:12;
+  display:flex;align-items:center;gap:8px;justify-content:space-between;
+  background:rgba(14,16,20,.97);border:1px solid rgba(255,255,255,.22);
+  border-radius:8px;padding:7px 9px;box-shadow:0 12px 30px rgba(0,0,0,.6);
+}
+#smPathHint span{font:600 11px/1.2 inherit;color:#fff}
+#smPathHint button{font:600 10.5px/1 inherit;color:#fff;background:rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.28);border-radius:4px;padding:6px 9px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -2169,6 +2179,10 @@ window.__smEd = {
   set time(v){ currentTime = v; },
   get playing(){ return playing; },
   get rect(){ try { return charRect(); } catch(e) { return null; } },
+  get rectBase(){   /* path offset ke bina character ki asli jagah */
+    try { const sc = current(), keep = sc.smPath; if(keep) delete sc.smPath;
+      const r = charRect(); if(keep) sc.smPath = keep; return r; } catch(e) { return null; }
+  },
   pathApply: smPathApply
 };
 
@@ -2605,7 +2619,7 @@ boot();
   const safeScene = () => { try { return ed() && ed().current() || null; } catch(e){ return null; } };
   const pth = sc => sc && sc.smPath;
 
-  let layer=null, ctx=null, pathMode=false, start=null, hover=null, dragMoved=false, awaiting=false, raf=0, lastKey='';
+  let layer=null, ctx=null, pathMode=false, down=null, start=null, hover=null, dragMoved=false, raf=0, lastKey='';
 
   /* ───────── overlay canvas ───────── */
   function ensure(){
@@ -2633,7 +2647,8 @@ boot();
     return { x: clamp((e.clientX-r.left)/r.width,0,1), y: clamp((e.clientY-r.top)/r.height,0,1) };
   }
   function feet(){
-    const st=$('stage'), ov=$('overlay'); const r = ed() && ed().rect;
+    const st=$('stage'), ov=$('overlay'), e=ed();
+    const r = e && (e.rectBase || e.rect);
     if(!st||!ov||!r) return null;
     return { cx:(r.x + r.w*0.5)/ov.width, cy:(r.y + r.h*0.95)/ov.height };
   }
@@ -2641,39 +2656,45 @@ boot();
   /* ───────── path mode ───────── */
   function setMode(v){
     ensure(); fit();
-    pathMode=v; start=null; hover=null; awaiting=false; dragMoved=false;
+    pathMode=v; down=null; start=null; hover=null; dragMoved=false;
     if(layer) layer.style.pointerEvents = v?'auto':'none';
     const st=$('stage'); if(st) st.style.cursor = v?'crosshair':'';
     $('smPathQuick')?.classList.toggle('on', v);
     $('smPathBtn')?.classList.toggle('on', v);
-    if(v) toast('Path: canvas par line kheencho (ya 2 tap)');
+    const hint=$('smPathHint'); if(hint) hint.hidden=!v;
+    if(v) toast('Character se line kheencho — jahan chhodo wahan pahunchega');
     draw();
   }
   function onDown(ev){
     if(!pathMode) return; ev.preventDefault();
-    const f=frac(ev);
-    if(!start){ start=f; dragMoved=false; awaiting=false; }
-    hover=f; draw();
+    down=frac(ev); hover=down; dragMoved=false; draw();
   }
   function onMove(ev){
-    if(!pathMode||!start) return;
+    if(!pathMode||!down) return;
     hover=frac(ev);
-    if(Math.hypot(hover.x-start.x,hover.y-start.y) > 0.02) dragMoved=true;
+    if(Math.hypot(hover.x-down.x,hover.y-down.y) > 0.012) dragMoved=true;
     draw();
   }
   function onUp(ev){
-    if(!pathMode||!start) return;
+    if(!pathMode||!down) return;
     const f=frac(ev); hover=f;
-    if(dragMoved){ commit(start,f); start=null; hover=null; awaiting=false; dragMoved=false; draw(); return; }
-    if(!awaiting){ awaiting=true; toast('Ab end point tap karo'); draw(); return; }
-    commit(start,f); start=null; hover=null; awaiting=false; draw();
+    if(dragMoved){
+      commit({ dx:f.x-down.x, dy:f.y-down.y });   /* direction = drag delta, start = character ke pair */
+      down=null; hover=null; dragMoved=false; draw();
+      return;
+    }
+    /* chhota tap = path nahi, character select */
+    down=null; hover=null;
+    setMode(false);
+    try{ ed().setLayer('character'); toast('Character select ho gaya'); }catch(e){}
+    draw();
   }
-  function commit(a,b){
+  function commit(delta){
     const e=ed(), sc=safeScene(); if(!e||!sc) return;
-    if(Math.hypot(b.x-a.x,b.y-a.y) < 0.02){ toast('Line thodi lambi kheencho'); return; }
-    const f=feet(); e.pushUndo();
-    if(f){ sc.panX=(sc.panX||0)+(a.x-f.cx); sc.panY=(sc.panY||0)+(a.y-f.cy); }
-    sc.smPath = { on:true, x0:a.x, y0:a.y, dx:b.x-a.x, dy:b.y-a.y, ease:true, dur:0, loop:false };
+    if(Math.hypot(delta.dx,delta.dy) < 0.015){ toast('Line thodi lambi kheencho'); return; }
+    const f=feet(); const a = f || {cx:0.5,cy:0.9};
+    e.pushUndo();
+    sc.smPath = { on:true, x0:a.cx, y0:a.cy, dx:delta.dx, dy:delta.dy, ease:true, dur:0, loop:false };
     e.markDirty(); e.refresh && e.refresh();
     setMode(false); renderBar();
     toast('Path set — ab play karo, character chalega');
@@ -2700,8 +2721,12 @@ boot();
     const W=layer.width,H=layer.height,u=W/Math.max(1,layer.clientWidth);
     ctx.clearRect(0,0,W,H);
     if(pathMode){
-      if(start&&hover) line(start.x,start.y,hover.x,hover.y,true);
-      else if(start) line(start.x,start.y,start.x,start.y,false);
+      const f=feet();
+      if(f){
+        const dx = (hover&&down)? hover.x-down.x : 0;
+        const dy = (hover&&down)? hover.y-down.y : 0;
+        line(f.cx, f.cy, f.cx+dx, f.cy+dy, true);
+      }
       return;
     }
     const sc=safeScene(); if(!sc) return;
@@ -2796,9 +2821,17 @@ boot();
     b.onclick=()=> setMode(!pathMode);
     items.insertBefore(b, items.querySelector('#laDelete'));
   }
+  function hintBanner(){
+    if($('smPathHint')) return;
+    const host=$('previewShell')||document.body;
+    const d=document.createElement('div'); d.id='smPathHint'; d.hidden=true;
+    d.innerHTML='<span>Path mode · character se line kheencho</span><button type="button">Cancel</button>';
+    d.querySelector('button').onclick=()=>setMode(false);
+    host.appendChild(d);
+  }
   function boot(){
     if(!ed()){ setTimeout(boot,150); return; }
-    ensure();
+    ensure(); hintBanner();
     quickBtn(); menuBtn(); renderBar();
     new MutationObserver(()=>{ quickBtn(); menuBtn(); renderBar(); }).observe(document.body,{subtree:true,childList:true});
     setInterval(()=>{ quickBtn(); menuBtn(); renderBar(); },800);
