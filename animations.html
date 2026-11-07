@@ -105,6 +105,30 @@
     background:#22282f;border:1px solid rgba(255,255,255,.12);color:#e8e8ec;font-size:12.5px;font-weight:700;
     padding:11px 16px;border-radius:999px;opacity:0;pointer-events:none;transition:.22s;z-index:40}
   .toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* Order 58 — ek putla card (AutoDraft "My character" look) */
+.putlaWrap{ display:flex; align-items:flex-start; justify-content:center; padding:10px 0 24px; }
+.putlaCard{ width:min(300px,80vw); background:#15171a; border:1px solid #2a2d32; border-radius:16px;
+  padding:14px 14px 10px; display:flex; flex-direction:column; align-items:center; gap:10px; }
+.putlaCard:active{ border-color:#f2f2f5; }
+.putlaCard .putlaArt{ width:100%; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center; }
+.putlaCard .putlaArt img{ max-width:100%; max-height:100%; object-fit:contain; }
+.putlaCard .putlaLbl{ font-size:12px; color:#a9b1ba; letter-spacing:.02em; }
+
+/* Order 58 — chips aur Action Studio ek doosre par chadh rahe the */
+.tabsRow{ display:flex; align-items:center; gap:6px; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.tabsRow::-webkit-scrollbar{ display:none; }
+.tabs{ display:flex; gap:6px; flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:none; }
+.tabs::-webkit-scrollbar{ display:none; }
+.tabs .tab{ font-size:9.5px !important; padding:5px 8px !important; letter-spacing:.02em; }
+.stBtn{ font-size:10px !important; padding:5px 9px !important; margin-left:0; flex:0 0 auto; }
+.tabs::-webkit-scrollbar{ display:none; }
+.tabs .tab{ flex:0 0 auto; }
+.stBtn{ flex:0 0 auto; white-space:nowrap; }
+@media (max-width:380px){ .tabsRow{ flex-wrap:wrap; } .stBtn{ margin-left:auto; } }
+
+.letterAv{ display:flex; align-items:center; justify-content:center; width:100%; height:100%;
+  font:800 22px/1 Inter,system-ui,sans-serif; color:#cfd6de; background:#20242a; border-radius:10px; }
 </style>
 <style id="smSkin">
 /* ══════════ smSkin · AUTODRAFT minimal re-skin (puppets page) ══════════ */
@@ -240,12 +264,21 @@ img,canvas,video,svg{ max-width:100%; }
 button,input,select,textarea{ font-family:inherit; }
 
 /* ---------- 1. EDITOR (hilao.html) ---------- */
-/* topbar */
-.topbar{ height:44px !important; padding:0 4px !important; }
-.top-action{ min-width:44px !important; font-size:8.5px !important; padding:3px 4px !important; gap:2px !important; }
-.top-action .icon{ width:15px !important; height:15px !important; }
-.top-left .icon-btn{ width:26px !important; height:26px !important; }
-.topbar .icon-btn .icon, .topbar .icon{ width:15px !important; height:15px !important; }
+/* topbar — AutoDraft scale (48px, 16px icons, 10px labels, separators) */
+.topbar{
+  height:48px !important; padding:0 4px !important;
+  border-bottom:1px solid rgba(255,255,255,.10) !important;
+}
+.top-action{
+  min-width:56px !important; font-size:10px !important; padding:4px 8px !important; gap:3px !important;
+  border-left:1px solid rgba(255,255,255,.07) !important; border-radius:0 !important;
+}
+.top-action:last-of-type{ border-right:1px solid rgba(255,255,255,.07) !important; }
+.top-action .icon{ width:16px !important; height:16px !important; }
+.top-action[on], .top-action.on, .top-action:active{ background:rgba(255,255,255,.10) !important; }
+.top-left{ gap:2px !important; }
+.top-left .icon-btn{ width:32px !important; height:32px !important; }
+.topbar .icon-btn .icon, .topbar .icon{ width:16px !important; height:16px !important; }
 
 /* playbar */
 .playbar{ height:32px !important; padding:0 6px !important; gap:4px !important; }
@@ -447,9 +480,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
 /* ---------- 5. very small phones ---------- */
 @media (max-width:360px){
-  .topbar{ height:40px !important; }
-  .top-action{ min-width:38px !important; font-size:7.5px !important; }
-  .top-action .icon{ width:14px !important; height:14px !important; }
+  .topbar{ height:44px !important; }
+  .top-action{ min-width:48px !important; font-size:9px !important; padding:3px 5px !important; }
+  .top-action .icon{ width:15px !important; height:15px !important; }
+  .top-left .icon-btn{ width:28px !important; height:28px !important; }
   .stage{ max-height:36vh !important; }
   .timeline{ height:clamp(132px,20dvh,172px) !important; }
   .track{ min-height:31px !important; }
@@ -471,7 +505,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   <button class="ic" id="btnBack" aria-label="Back">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
   </button>
-  <h1>Characters</h1>
+  <h1>My character</h1>
   <div class="right">
     <button class="ic" id="btnSettings" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.05A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.05A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.05A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.05a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.05a1.7 1.7 0 0 0-1.55 1z"/></svg>
@@ -503,11 +537,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   <button class="stBtn" id="btnStudio" type="button" aria-label="Action Studio">Action Studio</button>
   </div>
 
-  <div class="grid" id="animGrid"></div>
+  <div class="putlaWrap" id="putlaWrap"></div>
 </div>
 
 <input type="file" id="poseFile" accept="video/*,image/gif,image/png,image/apng,image/jpeg,image/webp,image/*" hidden>
-<div class="cta"><button id="btnUse" disabled>Use animation</button></div>
+<div class="cta" hidden><button id="btnUse" disabled>Use animation</button></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -518,6 +552,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   var q = new URLSearchParams(location.search);
   var charName = (q.get('name') || 'My character').trim();
   var charImg  = q.get('img') || '';
+  if (!charImg) { try { charImg = localStorage.getItem('hilao.charImg') || ''; } catch (e) {} }
   var charId   = q.get('id') || '';
   document.getElementById('selName').textContent = charName;
   document.getElementById('selMeta').textContent = 'Selected · ' + (q.get('cat') || 'Desi');
@@ -526,7 +561,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     var im = new Image(); im.alt = charName; im.src = charImg;
     document.getElementById('selThumb').appendChild(im);
   } else {
-    document.getElementById('selThumb').innerHTML = puppet({}, 'front', 44);
+    document.getElementById('selThumb').innerHTML =
+      '<span class="letterAv">' + (charName || 'C').trim().charAt(0).toUpperCase() + '</span>';
   }
 
   /* ---------- puppet silhouette generator ----------
@@ -805,7 +841,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
   function mountMedia() {
     stopPlayers();
-    [].forEach.call(grid.querySelectorAll('.art'), function (host) {
+    [].forEach.call((grid || document).querySelectorAll('.art'), function (host) {
       var v = host.querySelector('video');
       if (!v) return;
       if (host.getAttribute('data-key') !== '1') return;   /* built-in clip: key ki zarurat nahi */
@@ -947,7 +983,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
   var view = 'front';
   var picked = null;
-  var grid = document.getElementById('animGrid');
+  var putlaWrap = document.getElementById('putlaWrap');
+  var grid = putlaWrap;   /* purane handlers isi par lage the */
   var useBtn = document.getElementById('btnUse');
   var toast = document.getElementById('toast');
   var search = document.getElementById('animSearch');
@@ -958,49 +995,48 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     showToast._t = setTimeout(function () { toast.classList.remove('show'); }, 1400);
   }
 
+  /* Order 58 (user: "putlo wala page, sirf ek hi putla") — ek hi putla,
+     AutoDraft "My character" jaisa. Putle par tap = character background par
+     (editor khul jata hai). Purane 13 action cards hate hue hain. */
   function render() {
     var term = (search.value || '').toLowerCase().trim();
-    var list = ANIMS.filter(function (a) { return a.name.toLowerCase().indexOf(term) >= 0; });
-    if (!list.length) {
-      grid.innerHTML = '<div class="empty">Koi animation nahi mili — doosra naam try karo.</div>';
+    var label = charName || 'My character';
+    if (term && label.toLowerCase().indexOf(term) < 0 && 'idle'.indexOf(term) < 0) {
+      putlaWrap.innerHTML = '<div class="empty">Is naam ka putla nahi mila.</div>';
       return;
     }
-    var STAND = { armA: 7, armB: -7, legA: 2 };            /* sab tiles me ek jaisa khada pose */
-    grid.innerHTML = list.map(function (a) {
-      var pv = poseImg[a.id];                                  /* user ka upload (image/video) */
-      var vidSrc = pv && pv.kind === 'video' ? pv.src : (a.video || '');   /* built-in video bhi */
-      var hasVid = !!vidSrc;
-      var upVid = !!(pv && pv.kind === 'video');
-      var art = hasVid
-        ? '<video autoplay muted loop playsinline preload="auto" webkit-playsinline' + (upVid ? ' data-key="1"' : '') + '>' +
-          (a.video && !upVid
-            ? '<source src="' + a.video + '" type="video/webm"><source src="' + (a.video2 || '') + '" type="video/mp4">'
-            : '<source src="' + vidSrc + '">') +
-          '</video>'
-        : (pv ? '<img class="charArt" src="' + pv.src + '" alt="' + a.name + ' uploaded media">'
-           : (charTex ? '<img class="charArt" src="' + charTex + '" alt="' + a.name + ' character">'
-                      : puppet(STAND, 'front')));
-      var up = UPLOADABLE[a.id]
-        ? '<button class="up' + ((pv || hasVid) ? ' done' : '') + '" data-up="' + a.id + '" type="button" ' +
-          'aria-label="' + ((pv || hasVid) ? 'Change ' : 'Upload ') + a.name + ' image or video from gallery">' +
-          ICO_UP + '<span>' + ((pv || hasVid) ? 'Change' : 'Upload') + '</span></button>'
-        : '';
-      var stAct = STUDIO_MAP[a.id] || '';
-      var stBtn = stAct
-        ? '<button class="up studio' + (studioDone[stAct] ? ' done' : '') + '" data-studio="' + stAct + '" type="button" ' +
-          'aria-label="Animate ' + a.name + ' — puppet upload karke real animation banao">' +
-          ICO_STUDIO + '<span>' + (studioDone[stAct] ? 'Animated' : 'Animate') + '</span></button>'
-        : '';
-      var chip = (UPLOADABLE[a.id] && pv)
-        ? '<span class="okChip" data-clear="' + a.id + '" role="button" tabindex="0" aria-label="Remove uploaded ' + a.name + ' media">' + ICO_OK + '</span>'
-        : '';
-      var pillTxt = hasVid ? 'VIDEO' : (view === 'front' ? 'FRONT' : view === 'q34f' ? '3/4 F' : '3/4 B');
-      var pillCls = hasVid ? 'pill vid' : 'pill';
-      return '<div class="tile' + (picked === a.id ? ' on' : '') + '" data-anim="' + a.id + '" role="button" tabindex="0" ' +
-        'aria-label="' + a.name + '">' + chip + '<div class="art"' + (upVid ? ' data-key="1"' : '') + '>' + art + '</div>' +
-        '<div class="lb"><span>' + a.name + '</span><span class="' + pillCls + '">' + pillTxt + '</span></div>' +
-        '<div class="btnrow">' + up + stBtn + '</div></div>';
-    }).join('');
+    var tex = charTex || charImg;
+    var art = tex ? '<img src="' + tex + '" alt="' + label + '">' : '';
+    putlaWrap.innerHTML =
+      '<button class="putlaCard" id="putlaTap" type="button" aria-label="' + label + ' background par lagao">' +
+        '<span class="putlaArt">' + art + '</span>' +
+        '<span class="putlaLbl">' + label + '</span>' +
+      '</button>';
+    var tap = document.getElementById('putlaTap');
+    if (tap) tap.onclick = pickPutla;
+    if (useBtn) useBtn.disabled = true;
+  }
+
+  /* putla tap: asli character texture editor me bhejo -> background par dikhega */
+  function pickPutla() {
+    var a = null;
+    for (var k = 0; k < ANIMS.length; k++) if (ANIMS[k].id === 'idle') { a = ANIMS[k]; break; }
+    if (!a) a = { id: 'idle', name: 'Idle' };
+    var view2 = (typeof view === 'string' && view) ? view : 'front';
+    var tex = charTex || charImg;
+    if (!tex) { goEditor(a); return; }
+    var payload = { v: 2, anim: a.id, name: a.name, char: charId || '', charName: charName,
+                    view: view2, key: true, flip: false, media: { kind: 'data', src: tex }, ts: Date.now() };
+    try {
+      localStorage.setItem('hilao.sel', JSON.stringify(payload));
+      localStorage.setItem('hilao.anim', a.id);
+      localStorage.setItem('hilao.char', charName);
+    } catch (e) {}
+    showToast(charName + ' background par ja raha hai');
+    var url = 'hilao.html?anim=' + encodeURIComponent(a.id) +
+              (charId ? '&char=' + encodeURIComponent(charId) : '') +
+              '&view=' + encodeURIComponent(view2);
+    setTimeout(function () { location.href = url; }, 260);
   }
 
   function renderAndMount() { render(); mountMedia(); }
