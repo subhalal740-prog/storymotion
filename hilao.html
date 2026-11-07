@@ -1913,6 +1913,14 @@ function walkState(c, scene, local, w, h){
   try{
     if(!c || !c.walk || !c.walk.length) return null;
     if(!scene || scene.walkAnim===false) return null;
+    const NF=c.walk.length;
+    /* Order 85 — keyframe wala pose (scene.posePhase) sabse pehle */
+    const keyed=(typeof scene.posePhase==='number')&&scene.keys&&scene.keys.length;
+    if(keyed){
+      const ph=((scene.posePhase%1)+1)%1;
+      const i=Math.floor(ph*NF)%NF;
+      return {canvas:c.walk[i], mirror:walkMirror(scene,c), u:ph, cps:1.2};
+    }
     const p=scene.smPath; if(!p || !p.on) return null;
     const d=(p.dur>0)?p.dur:(scene.duration||8);
     const l=Math.max(0,local||0);                          /* Order 84 — chalna kabhi ruke na */
@@ -3706,5 +3714,136 @@ boot();
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();
 
+</script>
+
+<script id="smKeysJS">
+/* Order 85 — Keyframe engine: pose/position ko time par pin karo, Play par smooth interpolate */
+(function(){
+  const $ = id => document.getElementById(id);
+  const ed = () => window.__smEd;
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const ease = t => t*t*(3-2*t);
+  let lastSig = '';
+
+  function scene(){ try { return ed().current(); } catch(e){ return null; } }
+  function localNow(){
+    try { const i=ed().sceneAt(ed().time); return i && i.local!=null ? i.local : ed().time; } catch(e){ return ed().time||0; }
+  }
+  function ensureKeys(sc){
+    if(!sc.keys){ sc.keys=[]; }
+    if(typeof sc.posePhase!=='number') sc.posePhase = 0;
+    return sc.keys;
+  }
+  function interp(sc, local){
+    const k=(sc.keys||[]).slice().sort((a,b)=>a.t-b.t);
+    if(!k.length) return null;
+    if(local<=k[0].t) return k[0];
+    if(local>=k[k.length-1].t) return k[k.length-1];
+    let i=0; while(i<k.length-1 && !(local>=k[i].t && local<=k[i+1].t)) i++;
+    const a=k[i], b=k[i+1], span=Math.max(.0001,b.t-a.t);
+    const u=ease(clamp((local-a.t)/span,0,1));
+    const lerp=(x,y)=>x+(y-x)*u;
+    return { t:local, panX:lerp(a.panX||0,b.panX||0), panY:lerp(a.panY||0,b.panY||0),
+             zoom:lerp(a.zoom||1,b.zoom||1), flip: u<.5?!!a.flip:!!b.flip,
+             phase: lerp(a.phase||0, b.phase!=null?b.phase:(a.phase||0)) };
+  }
+  let lastT=-1;
+  function apply(){
+    const sc=scene();
+    if(!sc){ rAF(apply); return; }
+    const t=localNow();
+    /* sirf tab likho jab time badla ho (play/seek) — warna user ki pose edit ud jati hai */
+    if(sc.keys && sc.keys.length && (ed().playing || Math.abs(t-lastT)>0.004)){
+      const v=interp(sc, t);
+      if(v){
+        sc.panX=v.panX; sc.panY=v.panY; sc.zoom=v.zoom;
+        sc.flip=!!v.flip;
+        sc.posePhase=((v.phase%1)+1)%1;
+      }
+    }
+    lastT=t;
+    rAF(apply);
+  }
+  const rAF = f => requestAnimationFrame(f);
+
+  /* ── bar ── */
+  function bar(){
+    let b=$('smKeyBar'); if(b) return b;
+    b=document.createElement('div');
+    b.id='smKeyBar';
+    b.style.cssText='position:fixed;left:8px;right:8px;bottom:calc(118px + env(safe-area-inset-bottom));z-index:60;display:flex;'+
+      'align-items:center;gap:6px;padding:7px 8px;border-radius:14px;background:rgba(18,20,24,.92);'+
+      'border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(10px);box-shadow:0 10px 26px rgba(0,0,0,.45);'+
+      'font:600 11px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#e9edf3;overflow-x:auto;scrollbar-width:none';
+    b.innerHTML =
+      '<span style="opacity:.7;letter-spacing:.3px">KEY</span>'+
+      '<button data-k="add" style="flex:0 0 auto">Key +</button>'+
+      '<button data-k="del" style="flex:0 0 auto">Del</button>'+
+      '<span style="width:1px;height:18px;background:rgba(255,255,255,.16);flex:0 0 auto"></span>'+
+      '<button data-k="prev" style="flex:0 0 auto">&#9664; Leg</button>'+
+      '<button data-k="next" style="flex:0 0 auto">Leg &#9654;</button>'+
+      '<span id="smKeyInfo" style="margin-left:auto;opacity:.75;white-space:nowrap;padding-left:6px"></span>';
+    b.querySelectorAll('button').forEach(bt=>{
+      bt.style.cssText='min-height:30px;padding:0 10px;border-radius:9px;border:1px solid rgba(255,255,255,.18);'+
+        'background:rgba(255,255,255,.07);color:#fff;font:600 11px/1 inherit;cursor:pointer';
+    });
+    document.body.appendChild(b);
+    b.addEventListener('click', e=>{
+      const bt=e.target.closest('button'); if(!bt) return;
+      const sc=scene(); if(!sc) return;
+      ensureKeys(sc);
+      const a=bt.dataset.k;
+      if(a==='prev'||a==='next'){
+        const step=1/4, cur=sc.posePhase||0;
+        sc.posePhase = ((cur + (a==='next'? step : -step))%1+1)%1;
+        ed().markDirty && ed().markDirty(); ed().refresh && ed().refresh();
+        paint(); return;
+      }
+      if(a==='add'){
+        if(sc.smPath && sc.smPath.on){ delete sc.smPath; }
+        ed().pushUndo && ed().pushUndo();
+        const t=Math.round(localNow()*10)/10;
+        const key={ t:+t.toFixed(3), panX:sc.panX||0, panY:sc.panY||0, zoom:sc.zoom||1,
+                    flip:!!sc.flip, phase: sc.posePhase||0 };
+        sc.keys = (sc.keys||[]).filter(k=>Math.abs(k.t-key.t)>0.02);
+        sc.keys.push(key); sc.keys.sort((x,y)=>x.t-y.t);
+        ed().markDirty && ed().markDirty();
+        ed().toast && ed().toast('Key set @ '+key.t.toFixed(1)+'s');
+        paint(); return;
+      }
+      if(a==='del'){
+        const t=localNow(), ks=sc.keys||[];
+        if(!ks.length){ ed().toast && ed().toast('Koi key nahi'); return; }
+        ed().pushUndo && ed().pushUndo();
+        let bi=0, bd=1e9;
+        ks.forEach((k,i)=>{ const d=Math.abs(k.t-t); if(d<bd){bd=d;bi=i;} });
+        ks.splice(bi,1);
+        ed().markDirty && ed().toast && ed().toast('Key hata diya');
+        paint(); return;
+      }
+    });
+    return b;
+  }
+  function paint(){
+    const b=bar(), sc=scene();
+    const info=$('smKeyInfo');
+    if(!sc){ b.style.display='none'; return; }
+    const hasChar = (()=>{ try { return ed().current().charVisible!==false; } catch(e){ return false; } })();
+    b.style.display = hasChar ? 'flex' : 'none';
+    if(info){
+      const n=(sc.keys||[]).length;
+      const pose=['Leg 1','Leg 2','Leg 3','Leg 4'][Math.floor(((sc.posePhase||0)%1)*4)%4]||'';
+      info.textContent = n+' key · '+pose;
+    }
+  }
+  function tick(){
+    const b=bar(), sc=scene();
+    const sig = sc ? ((sc.keys||[]).length+'|'+Math.round((sc.posePhase||0)*4)+'|'+(ed().time||0).toFixed(2)+'|'+(sc.charVisible!==false)) : 'x';
+    if(sig!==lastSig){ lastSig=sig; paint(); }
+    rAF(tick);
+  }
+  function boot(){ setTimeout(()=>{ try{ bar(); paint(); rAF(apply); rAF(tick); }catch(e){} }, 1500); }
+  if(document.readyState==='complete') boot(); else window.addEventListener('load', boot);
+})();
 </script>
 </body></html>
