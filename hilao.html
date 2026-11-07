@@ -3290,7 +3290,7 @@ boot();
 
   /* Order 68 — path ke start par character ka laal clone (ghost) */
   let cloneCv=null, cloneKey='';
-  function redClone(sc){
+  function redClone(sc, ox, oy){
     const e=ed(), c = e.charTex; if(!c || !c.width) return;
     const k = (sc.charId||'')+'|'+c.width+'x'+c.height;
     if(k!==cloneKey){
@@ -3307,7 +3307,8 @@ boot();
     }
     const r=e.rectBase, ov=$('overlay'); if(!r||!ov) return;
     const sx=layer.width/ov.width, sy=layer.height/ov.height;
-    const x=r.x*sx, y=r.y*sy, w=r.w*sx, h=r.h*sy;
+    /* Order 78 — clone ghar par nahi, DESTINATION par khada hota hai */
+    const x=r.x*sx+(ox||0)*layer.width, y=r.y*sy+(oy||0)*layer.height, w=r.w*sx, h=r.h*sy;
     ctx.save(); ctx.globalAlpha=.38;
     if(sc.flip){ ctx.translate(x+w,y); ctx.scale(-1,1); ctx.drawImage(cloneCv,0,0,w,h); }
     else ctx.drawImage(cloneCv,x,y,w,h);
@@ -3342,6 +3343,8 @@ boot();
         const tx = (hover&&down)? hover.x : f.cx;
         const ty = (hover&&down)? hover.y : f.cy;
         line(f.cx, f.cy, tx, ty, true);   /* Order 69 — line end = ungli */
+        const scP=safeScene();            /* Order 78 — clone wahi jahan ungli hai */
+        if(scP && (hover&&down)) redClone(scP, tx-f.cx, ty-f.cy);
       }
       return;
     }
@@ -3358,8 +3361,8 @@ boot();
     ctx.beginPath(); ctx.arc(p.x0*W,p.y0*H,9*u,0,Math.PI*2); ctx.strokeStyle='rgba(255,0,0,.28)'; ctx.lineWidth=2*u; ctx.stroke();
     ctx.beginPath(); ctx.arc(mx,my,7*u,0,Math.PI*2); ctx.fillStyle='rgba(255,0,0,.40)'; ctx.fill();
     ctx.restore();
-    /* Order 68 — start par laal clone; character jab thoda chal chuka ho */
-    if(t>0.03) redClone(sc);
+    /* Order 78 — laal clone destination par; character ghar se wahin chalta hai */
+    redClone(sc, dx, dy);
   }
   function loop(){
     const e=ed();
