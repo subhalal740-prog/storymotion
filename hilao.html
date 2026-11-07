@@ -915,6 +915,14 @@ body .app > .dock, .app > nav.dock { height: 10dvh !important; min-height: 58px;
 .character-card .char-delete.restore{ background: #ffffff !important; }
 .character-card .char-delete.restore .icon{ color: #16733c !important; }
 
+/* =======================================================================
+   Order 73 — Character card: sirf ek image (FRONT). Dead 3/4 tabs hata diye.
+   ======================================================================= */
+.character-card .char-angles{ grid-template-columns: 1fr !important; }
+.character-card .char-angles button[data-angle="34front"],
+.character-card .char-angles button[data-angle="34back"]{ display: none !important; }
+.character-card .char-angles button[data-angle="front"]{ border-right: 0 !important; }
+
 </style>
 <style id="smMobile">
 /* ============================================================
