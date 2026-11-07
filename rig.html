@@ -2008,6 +2008,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       /* agar legs bahut chhoti nikal rahi hain (sirf panje) to crotch ko upar kheencho */
       if (crotchY > bMinY + bodyH * 0.80) crotchY = bMinY + Math.floor(bodyH * 0.62);
 
+      /* v19.0 · KNEE JOINT — pair ko thigh + shin me todte hain, pivot ghutne par.
+         Knee line = crotch se ankle tak ka ~52% (anthropometric average). */
+      const kneeY = Math.round(crotchY + (bMaxY - crotchY) * 0.52);
+
       const tw = [];
       for (let y = Math.floor(crotchY - bodyH * 0.22); y <= Math.floor(crotchY - bodyH * 0.08); y++) {
         const r = rows[y]; if (!r || !r.length) continue;
@@ -2020,7 +2024,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       const torsoHalf = (tw.length ? tw[Math.floor(tw.length / 2)] : (bMaxX - bMinX + 1) * 0.4) / 2;
 
       /* pixel -> piece id  (1 head, 2 torso, 3 armL, 4 armR, 5 legL, 6 legR) */
-      const ID = { head: 1, torso: 2, armL: 3, armR: 4, legL: 5, legR: 6 };
+      const ID = { head: 1, torso: 2, armL: 3, armR: 4, legL: 5, legR: 6, shinL: 7, shinR: 8 };
       const lab = new Uint8Array(W * H);
       let bodyPx = 0;
 
@@ -2040,6 +2044,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             else if (j < gi) id = ID.armL;
             else if (j > gi + 1) id = ID.armR;
             else id = (j === gi) ? ID.legL : ID.legR;
+            if (y >= kneeY) { if (id === ID.legL) id = ID.shinL; else if (id === ID.legR) id = ID.shinR; }
             for (let x = a; x <= b; x++) { lab[y * W + x] = id; bodyPx++; }
           }
           continue;
@@ -2066,6 +2071,33 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           if (lab[i] === ID.armL || lab[i] === ID.armR) lab[i] = ID.torso;
         }
       }
+
+      /* ---------- v19.0 · KNEE CHAMFER ----------
+         Shin ka top edge seedha hota to rotation par uska kona thigh se bahar
+         nikal ke "notch" dikhata hai. Isliye knee ke paas shin ke kinare 12px
+         tak thigh ko de dete hain (tapered/rounded joint) — seam chhup jata hai. */
+      (function chamferKnee() {
+        if (ID.shinL === undefined) return;
+        const CH = 18, INSET = 14;
+        const pairs = [[ID.legL, ID.shinL], [ID.legR, ID.shinR]];
+        for (let y = kneeY; y < Math.min(kneeY + CH, bMaxY); y++) {
+          const t = (y - kneeY) / CH;                 /* 0 = knee line, 1 = neeche */
+          const inset = Math.round((1 - t) * INSET);
+          if (inset <= 0) continue;
+          for (const pr of pairs) {
+            const legId = pr[0], shinId = pr[1];
+            let a = -1, b = -1;
+            for (let x = bMinX; x <= bMaxX; x++) {
+              if (lab[y * W + x] === shinId) { if (a < 0) a = x; b = x; }
+            }
+            if (a < 0 || b - a < inset * 2 + 2) continue;
+            for (let k2 = 0; k2 < inset; k2++) {
+              lab[y * W + a + k2] = legId;
+              lab[y * W + b - k2] = legId;
+            }
+          }
+        }
+      })();
 
       /* ---------- NOISE CLEAN (v15.4) ----------
          Source PNG me koi chhota stray blob (1-6 px speck) ho to wo alag piece
@@ -2097,13 +2129,14 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       })();
 
       /* per-piece canvases */
-      const keys = opt.mergeArms ? ['head', 'torso', 'legL', 'legR']
-                                 : ['head', 'torso', 'armL', 'armR', 'legL', 'legR'];
-      const LABEL = { head: 'HEAD', torso: 'TORSO', armL: 'ARM L', armR: 'ARM R', legL: 'LEG L', legR: 'LEG R' };
+      const keys = opt.mergeArms ? ['head', 'torso', 'legL', 'shinL', 'legR', 'shinR']
+                                 : ['head', 'torso', 'armL', 'armR', 'legL', 'shinL', 'legR', 'shinR'];
+      const LABEL = { head: 'HEAD', torso: 'TORSO', armL: 'ARM L', armR: 'ARM R',
+                      legL: 'THIGH L', legR: 'THIGH R', shinL: 'SHIN L', shinR: 'SHIN R' };
       /* v17.4 · DEFAULT LAYER ORDER (fixed, user spec):
          HEAD Z6 > ARM R Z5 > LEG R Z4 > TORSO Z3 > ARM L Z2 > LEG L Z1
          (dahina paer hamesha dhad ke upar aur sir ke neeche) */
-      const Z0 = { legL: 1, armL: 2, torso: 3, legR: 4, armR: 5, head: 6 };
+      const Z0 = { legL: 1, shinL: 1.5, armL: 2, torso: 3, legR: 4, shinR: 4.5, armR: 5, head: 6 };
       /* ---------- JOINT OVERLAP MARGIN (v15.3) ----------
          Har piece ko padosi piece ke andar R px tak badhaya jata hai. Yani
          arm ke canvas me shoulder ka thoda torso, torso ke canvas me shoulder
@@ -2119,7 +2152,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           if (lab[y * W + x] === ID[k]) { m[y * W + x] = 1; any = true; }
         }
         if (any) {
-          for (let it = 0; it < JOINT_R; it++) {
+          /* v19.0 · knee seam: shin sirf UPAR ki taraf badhta hai (thigh ke neeche
+             chhup jata hai) — isliye ghutna mudne par seam bahar nahi dikhta.
+             Thigh neeche ki taraf nahi badhta. */
+          const isShin = (k === 'shinL' || k === 'shinR');
+          const GR = isShin ? 9 : ((k === 'legL' || k === 'legR') ? 0 : JOINT_R);
+          for (let it = 0; it < GR; it++) {
             const nm = m.slice();
             for (let y = bMinY; y <= bMaxY; y++) for (let x = bMinX; x <= bMaxX; x++) {
               const i = y * W + x;
@@ -2230,6 +2268,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         else if (k === 'torso') pivot = { x: p.oX0 + ow / 2, y: p.oY1 };    /* hip line */
         else if (k === 'legL') pivot = { x: tCx - torsoW * 0.32, y: hipY };  /* hip joint L */
         else if (k === 'legR') pivot = { x: tCx + torsoW * 0.32, y: hipY };  /* hip joint R */
+        else if (k === 'shinL' || k === 'shinR') {                            /* knee joint */
+          pivot = { x: p.oX0 + ow / 2, y: Math.max(kneeY, p.oY0 + 2) };
+        }
         else if (k === 'armL') {                                            /* left shoulder */
           const own = { x: p.oX1, y: p.oY0 + oh * 0.12 };
           pivot = (own.y > T.oY0 + torsoH * 0.42) ? { x: T.oX0, y: shoulderY } : own;
@@ -2310,7 +2351,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       onChange();
     }
     /* v17.4 · strict base order — sirf ye ids, sirf ye z (reset / integrity ke liye) */
-    const Z_BASE = { legL: 1, armL: 2, torso: 3, legR: 4, armR: 5, head: 6 };
+    const Z_BASE = { legL: 1, shinL: 1.5, armL: 2, torso: 3, legR: 4, shinR: 4.5, armR: 5, head: 6 };
 
     function normalize() { items.forEach((it, i) => { it.z = i + 1; }); }
 
@@ -2377,6 +2418,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
      undo / redo / reset / localStorage save / export.                        */
   const Pose = (function () {
     const RING_IDS = ['head', 'torso', 'armL', 'armR', 'legL', 'legR'];
+    /* v19.0 · KNEE — shin ka apna angle (thigh ke relative). Ring nahi, UI me
+       sirf legs ke ring se control hota hai (walk khud bend karta hai). */
+    const KNEE_IDS = ['shinL', 'shinR'];
+    const PARENT = { shinL: 'legL', shinR: 'legR' };
+    let knee = {};
+    KNEE_IDS.forEach((k) => { knee[k] = 0; });
     let rotation = {};
     RING_IDS.forEach((k) => { rotation[k] = 0; });
 
@@ -2392,12 +2439,15 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function capture() {
       const off = {};
       RING_IDS.forEach((k) => { off[k] = { dx: offset[k].dx, dy: offset[k].dy }; });
-      return { v: 2, rotation: Object.assign({}, rotation), order: Layers.idsInOrder(),
+      return { v: 3, rotation: Object.assign({}, rotation), knee: Object.assign({}, knee),
+               order: Layers.idsInOrder(),
                root: { x: root.x, y: root.y }, offset: off };
     }
     function apply(snap, renderIt) {
       rotation = Object.assign({}, snap.rotation || {});
       RING_IDS.forEach((k) => { if (typeof rotation[k] !== 'number') rotation[k] = 0; });
+      knee = Object.assign({}, snap.knee || {});
+      KNEE_IDS.forEach((k) => { if (typeof knee[k] !== 'number') knee[k] = 0; });
       root = snap.root ? { x: +snap.root.x || 0, y: +snap.root.y || 0 } : { x: 0, y: 0 };
       RING_IDS.forEach((k) => {
         const o = (snap.offset && snap.offset[k]) || { dx: 0, dy: 0 };
@@ -2435,11 +2485,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       idx = hist.length - 1;
       onChange();
     }
-    function init() { hist = []; idx = -1; RING_IDS.forEach((k) => rotation[k] = 0); clearRoot(); push('init'); }
+    function init() { hist = []; idx = -1; RING_IDS.forEach((k) => rotation[k] = 0); KNEE_IDS.forEach((k) => knee[k] = 0); clearRoot(); push('init'); }
     function undo() { if (idx > 0) { idx--; apply(hist[idx].snap); return true; } return false; }
     function redo() { if (idx < hist.length - 1) { idx++; apply(hist[idx].snap); return true; } return false; }
     function reset(render) {
       RING_IDS.forEach((k) => { rotation[k] = 0; });
+      KNEE_IDS.forEach((k) => { knee[k] = 0; });
       clearRoot();
       Layers.resetOrder();
       push('reset');
@@ -2453,6 +2504,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       if (mirrorOn && MIRROR[id]) rotation[MIRROR[id]] = -rad;   /* perfect mirror */
     }
     function setPair(map) { Object.keys(map).forEach((k) => { rotation[k] = map[k] || 0; }); }
+    /* knee: shin ka angle thigh ke relative (rad). Parent chain render me lagti hai. */
+    function setKnee(map) { Object.keys(map).forEach((k) => { knee[k] = +map[k] || 0; }); }
+    function getKnee(id) { return knee[id] || 0; }
+    function kneePair(map) { Object.keys(map).forEach((k) => { knee[k] = +map[k] || 0; }); }
     function setMirror(on) { mirrorOn = !!on; }
     function isMirror() { return mirrorOn; }
     function get(id) { return rotation[id] || 0; }
@@ -2478,7 +2533,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function importJSON(txt) {
       try { apply(JSON.parse(txt)); push('import'); return true; } catch (e) { return false; }
     }
-    return { RING_IDS, init, push, undo, redo, reset, setAngle, setPair, setMirror, isMirror, get, getRotation, capture,
+    return { RING_IDS, KNEE_IDS, PARENT, init, push, undo, redo, reset, setAngle, setPair, setMirror, isMirror, get, getRotation,
+             setKnee, getKnee, kneePair, capture,
              setRoot, getRoot, setOffset, getOffset, clearRoot,
              history, setOnChange, save, load, exportJSON, importJSON };
   })();
@@ -2519,6 +2575,32 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       cv.style.height = cssH + 'px';
     }
 
+    /* ---------- v19.0 · PARENT CHAIN (knee joint) ----------
+       shin ka pivot thigh ke hip-pivot ke around ghumta hai, aur uska apna angle
+       = thigh angle + knee bend. Isse ghutna asli jagah par mudta hai.        */
+    const PARENT = { shinL: 'legL', shinR: 'legR' };
+    function partRot(p) {
+      const par = PARENT[p.id];
+      if (!par) return Pose.get(p.id) || 0;
+      return (Pose.get(par) || 0) + (Pose.getKnee ? Pose.getKnee(p.id) : 0);
+    }
+    function partOff(p) {
+      const o = (Pose.getOffset ? Pose.getOffset(p.id) : { dx: 0, dy: 0 }) || { dx: 0, dy: 0 };
+      const par = PARENT[p.id];
+      if (!par) return { dx: o.dx || 0, dy: o.dy || 0 };
+      const po = (Pose.getOffset ? Pose.getOffset(par) : { dx: 0, dy: 0 }) || { dx: 0, dy: 0 };
+      return { dx: (o.dx || 0) + (po.dx || 0), dy: (o.dy || 0) + (po.dy || 0) };
+    }
+    function partPivot(p) {
+      const par = PARENT[p.id];
+      if (!par || !p.pivot) return p.pivot;
+      const pp = Layers.byId(par);
+      if (!pp || !pp.pivot) return p.pivot;
+      const a = Pose.get(par) || 0, ca = Math.cos(a), sa = Math.sin(a);
+      const dx = p.pivot.x - pp.pivot.x, dy = p.pivot.y - pp.pivot.y;
+      return { x: pp.pivot.x + dx * ca - dy * sa, y: pp.pivot.y + dx * sa + dy * ca };
+    }
+
     const STAGE_MUL = 1.45;                    /* travel room (left + right) */
     function padX() { return (bbox.w * STAGE_MUL - bbox.w) / 2; }   /* character start = center */
     function toScreen(x, y) { return { x: (x - bbox.x + padX()) * scale, y: (y - bbox.y) * scale }; }
@@ -2535,8 +2617,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       const rx = R.x * scale, ry = R.y * scale;      /* poora character ek saath aage/peeche */
       for (const p of list) {
         if (p.visible === false) continue;
-        const rot = Pose.get(p.id) || 0;
-        const off = Pose.getOffset ? Pose.getOffset(p.id) : { dx: 0, dy: 0 };
+        const rot = partRot(p);                        /* v19.0: shin = thigh + knee */
+        const off = partOff(p);
         const ox = off.dx * scale, oy = off.dy * scale;   /* per-part step (pair uthana) */
         ctx.save();
         const dx = (p.ox !== undefined ? p.ox : p.x), dy = (p.oy !== undefined ? p.oy : p.y);
@@ -2545,11 +2627,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           const o = toScreen(dx, dy);
           ctx.drawImage(p.canvas, o.x + rx + ox, o.y + ry + oy, dw * scale, dh * scale);
         } else {
-          const pv = toScreen(p.pivot.x, p.pivot.y);
+          const pp = partPivot(p);                     /* v19.0: knee ka pivot thigh ke saath ghumta hai */
+          const pv = toScreen(pp.x, pp.y);
+          const own = toScreen(p.pivot.x, p.pivot.y);  /* canvas ka content apne hi pivot se offset hota hai */
           ctx.translate(pv.x + rx + ox, pv.y + ry + oy);
           ctx.rotate(rot);
           const o = toScreen(dx, dy);
-          ctx.drawImage(p.canvas, o.x - pv.x, o.y - pv.y, dw * scale, dh * scale);
+          ctx.drawImage(p.canvas, o.x - own.x, o.y - own.y, dw * scale, dh * scale);
         }
         ctx.restore();
       }
@@ -2563,6 +2647,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       const RR = rootSnap || (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
       for (const p of list) {
         if (!p.pivot || p.kind === 'cloth') continue;
+        if (PARENT[p.id]) continue;                   /* v19.0: shin ka ring nahi — thigh ka hi kaafi */
         /* v18.4 · RING SYNC: Position step me part ox/oy se jo khiska hai, uska pivot
            bhi utna hi khisko — warna ring purani jagah par locked reh jaati hai. */
         const pdx = (p.ox !== undefined ? p.ox : p.x) - p.x;
@@ -3191,7 +3276,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const bgTag = bgRes.removed
       ? 'BG removed (' + bgRes.meta.mode + ') ' + bgRes.meta.hex + ' · ' + bgRes.meta.clearedPct + '% clear · '
       : '';
-    setLight(kind, res.msg + (res.light === 'WARNING' ? ' (cut allowed)' : ' · 6 pieces cut in ' + cut.meta.ms + ' ms'),
+    setLight(kind, res.msg + (res.light === 'WARNING' ? ' (cut allowed)' : ' · ' + cut.pieces.length + ' pieces cut in ' + cut.meta.ms + ' ms'),
              bgTag + W + '×' + H + (scaleNote || '') + ' · ' + cut.pieces.length + ' pieces · ' + cut.meta.coverage + '% coverage');
     try { v4AfterCut(res); } catch (e) {}
     if (res.light === 'READY') {
@@ -3639,17 +3724,31 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const c = cv.getContext('2d');
     c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
     const RT = (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
+    const KN_PARENT = { shinL: 'legL', shinR: 'legR' };
     Layers.order().forEach((p) => {
       if (p.visible === false) return;
       const o = offOf(p);
-      const rot = Pose.get(p.id) || 0;
-      const off = Pose.getOffset ? Pose.getOffset(p.id) : { dx: 0, dy: 0 };
-      if (p.kind === 'cloth' || !p.pivot) {
+      const par = KN_PARENT[p.id];
+      const rot = par ? ((Pose.get(par) || 0) + (Pose.getKnee ? Pose.getKnee(p.id) : 0)) : (Pose.get(p.id) || 0);
+      const off0 = Pose.getOffset ? Pose.getOffset(p.id) : { dx: 0, dy: 0 };
+      const po = par && Pose.getOffset ? Pose.getOffset(par) : { dx: 0, dy: 0 };
+      const off = { dx: (off0.dx || 0) + (po.dx || 0), dy: (off0.dy || 0) + (po.dy || 0) };
+      let pv = p.pivot;
+      if (par && p.pivot) {
+        const pp = Layers.byId(par);
+        if (pp && pp.pivot) {
+          const a = Pose.get(par) || 0, ca = Math.cos(a), sa = Math.sin(a);
+          const dx2 = p.pivot.x - pp.pivot.x, dy2 = p.pivot.y - pp.pivot.y;
+          pv = { x: pp.pivot.x + dx2 * ca - dy2 * sa, y: pp.pivot.y + dx2 * sa + dy2 * ca };
+        }
+      }
+      if (p.kind === 'cloth' || !pv) {
         c.drawImage(p.canvas, o.x - b.x + RT.x + off.dx, o.y - b.y + RT.y + off.dy, p.w, p.h);
       } else {
         c.save();
-        c.translate(p.pivot.x - b.x + RT.x + off.dx, p.pivot.y - b.y + RT.y + off.dy);
+        c.translate(pv.x - b.x + RT.x + off.dx, pv.y - b.y + RT.y + off.dy);
         c.rotate(rot);
+        /* content ka offset apne (unrotated) pivot se — parent chain ke liye zaroori */
         c.drawImage(p.canvas, (o.x - b.x) - (p.pivot.x - b.x), (o.y - b.y) - (p.pivot.y - b.y), p.w, p.h);
         c.restore();
       }
@@ -3961,6 +4060,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const wasMirror = RIG.Pose.isMirror();
     if (mirrorSafe) RIG.Pose.setMirror(false);      /* pair values ko mirror se bachao */
     RIG.Pose.RING_IDS.forEach(function (k) { RIG.Pose.setAngle(k, p[k] || 0); });
+    /* v19.0: static pose me ghutna seedha */
+    if (RIG.Pose.setKnee) RIG.Pose.setKnee({ shinL: 0, shinR: 0 });
     if (mirrorSafe) RIG.Pose.setMirror(wasMirror);
     mark(name);
     setMeta('pose: ' + name);
@@ -3996,6 +4097,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   };
   try { window.__RIG_ANIM = Anim; } catch (e) {}
 
+  /* v19.0 · ghutna kis taraf mudta hai (screen space). Sign yahin badlo. */
+  const KNEE_SIGN = -1;      /* shin peeche mudta hai (screen space) — verify kiya */
+  const KNEE_AMP  = 0.55;    /* walk knee bend (rad at mid-swing) */
+
   function step(ts) {
     if (!Anim.on) return;
     const dt = Anim.last ? Math.min(0.05, (ts - Anim.last) / 1000) : 0.016;
@@ -4026,10 +4131,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       uu = ((uu % 1) + 1) % 1;
       if (uu < STANCE){
         const k = uu / STANCE;
-        return { ang: A * (1 - 2 * k), lift: 0, planted: true, k: k };
+        /* stance: shuru me halka knee bend (impact absorb), phir seedha */
+        return { ang: A * (1 - 2 * k), lift: 0, planted: true, k: k, knee: 0.18 * KNEE_AMP * Math.sin(Math.PI * k) };
       }
       const k = (uu - STANCE) / (1 - STANCE);
-      return { ang: -A * Math.cos(Math.PI * k), lift: Math.sin(Math.PI * k), planted: false, k: k };
+      /* swing: ghutna modta hai (max mid-swing), pair aage jaate waqt phir seedha */
+      return { ang: -A * Math.cos(Math.PI * k), lift: Math.sin(Math.PI * k), planted: false, k: k,
+               knee: (isRun ? 1.45 : 1.0) * KNEE_AMP * Math.sin(Math.PI * k) };
     }
     const sL = legPhase(u);
     const sR = legPhase(u + 0.5);
@@ -4053,6 +4161,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const swingL = (Anim.armMode === 'fixed') ? 0 : sR.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55;
     const swingR = (Anim.armMode === 'fixed') ? 0 : sL.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55;
     try {
+      if (RIG.Pose.setKnee) RIG.Pose.setKnee({ shinL: KNEE_SIGN * sL.knee, shinR: KNEE_SIGN * sR.knee });
       RIG.Pose.setPair({
         legL: sL.ang, legR: sR.ang,                     /* stance + swing (asli gait) */
         armL: -rest + swingL,
@@ -4159,7 +4268,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     Anim.spread = 0.04 + (this.value / 100) * 0.46;
     panel.spreadVal.textContent = this.value + '%';
     if (!Anim.on) { /* static preview: legs spread turant dikhe */
-      try { RIG.Pose.setPair({ legL: -Anim.spread, legR: Anim.spread }); RIG.Studio.render(); } catch (e) {}
+      try { if (RIG.Pose.setKnee) RIG.Pose.setKnee({ shinL: 0, shinR: 0 }); RIG.Pose.setPair({ legL: -Anim.spread, legR: Anim.spread }); RIG.Studio.render(); } catch (e) {}
     }
     syncWalkPanel();
   });
@@ -4209,7 +4318,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     if (smWalk.val) smWalk.val.textContent = this.value + '%';
     if (panel.spread) { panel.spread.value = this.value; if (panel.spreadVal) panel.spreadVal.textContent = this.value + '%'; }
     if (!Anim.on) {   /* animation band ho to static preview turant */
-      try { RIG.Pose.setPair({ legL: Anim.spread, legR: -Anim.spread }); RIG.Studio.render(); } catch (e) {}
+      try { if (RIG.Pose.setKnee) RIG.Pose.setKnee({ shinL: 0, shinR: 0 }); RIG.Pose.setPair({ legL: Anim.spread, legR: -Anim.spread }); RIG.Studio.render(); } catch (e) {}
     }
   });
   if (panel.speed) panel.speed.addEventListener('input', function () {
