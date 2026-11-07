@@ -855,6 +855,31 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 #smBgAnimChip{ display:none !important; }
 #smBgAnim{ display:none !important; }
 
+/* =======================================================================
+   Order 66 — responsive viewport layout (360–412px, no fixed px for panels)
+   Target: 100dvh root, preview/shell flexible, timeline 38dvh, nav 10dvh
+   ======================================================================= */
+html, body { height: 100dvh; max-height: 100dvh; overflow: hidden; }
+.app { height: 100dvh; max-height: 100dvh; overflow: hidden; }
+
+/* workspace bachi hui jagah baant-ta hai — preview bada, timeline fix vh */
+#workspace { min-height: 0; overflow: hidden; }
+#workspace > .preview-shell { flex: 0 0 auto !important; min-height: 26dvh; }
+
+/* Timeline: vh-based, koi bada fixed px nahi */
+#workspace > .timeline {
+  flex: 1 1 auto !important;      /* bachi hui jagah timeline ko */
+  height: auto !important;
+  min-height: 38dvh !important;   /* kam se kam 38vh */
+  max-height: 46dvh !important;   /* max 46vh — preview kabhi dabta nahi */
+  overflow: hidden;
+}
+.timeline .timeline-scroll { overflow-y: auto !important; overflow-x: auto !important; }
+.timeline-inner { min-height: 100% !important; }
+
+/* Bottom navigation ~10dvh */
+body .app > .dock, .app > nav.dock { height: 10dvh !important; min-height: 58px; max-height: 86px; }
+
 </style>
 <style id="smMobile">
 /* ============================================================
