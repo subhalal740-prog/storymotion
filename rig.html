@@ -4703,6 +4703,7 @@ a.note, .note{ color: rgba(255,255,255,.55) !important; }
     bar.addEventListener('click',e=>{
       const b=e.target.closest('button'); if(!b) return;
       const a=b.dataset.k;
+      ensureWalk();
       if(a==='add'){
         const v=currentPct();
         keys=keys.filter(k=>Math.abs(k.t-t)>0.06);
@@ -4717,7 +4718,7 @@ a.note, .note{ color: rgba(255,255,255,.55) !important; }
       if(a==='play'){ playing?stop():play(); }
     });
     const sc=$('smRigScrub');
-    if(sc) sc.addEventListener('input',function(){ var __v=Number(this.value)/10; stop(); t=__v; apply(); paint(); });
+    if(sc) sc.addEventListener('input',function(){ var __v=Number(this.value)/10; ensureWalk(); stop(); t=__v; apply(); paint(); });
     return bar;
   }
   function paint(){
@@ -4760,9 +4761,14 @@ a.note, .note{ color: rgba(255,255,255,.55) !important; }
     clearTimeout(el._t); el._t=setTimeout(()=>{ el.style.opacity='0'; },1600);
   }
   function watch(){
-    const wp=$('smWalkPanel');
-    if(wp && bar) bar.style.display = wp.hidden ? 'none' : 'flex';
+    const row=$('qpRow');
+    const vis = !!(row && row.offsetParent && row.getBoundingClientRect().height>0);
+    if(bar) bar.style.display = vis ? 'flex' : 'none';
     requestAnimationFrame(watch);
+  }
+  function ensureWalk(){
+    const wp=$('smWalkPanel');
+    if(wp && wp.hidden){ const wb=document.querySelector('#qpRow .qp[data-pose="walk"]'); if(wb) wb.click(); }
   }
   function boot(){
     setTimeout(()=>{ try{ build(); paint(); requestAnimationFrame(watch); }catch(e){} }, 1200);
