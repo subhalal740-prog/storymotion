@@ -71,6 +71,14 @@
     white-space:nowrap;-webkit-tap-highlight-color:transparent}
   .tile .up svg{width:12px;height:12px;flex:0 0 12px}
   .tile .up:active{background:rgba(255,255,255,.15)}
+  .tile .btnrow{display:flex;flex-wrap:wrap;gap:5px}
+  .top .stBtn{display:inline-flex;align-items:center;height:30px;padding:0 11px;border-radius:6px;
+    font-size:10.5px;font-weight:700;color:#dbeafe;background:rgba(255,255,255,.06);
+    border:1px solid rgba(140,180,255,.35);cursor:pointer;white-space:nowrap}
+  .top .stBtn:active{background:rgba(255,255,255,.14)}
+  .grid{padding-bottom:70px}
+  .tile .up.studio{color:#cfe4ff;border-color:rgba(140,180,255,.35);background:rgba(90,140,255,.12)}
+  .tile .up.studio.done{color:#8af2b4;border-color:rgba(34,224,125,.42);background:rgba(34,224,125,.13)}
   .tile .up.done{color:#8af2b4;border-color:rgba(34,224,125,.42);background:rgba(34,224,125,.13)}
   .tile .art img{display:block;width:100%;height:150px;object-fit:contain;border-radius:8px}
   .tile .art video{display:block;width:100%;height:150px;object-fit:contain;border-radius:8px;background:transparent}
@@ -378,6 +386,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   </button>
   <h1>Characters</h1>
   <div class="right">
+    <button class="stBtn" id="btnStudio" type="button" aria-label="Action Studio">Action Studio</button>
     <button class="ic" id="btnSettings" aria-label="Settings">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.05A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.05A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.05A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9v.05a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.05a1.7 1.7 0 0 0-1.55 1z"/></svg>
     </button>
@@ -484,6 +493,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
            (bob ? ';transform:translateY(' + bob + 'px)' : '') + '" aria-hidden="true">' + g + '</svg>';
   }
 
+  var ICO_STUDIO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M9 20V5"/><path d="M14 20v-8"/><path d="M19 20V8"/></svg>';
+
   var ANIMS = [
     /* built-in VIDEO action (AI frames se bana, repo me anim/chai-animation.mp4) */
     { id: 'chai',    name: 'Chai Action',
@@ -508,6 +519,34 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
      image chhoti (max 480px) karke localStorage me save hoti hai aur card ka artwork
      ban jaati hai. Tap-only, dummy nahi: image turant card me dikhti hai + reload par bhi rehti hai. */
   var UPLOADABLE = { idle: 1, walk: 1 };
+
+  /* ---------- Action Studio wiring (puppet → real animation) ----------
+     Har tile par "Animate" — us action ke liye puppet upload karke skeletal
+     animation banegi (actionanim.html). */
+  var STUDIO_MAP = { idle:'idle', walk:'walk', run:'run', talking:'talking', sitting:'sitting',
+                     wave:'waving', jump:'jumping', dance:'dancing', sit_floor:'sitting',
+                     point:'waving', think:'talking', explain:'talking', chai:'idle' };
+  var studioDone = {};
+  function studioUrl(action) {
+    return 'actionanim.html?action=' + encodeURIComponent(action) +
+      '&name=' + encodeURIComponent(charName) + '&id=' + encodeURIComponent(charId || '');
+  }
+  function loadStudioDone() {
+    try {
+      var r = indexedDB.open('actionanim', 1);
+      r.onupgradeneeded = function () { try { r.result.createObjectStore('animations'); } catch (e) {} };
+      r.onsuccess = function () {
+        var db = r.result;
+        if (!db.objectStoreNames.contains('animations')) return;
+        var q2 = db.transaction('animations', 'readonly').objectStore('animations').getAll();
+        q2.onsuccess = function () {
+          var any = false;
+          (q2.result || []).forEach(function (rec) { if (rec && rec.action) { studioDone[rec.action] = 1; any = true; } });
+          if (any) renderAndMount();
+        };
+      };
+    } catch (e) {}
+  }
   var poseImg = {};
   try {
     Object.keys(UPLOADABLE).forEach(function (k) {
@@ -836,6 +875,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           'aria-label="' + ((pv || hasVid) ? 'Change ' : 'Upload ') + a.name + ' image or video from gallery">' +
           ICO_UP + '<span>' + ((pv || hasVid) ? 'Change' : 'Upload') + '</span></button>'
         : '';
+      var stAct = STUDIO_MAP[a.id] || '';
+      var stBtn = stAct
+        ? '<button class="up studio' + (studioDone[stAct] ? ' done' : '') + '" data-studio="' + stAct + '" type="button" ' +
+          'aria-label="Animate ' + a.name + ' — puppet upload karke real animation banao">' +
+          ICO_STUDIO + '<span>' + (studioDone[stAct] ? 'Animated' : 'Animate') + '</span></button>'
+        : '';
       var chip = (UPLOADABLE[a.id] && pv)
         ? '<span class="okChip" data-clear="' + a.id + '" role="button" tabindex="0" aria-label="Remove uploaded ' + a.name + ' media">' + ICO_OK + '</span>'
         : '';
@@ -843,14 +888,22 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       var pillCls = hasVid ? 'pill vid' : 'pill';
       return '<div class="tile' + (picked === a.id ? ' on' : '') + '" data-anim="' + a.id + '" role="button" tabindex="0" ' +
         'aria-label="' + a.name + '">' + chip + '<div class="art"' + (upVid ? ' data-key="1"' : '') + '>' + art + '</div>' +
-        '<div class="lb"><span>' + a.name + '</span><span class="' + pillCls + '">' + pillTxt + '</span></div>' + up + '</div>';
+        '<div class="lb"><span>' + a.name + '</span><span class="' + pillCls + '">' + pillTxt + '</span></div>' +
+        '<div class="btnrow">' + up + stBtn + '</div></div>';
     }).join('');
   }
 
   function renderAndMount() { render(); mountMedia(); }
+  document.getElementById('btnStudio').onclick = function () { location.href = studioUrl('idle'); };
 
   grid.addEventListener('click', function (e) {
     /* Upload button -> gallery; tick chip -> image hatao. Dono par tile select NA ho. */
+    var stb = e.target.closest('.up.studio');
+    if (stb) {
+      e.preventDefault(); e.stopPropagation();
+      location.href = studioUrl(stb.dataset.studio);
+      return;
+    }
     var up = e.target.closest('.up');
     if (up) {
       e.preventDefault(); e.stopPropagation();
@@ -925,6 +978,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   });
 
   renderAndMount();
+  loadStudioDone();
 })();
 </script>
 </body>

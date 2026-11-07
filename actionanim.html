@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Action Studio — Puppet → Animation</title>
+<link rel="stylesheet" href="actionanim.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ── top bar ─────────────────────────────────────────── -->
+  <header class="top">
+    <button class="ico" id="backBtn" title="Back" aria-label="Back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+    </button>
+    <div class="ttl">
+      <b>Action Studio</b>
+      <small id="charName">puppet upload · auto preview</small>
+    </div>
+    <button class="ico" id="helpBtn" title="How it works" aria-label="How it works">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 115.1.7c0 1.6-2.6 1.9-2.6 3.6"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/></svg>
+    </button>
+  </header>
+
+  <!-- ── action chips ────────────────────────────────────── -->
+  <div class="chips" id="actionChips"></div>
+
+  <!-- ── stage ───────────────────────────────────────────── -->
+  <section class="stagewrap">
+    <div class="stage" id="stage">
+      <canvas id="out" width="540" height="720"></canvas>
+      <canvas id="skel" width="540" height="720" class="skelOverlay"></canvas>
+      <div class="empty" id="emptyState">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+        <b>Puppet upload karo</b>
+        <span>Ek full-body character image (transparent PNG, ya green-screen) — baaki studio khud karega</span>
+      </div>
+      <div class="badge" id="stageBadge" hidden></div>
+    </div>
+    <div class="badges" id="stageInfo"></div>
+  </section>
+
+  <!-- ── processing status ───────────────────────────────── -->
+  <section class="status" id="status">
+    <div class="strow"><span class="dot" id="stDot"></span><b id="stTitle">Ready</b><i id="stPct"></i></div>
+    <div class="bar"><span id="stBar"></span></div>
+    <ul class="log" id="log"></ul>
+  </section>
+
+  <!-- ── controls ────────────────────────────────────────── -->
+  <section class="ctrl">
+    <div class="row">
+      <button class="pill primary" id="uploadBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+        Upload puppet
+      </button>
+      <input type="file" id="file" accept="image/*" hidden>
+      <button class="pill" id="playBtn" disabled>
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5l11 7-11 7z"/></svg>
+        <span>Play</span>
+      </button>
+      <button class="pill" id="skelBtn" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v7"/><path d="M6 10h12"/><path d="M12 14l-3 6"/><path d="M12 14l3 6"/></svg>
+        Skeleton
+      </button>
+    </div>
+    <div class="row scrub">
+      <span id="tLabel">0.00s</span>
+      <input type="range" id="scrub" min="0" max="1000" value="0" disabled>
+      <span id="tTotal">0.00s</span>
+    </div>
+    <div class="row small">
+      <label>Speed <input type="range" id="speed" min="50" max="150" value="100"></label>
+      <label>FPS <select id="fps"><option>24</option><option selected>30</option><option>60</option></select></label>
+      <label>Ground <input type="range" id="ground" min="-40" max="40" value="0"></label>
+    </div>
+  </section>
+
+  <!-- ── export + saved ──────────────────────────────────── -->
+  <section class="exports">
+    <div class="exhead"><b>Export &amp; save</b><span id="fmtNote"></span></div>
+    <div class="row">
+      <button class="pill" id="webmBtn" disabled>WebM (alpha)</button>
+      <button class="pill" id="mp4Btn" disabled>MP4</button>
+      <button class="pill" id="framesBtn" disabled>PNG frames</button>
+      <button class="pill primary" id="saveBtn" disabled>Save "Idle"</button>
+    </div>
+    <div class="progress" id="expWrap" hidden><div class="bar"><span id="expBar"></span></div><i id="expTxt"></i></div>
+  </section>
+
+  <section class="saved">
+    <div class="exhead"><b>Saved animations</b><span>action name se save hote hain</span></div>
+    <div class="savedList" id="savedList"></div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+  <div class="modal" id="modal" hidden>
+    <div class="sheet">
+      <div class="sheetHead"><b id="mTitle">How it works</b><button class="ico" id="mClose">✕</button></div>
+      <div class="sheetBody" id="mBody"></div>
+    </div>
+  </div>
+</div>
+<script src="actionanim.js"></script>
+</body>
+</html>
