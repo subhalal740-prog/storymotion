@@ -2010,12 +2010,13 @@ overlay.addEventListener('pointerup',endDrag);overlay.addEventListener('pointerc
 function layerShadowOn(s=current()){return !!(s.shadow??(s.bg.type==='color'?1:0));}
 function renderLayerMenu(){const menu=$('layerMenu'),items=$('layerMenuItems');document.body.classList.toggle('layer-selected',!!selectedLayer);if(!selectedLayer){menu.hidden=true;items.innerHTML='';return;}menu.hidden=false;
  const btn=(id,ic,label,extra='')=>`<button class="layer-action ${extra}" id="${id}" type="button">${icon(ic)}<span>${label}</span></button>`;
- if(selectedLayer==='character'){items.innerHTML=btn('laMask','mask','Mask')+btn('laShadow','shadow','Shadow')+btn('laSpeed','speed','Speed')+btn('laTransform','transform','Transform')+btn('laAdjust','adjust','Adjust')+btn('laFlip','flip','Flip')+btn('laDelete','trash','Delete','layer-danger');
+ if(selectedLayer==='character'){items.innerHTML=btn('laMask','mask','Mask')+btn('laShadow','shadow','Shadow')+btn('laSpeed','speed','Speed')+btn('laTransform','transform','Transform')+btn('laAdjust','adjust','Adjust')+btn('laDelete','trash','Delete','layer-danger');
   $('laMask').onclick=()=>openPanel('mask');$('laAdjust').onclick=()=>{adjustTarget='character';openPanel('adjust');};
   $('laShadow').onclick=()=>change(()=>{current().shadow=!layerShadowOn();});
   $('laSpeed').onclick=()=>openPanel('motion');
   $('laTransform').onclick=()=>openPanel('ratio');
-  $('laFlip').onclick=()=>{if(ensureLocks(current()).charLocked){toast('Character locked hai.');return;}change(()=>{current().flip=!current().flip;});};
+  /* Order 74 — character ka Flip button hata diya (user request) */
+  if($('laFlip')) $('laFlip').onclick=()=>{if(ensureLocks(current()).charLocked){toast('Character locked hai.');return;}change(()=>{current().flip=!current().flip;});};
   $('laDelete').onclick=deleteSelectedLayer;
  } else if(selectedLayer==='image'){items.innerHTML=btn('laEdit','pencil','Edit')+btn('laBgAdjust','adjust','Adjust')+btn('laBgFlip','flip','Flip')+btn('laDelete','trash','Delete','layer-danger');
   $('laEdit').onclick=()=>openPanel('backgrounds');$('laBgAdjust').onclick=()=>{adjustTarget='background';openPanel('adjust');};
@@ -3516,7 +3517,7 @@ boot();
   }
   function menuBtn(){
     const items=$('layerMenuItems'); if(!items||items.querySelector('#smPathBtn')) return;
-    const isChar = !!items.querySelector('#laFlip');
+    const isChar = !!items.querySelector('#laMask');   /* Order 74 — Flip button hata, isliye Mask se pehchan */
     if(!isChar) return;
     const b=document.createElement('button');
     b.id='smPathBtn'; b.type='button'; b.className='layer-action';
