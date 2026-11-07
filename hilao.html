@@ -822,6 +822,20 @@ dialog{background:#1d2227;color:var(--text);border:1px solid #3a434d;border-radi
 .quick-tools #smClearBtn{ width:19px !important; height:19px !important; }
 @media (min-width:400px){ .quick-tools #smClearBtn{ width:21px !important; height:21px !important; } }
 
+/* ── Order 57 — PUTLA page (AutoDraft "My character" look) ───────────── */
+.putla-row{ display:flex; align-items:center; gap:6px; overflow-x:auto; scrollbar-width:none; padding:2px 0 8px; }
+.putla-row::-webkit-scrollbar{ display:none; }
+.putla-row .chip{ display:inline-flex; align-items:center; gap:4px; flex:0 0 auto; padding:7px 11px; border-radius:999px; font-size:11px; background:#1b1d21; border:1px solid #2b2e33; color:#b9c0c9; }
+.putla-row .chip .icon{ width:13px; height:13px; }
+.putla-row .chip.active{ background:#f2f2f5; border-color:#f2f2f5; color:#111; font-weight:700; }
+.putla-stage{ display:flex; align-items:center; justify-content:center; padding:6px 0 10px; }
+.putla-card{ width:min(262px,74vw); aspect-ratio:1/1; background:#15171a; border:1px solid #2a2d32; border-radius:14px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:12px; }
+.putla-card img{ max-width:100%; max-height:78%; object-fit:contain; }
+.putla-card span{ font-size:11px; color:#9aa3ad; letter-spacing:.02em; }
+.putla-card:active{ border-color:#f2f2f5; }
+.putla-hint{ margin:0; padding:0 4px 12px; text-align:center; font-size:11px; color:#8b939c; }
+
 </style>
 <style id="smMobile">
 /* ============================================================
@@ -2059,12 +2073,12 @@ function animate(now){const dt=lastFrame?Math.min((now-lastFrame)/1000,.1):0;las
 function togglePlay(){playing=!playing;if(audioEl){if(playing){syncAudioTime();audioEl.play().catch(()=>{});}else audioEl.pause();}updatePlaybackUI();}
 
 /* Panels */
-const PANEL_TITLES={characters:'Characters',animations:'Animations',backgrounds:'Background',motion:'Ring Motion',ratio:'Ratio & Framing',audio:'Audio',media:'Media',history:'History',download:'Download',frames:'Frames',camera:'Camera angle',project:'Project',scene:'Scenes',help:'Help',tutorials:'Tutorials',templates:'Templates',layers:'Canvas layers',mask:'Mask',adjust:'Adjust'};
-function dockKey(name){if(['characters','tutorials','templates','audio','layers'].includes(name))return name;if(name==='help')return 'tutorials';if(['media','scene','backgrounds','ratio'].includes(name))return 'media';if(['animations','motion','mask','adjust'].includes(name))return 'characters';return null;}
-function openPanel(name){if(exportJob&&name!=='download'){toast('Export chal raha hai. Pehle complete ya cancel karo.');return;}if(selectedLayer)clearLayer();activePanel=name;const sheet=name==='characters'||name==='camera';$('panel').classList.toggle('sheet',sheet);$('panel').classList.toggle('cam-sheet',name==='camera');$('panel').classList.toggle('media-page',name==='media');$('panelBackdrop').classList.toggle('sheet-backdrop',sheet);$('createCharBtn').hidden=name!=='characters';$('panel').hidden=false;$('panelBackdrop').hidden=false;$('panelTitle').textContent=PANEL_TITLES[name]||name;const key=dockKey(name);$$('.dock [data-panel]').forEach(b=>{const on=b.dataset.panel===key;b.classList.toggle('active',on);if(on)b.scrollIntoView({block:'nearest',inline:'nearest'});});renderPanel(true);}
+const PANEL_TITLES={characters:'Characters',animations:'Animations',backgrounds:'Background',motion:'Ring Motion',ratio:'Ratio & Framing',audio:'Audio',media:'Media',history:'History',download:'Download',frames:'Frames',camera:'Camera angle',project:'Project',scene:'Scenes',help:'Help',tutorials:'Tutorials',templates:'Templates',layers:'Canvas layers',mask:'Mask',adjust:'Adjust',putla:'My character'};
+function dockKey(name){if(['characters','tutorials','templates','audio','layers'].includes(name))return name;if(name==='help')return 'tutorials';if(['media','scene','backgrounds','ratio'].includes(name))return 'media';if(['animations','motion','mask','adjust','putla'].includes(name))return 'characters';return null;}
+function openPanel(name){if(exportJob&&name!=='download'){toast('Export chal raha hai. Pehle complete ya cancel karo.');return;}if(selectedLayer)clearLayer();activePanel=name;const sheet=name==='characters'||name==='camera'||name==='putla';$('panel').classList.toggle('sheet',sheet);$('panel').classList.toggle('cam-sheet',name==='camera');$('panel').classList.toggle('media-page',name==='media');$('panelBackdrop').classList.toggle('sheet-backdrop',sheet);$('createCharBtn').hidden=name!=='characters';$('panel').hidden=false;$('panelBackdrop').hidden=false;$('panelTitle').textContent=PANEL_TITLES[name]||name;const key=dockKey(name);$$('.dock [data-panel]').forEach(b=>{const on=b.dataset.panel===key;b.classList.toggle('active',on);if(on)b.scrollIntoView({block:'nearest',inline:'nearest'});});renderPanel(true);}
 function closePanel(){if(exportJob){toast('Export chal raha hai. Cancel karo ya complete hone do.');return;}activePanel=null;$('panel').hidden=true;$('panelBackdrop').hidden=true;$$('.dock [data-panel]').forEach(b=>b.classList.remove('active'));}
 function selectedCharacterHTML(){if(!sceneHasChar())return `<div class="selected-character empty">${icon('character')}<div><strong>Koi character nahi</strong><small>Pehle library se character jodo</small></div><button class="chip" data-panel="characters">Add</button></div>`;const c=assets.chars.get(current().charId);return `<div class="selected-character"><img src="${c.thumb}" alt="${esc(c.name)}"><div><strong>${esc(c.name)}</strong><small>${esc(current().name)} ka character</small></div><span class="badge">Selected</span></div>`;}
-function renderPanel(resetScroll){const body=$('panelBody'),scroll=resetScroll?0:body.scrollTop;const renderers={characters:charactersPanel,animations:animationsPanel,backgrounds:backgroundsPanel,motion:motionPanel,ratio:ratioPanel,audio:audioPanel,media:mediaPanel,history:historyPanel,download:downloadPanel,frames:framesPanel,project:projectPanel,scene:scenePanel,tutorials:tutorialsPanel,templates:templatesPanel,layers:layersPanel,mask:maskPanel,adjust:adjustPanel,camera:cameraPanel};body.innerHTML=(renderers[activePanel]||(()=> ''))();wirePanel();body.scrollTop=scroll;}
+function renderPanel(resetScroll){const body=$('panelBody'),scroll=resetScroll?0:body.scrollTop;const renderers={characters:charactersPanel,putla:putlaPanel,animations:animationsPanel,backgrounds:backgroundsPanel,motion:motionPanel,ratio:ratioPanel,audio:audioPanel,media:mediaPanel,history:historyPanel,download:downloadPanel,frames:framesPanel,project:projectPanel,scene:scenePanel,tutorials:tutorialsPanel,templates:templatesPanel,layers:layersPanel,mask:maskPanel,adjust:adjustPanel,camera:cameraPanel};body.innerHTML=(renderers[activePanel]||(()=> ''))();wirePanel();body.scrollTop=scroll;}
 function charactersPanel(){const hidden=project.hiddenChars||[];let roster=[...assets.chars.values()].filter(c=>charCategory==='Hidden'?hidden.includes(c.id):!hidden.includes(c.id));if(charCategory==='Latest'){const order=[...project.customChars].reverse().map(c=>c.id).concat([...DEFAULT_CHARS].reverse().map(c=>c.id));roster.sort((a,b)=>order.indexOf(a.id)-order.indexOf(b.id));}
 const all=roster.filter(c=>{const okCat=charCategory==='All'||charCategory==='Latest'||charCategory==='Hidden'||(charCategory==='My uploads'?!!c.custom:charCategory==='Favorites'?project.favorites.includes(c.id):(c.tags||[c.category]).includes(charCategory));return okCat&&c.name.toLowerCase().includes(charSearch.toLowerCase());});
 const cats=['Desi','Western','Indonesian','Village','Birds','Animals','Vehicles','Religious','Horror','Latest',...(project.customChars.length?['My uploads']:[]),...(hidden.length?['Hidden']:[])];
@@ -2084,6 +2098,29 @@ ${charCategory==='Hidden'?`<button class="char-delete restore" data-restore-char
 <div class="char-angles"><button class="active" data-angle="front" data-angle-char="${c.id}">FRONT</button><button class="na" data-angle="34front">3/4 FRONT</button><button class="na" data-angle="34back">3/4 BACK</button></div>
 </div>`).join('')||'<div class="empty">Koi character nahi mila.</div>'}</div>
 <div class="notice">Pose standard: seedha front-facing A-pose — haath 15° khule aur khaali, pair shoulder-width flat, full body centered. Built-in sabhi characters isi rig-ready template par bane hain. Apni image mein zaroorat ho toh Edit se gardan ring adjust karo.</div><div class="char-tools"><button class="tool-tile" data-panel="animations">${icon('motion')}Animations</button><button class="tool-tile" data-panel="motion">${icon('ring')}Ring Motion</button><button class="tool-tile" data-panel="ratio">${icon('ratio')}Ratio</button></div><div class="panel-footer"><button class="primary" id="useCharacter">Use character ${icon('arrow')}</button></div>`;}
+/* Order 57 — CHARACTER tap -> PUTLA page -> putle par tap -> background par.
+   Look AutoDraft ke "My character" page jaisa: back + FRONT/3/4 chips +
+   Search Animations + ek hi putla khada. Koi Upgrade/paid button nahi hai
+   (is app me payment nahi hai). */
+function putlaPanel(){
+  const c=assets.chars.get(pendingChar);
+  if(!c) return `<div class="empty">Pehle koi character chuno.</div>`;
+  const img=c.src||c.thumb;
+  return `<div class="putla-row">
+    <button class="chip" id="putlaBack" aria-label="Back to characters">${icon('chevleft')} Characters</button>
+    <button class="chip active">FRONT</button>
+    <button class="chip" data-putla-view="f34">3/4 FRONT</button>
+    <button class="chip" data-putla-view="b34">3/4 BACK</button>
+  </div>
+  <div class="search">${icon('search')}<input id="putlaSearch" placeholder="Search Animations" aria-label="Search animations"></div>
+  <div class="putla-stage">
+    <button class="putla-card" id="putlaPick" data-char="${c.id}" aria-label="${esc(c.name)} background par lagao">
+      <img src="${img}" alt="${esc(c.name)}">
+      <span>${esc(c.name)}</span>
+    </button>
+  </div>
+  <p class="putla-hint">Putle par tap karo — character background par aa jayega.</p>`;
+}
 function animationsPanel(){const modes=[{id:'head',name:'Head bob',sub:'Gardan ring movement',icon:'ring'},{id:'body',name:'Full body',sub:'Upar-neeche bounce',icon:'motion'},{id:'still',name:'Still / Idle',sub:'No movement',icon:'character'}].filter(m=>(m.name+' '+m.sub).toLowerCase().includes(animationSearch.toLowerCase()));return `${selectedCharacterHTML()}<div class="search">${icon('search')}<input id="animationSearch" placeholder="Search animations" value="${esc(animationSearch)}"></div><div class="section-label"><span>Working 2D animations</span><span>Front view</span></div><div class="animation-grid">${modes.map(m=>`<button class="animation-card ${current().mode===m.id?'selected':''}" data-animation="${m.id}">${current().mode===m.id?`<span class="tickmark">${icon('check')}</span>`:''}<span class="pose">${icon(m.icon)}</span><strong>${m.name}</strong><small>${m.sub}</small></button>`).join('')}</div><div class="notice">Head bob mein sir hilta hai aur body still rehti hai. Walk, talking aur lip-sync rigs is version mein available nahi hain.</div><button class="primary" id="customizeMotion">Movement customize karo ${icon('arrow')}</button>`;}
 function backgroundsPanel(){const s=current();return `<div class="section-label"><span>Scene backgrounds</span></div><div class="background-grid">${[...assets.backgrounds.values()].map(b=>`<button class="background-card ${s.bg.type==='image'&&s.bg.id===b.id?'selected':''}" data-background="${b.id}"><img src="${b.src}" alt="${esc(b.name)}"><span>${esc(b.name)}</span></button>`).join('')}</div><button class="secondary" id="uploadBackground">${icon('upload')}Apni background image upload karo</button><div class="section-label"><span>Plain colors</span></div><div class="color-grid">${COLORS.map(c=>`<button class="color-dot ${s.bg.type==='color'&&s.color===c?'selected':''}" data-bg-color="${c}" style="background:${c}" aria-label="Background ${c}"></button>`).join('')}</div><div class="field"><label for="customBgColor">Custom color</label><input type="color" id="customBgColor" value="${s.color}"></div>`;}
 let adjustTarget='character';
@@ -2339,7 +2376,12 @@ function wirePanel(){
  if(activePanel==='characters'){
   $('charSearch').oninput=e=>{charSearch=e.target.value;const pos=e.target.selectionStart;renderPanel(false);$('charSearch').focus();$('charSearch').setSelectionRange(pos,pos);};
   $$('[data-category]').forEach(b=>b.onclick=()=>{charCategory=charCategory===b.dataset.category?'All':b.dataset.category;renderPanel(false);});
-  $$('[data-char]').forEach(card=>{card.onclick=e=>{if(e.target.closest('button'))return;pendingChar=card.dataset.char;renderPanel(false);};card.onkeydown=e=>{if(e.key==='Enter'){pendingChar=card.dataset.char;renderPanel(false);}};});
+  $$('[data-char]').forEach(card=>{card.onclick=e=>{if(e.target.closest('button'))return;pendingChar=card.dataset.char;openPanel('putla');};card.onkeydown=e=>{if(e.key==='Enter'){pendingChar=card.dataset.char;openPanel('putla');}};});
+  /* Order 57 — PUTLA page (AutoDraft "My character" jaisa look) */
+  $('putlaBack')&&($('putlaBack').onclick=()=>openPanel('characters'));
+  $$('[data-putla-view]').forEach(b=>b.onclick=()=>toast('Abhi sirf FRONT view hai — 3/4 views is line me nahi.'));
+  $('putlaPick')&&($('putlaPick').onclick=()=>{pendingChar=$('putlaPick').dataset.char||pendingChar;applyCharacter();closePanel();
+    const c=assets.chars.get(pendingChar);toast((c?c.name:'Character')+' background par aa gaya');});
   $$('[data-favorite]').forEach(b=>b.onclick=()=>{const id=b.dataset.favorite;project.favorites=project.favorites.includes(id)?project.favorites.filter(x=>x!==id):[...project.favorites,id];markDirty();renderPanel(false);});
   $$('[data-edit-char]').forEach(b=>b.onclick=()=>{pendingChar=b.dataset.editChar;applyCharacter();openPanel('motion');});
   $$('[data-angle]').forEach(b=>b.onclick=()=>{if(b.dataset.angle==='front'){pendingChar=b.dataset.angleChar;renderPanel(false);}else toast('Abhi sirf FRONT view available hai — 3/4 views is library mein nahi hain.');});
@@ -2587,7 +2629,9 @@ boot();
     var name = (nameEl ? nameEl.textContent : '').trim() || 'My character';
     var img = card.querySelector('.character-art img');
     var src = img ? (img.getAttribute('src') || '') : '';
-    /* data: URI bahut lambi hoti hai — URL me na bhejo */
+    /* data: URI bahut lambi hoti hai — URL me na bhejo, localStorage se bhejo
+       (Order 58: warna putla page par character ki image khaali aati thi) */
+    try { if (src) localStorage.setItem('hilao.charImg', src); } catch (e) {}
     if (src.length > 400) src = '';
     var url = 'animations.html?name=' + encodeURIComponent(name) +
               (id ? '&id=' + encodeURIComponent(id) : '') +
@@ -2818,7 +2862,7 @@ boot();
       'background:rgba(16,16,20,.86);border:1px solid rgba(255,255,255,.18);border-radius:999px;' +
       'padding:4px 8px;font:700 9px/1 Inter,system-ui,sans-serif;letter-spacing:.6px;color:#e8e8ec';
     chip.innerHTML = '<span style="color:#22e07d">BG</span><span data-lab>' +
-      String(sel && (sel.name || sel.anim) || 'LOADING').toUpperCase().slice(0, 18) + '</span>' +
+      String(sel && (sel.charName || sel.name || sel.anim) || 'LOADING').toUpperCase().slice(0, 18) + '</span>' +
       '<span id="smBgAnimX" role="button" aria-label="Background animation hatao" ' +
       'style="display:grid;place-items:center;width:14px;height:14px;border-radius:999px;background:rgba(255,255,255,.14);cursor:pointer">' +
       '<svg viewBox="0 0 24 24" width="8" height="8" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span>';
