@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Demo · Gaon ki kahani</title>
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:#0d0f12;color:#eef1f5;font:500 15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       display:flex;flex-direction:column;min-height:100dvh;padding:14px 14px calc(14px + env(safe-area-inset-bottom))}
+  header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  a.back{display:inline-flex;align-items:center;gap:7px;text-decoration:none;color:#cfd6e0;font-weight:600;
+    padding:9px 13px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+  a.back svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  h1{font-size:15px;font-weight:700;margin:0;opacity:.85}
+  main{flex:1;display:flex;flex-direction:column;gap:12px;justify-content:center}
+  .frame{border-radius:14px;overflow:hidden;background:#000;border:1px solid rgba(255,255,255,.10);box-shadow:0 12px 34px rgba(0,0,0,.45)}
+  video,img{display:block;width:100%;height:auto}
+  .cap{font-size:12.5px;color:#93a0b1;text-align:center}
+  .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:4px}
+  .row a{font-size:12.5px;color:#cfd6e0;text-decoration:none;padding:8px 12px;border-radius:10px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12)}
+  @media(min-width:820px){body{max-width:860px;margin:0 auto}}
+</style>
+</head>
+<body>
+<header>
+  <a class="back" href="start.html"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>Back</a>
+  <h1>Demo · Gaon ki kahani</h1>
+</header>
+<main>
+  <div class="frame">
+    <video src="demo.mp4" poster="demo.gif" autoplay muted loop playsinline controls></video>
+  </div>
+  <div class="cap">Village Kaka — path walk (editor se banaya, 8 sec)</div>
+  <div class="row">
+    <a href="demo.mp4" download>Download MP4</a>
+    <a href="demo.gif" download>Download GIF</a>
+    <a href="hilao.html">Editor kholo</a>
+  </div>
+</main>
+</body>
+</html>
