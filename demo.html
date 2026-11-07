@@ -32,7 +32,10 @@
 </header>
 <main>
   <div class="frame">
-    <video src="demo.mp4" poster="demo.gif" autoplay muted loop playsinline controls></video>
+    <video poster="demo.gif" autoplay muted loop playsinline controls preload="auto">
+      <source src="demo.mp4" type="video/mp4">
+      <source src="demo.webm" type="video/webm">
+    </video>
   </div>
   <div class="cap">Village Kaka — path walk (editor se banaya, 8 sec)</div>
   <div class="row">
