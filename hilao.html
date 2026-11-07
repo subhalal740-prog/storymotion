@@ -942,6 +942,57 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 .tag{ font-size:8px !important; }
 .arrow{ font-size:13px !important; right:12px !important; bottom:11px !important; }
 
+
+/* ---------- 4b. EDITOR character cards (AutoDraft-style tidy tiles) ---------- */
+.character-grid{ grid-template-columns:repeat(2,minmax(0,1fr)) !important; gap:8px !important; }
+.character-card{ border-radius:9px !important; overflow:hidden !important; }
+.character-art{
+  position:relative !important; height:auto !important; aspect-ratio:4/5 !important;
+  background:radial-gradient(120% 70% at 50% 100%, rgba(255,255,255,.05), transparent 70%), #12151a !important;
+  padding:0 !important; display:block !important; overflow:hidden !important;
+}
+.character-art img{
+  position:absolute !important; left:0; right:0; bottom:0; top:0; margin:auto;
+  width:100% !important; height:100% !important;
+  object-fit:contain !important; object-position:bottom center !important;
+  padding:14px 8px 22px !important; opacity:1 !important;
+}
+.char-name{
+  position:absolute !important; left:5px !important; right:52px !important; bottom:5px !important;
+  top:auto !important; max-width:none !important; font-size:8.5px !important; font-weight:600 !important;
+  background:rgba(10,12,15,.72) !important; padding:2px 6px !important; border-radius:4px !important;
+  overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important;
+}
+.char-badge{
+  position:absolute !important; left:5px !important; top:5px !important; bottom:auto !important;
+  font-size:7px !important; padding:2px 5px !important; border-radius:4px !important; letter-spacing:.3px !important;
+}
+.char-edit{
+  position:absolute !important; right:5px !important; top:5px !important;
+  width:20px !important; height:20px !important; padding:0 !important; border-radius:5px !important;
+  display:grid !important; place-items:center !important;
+  background:rgba(10,12,15,.72) !important; border:1px solid rgba(255,255,255,.16) !important;
+  font-size:0 !important; gap:0 !important;
+}
+.char-edit .icon{ width:11px !important; height:11px !important; }
+.char-pin{
+  position:absolute !important; right:5px !important; top:auto !important; bottom:5px !important;
+  width:20px !important; height:20px !important; border-radius:5px !important;
+  background:rgba(10,12,15,.72) !important;
+}
+.char-pin .icon{ width:12px !important; height:12px !important; }
+.char-delete{
+  position:absolute !important; right:28px !important; bottom:5px !important; left:auto !important; top:auto !important;
+  width:20px !important; height:20px !important; border-radius:5px !important;
+}
+.char-delete .icon{ width:12px !important; height:12px !important; }
+.character-card .check{
+  position:absolute !important; left:5px !important; top:26px !important;
+  width:15px !important; height:15px !important;
+}
+.character-card .check .icon{ width:10px !important; height:10px !important; }
+.character-card .chip, .character-card .front-tabs{ font-size:8px !important; }
+
 /* ---------- 5. very small phones ---------- */
 @media (max-width:360px){
   .topbar{ height:40px !important; }
