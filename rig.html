@@ -3077,7 +3077,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
        ("kam se kam 800×1000 chahiye"). Ab unhe khud upscale kar dete hain —
        cut geometry resolution se independent hai, isliye quality par asar nahi.
        Bahut chhoti (< 300px) image par hi reject karte hain.                     */
-    const MIN_W = 800, MIN_H = 1000, MAX_SIDE = 2400;
+    const MIN_W = 800, MIN_H = 1000, MAX_SIDE = 3200;   /* v18.3: tall-thin images (280×940) 800px width tak upscale ho sakein */
     let scaleNote = '';
     if (W < MIN_W || H < MIN_H) {
       const biggest = Math.max(W, H);
@@ -3087,7 +3087,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         Memory.purgeAll('too small'); hud(); return;
       }
       let k = Math.max(MIN_W / W, MIN_H / H);
-      if (biggest * k > MAX_SIDE) k = MAX_SIDE / biggest;
+      /* MAX_SIDE cap sirf tab lagao jab MIN_W/H bhi mil jaye — warna 715×2400 jaisi
+         image ban kar reject ho jati thi (bug). */
+      if (biggest * k > MAX_SIDE) {
+        const kCap = MAX_SIDE / biggest;
+        if (W * kCap >= MIN_W && H * kCap >= MIN_H) k = kCap;
+      }
       const W2 = Math.max(1, Math.round(W * k)), H2 = Math.max(1, Math.round(H * k));
       const up = Memory.makeCanvas(W2, H2);
       const uc = up.getContext('2d', { willReadFrequently: true });
