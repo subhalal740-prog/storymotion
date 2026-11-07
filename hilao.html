@@ -2635,7 +2635,8 @@ boot();
     if (src.length > 400) src = '';
     var url = 'animations.html?name=' + encodeURIComponent(name) +
               (id ? '&id=' + encodeURIComponent(id) : '') +
-              (src ? '&img=' + encodeURIComponent(src) : '');
+              (src ? '&img=' + encodeURIComponent(src) : '') +
+              '&v=' + Date.now();   /* cache-bust: purana build na khule */
     setTimeout(function () { location.href = url; }, 170);
   }
   document.addEventListener('click', function (e) {
