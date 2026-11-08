@@ -1424,3 +1424,13 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - **Test (local + LIVE):** button ✓ · sprite 12 frames/282,626 B ✓ · card me canvas walk (do alag frame me pair alag) ✓ · badge WALK · LIVE ✓ · errs 0 ✓.
 - Evidence: `R108-LIVE-PUTLA-WALK.png` (live card, 2 frames), `R108-PUTLA-PROOF.png` (local).
 - Backups: `animations-backup-r108.html`, `actionanim-backup-r108.js`.
+
+## Round 109 — putlo page par **sirf ek: safed putla walk (AutoDraft jaisa)** (live `animations.html` `4ff9abd` 64416 B)
+- User: "ye humko nahi chahiye only 1 — Walk safed putla bilkul autodraft animation me". Yani character-photo wala card hata kar **safed white puppet walk** chahiye.
+- **Kiya:** `animations.html` ke `render()` me putla card ab **hamesha safed putla** dikhata hai — ek canvas (160×220) par procedurally draw hota hua **white silhouette human**: sr, gardan, kandhe, torso, do haath (pair ke ulte), do pair (knee bend ke saath), panje. ~8fps, walk cycle ~1.1s.
+- Character image / sprite / video: **kuch nahi** use hota — sirf canvas drawing. Isliye hamesha sharp aur halka.
+- Card label **"Walk"**, badge **"WALK"**. Purana `hilao.sprite` (R108) ab use nahi hota (par storage me pada reh sakta hai — koi nuksan nahi).
+- Tuning: pehle pair 20°/22° swing se "spagetti" lag raha tha → **12° hip + 22° knee**, haath **14°**, kandhe ki bar add — ab AutoDraft jaisa tight, seedha walk.
+- **Live test:** cards **1** ✓ · label "Walk" ✓ · badge WALK ✓ · white pixels 7,257 ✓ · **animate ho raha** (frame signature badalta) ✓ · errs 0 ✓.
+- Evidence: `R109-LIVE-PAGE.png` (live page), `R109-LIVE-WHITE-WALK.png` (2 frames), `R109-WHITE-WALK.png` (local).
+- Backup: `animations-backup-r109.html`.
