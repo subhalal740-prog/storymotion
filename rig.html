@@ -1378,6 +1378,14 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const T_LOCAL = 14;       /* padosi ke itna close = background (texture/gradient) */
     const T_SOFT = 76;        /* feather band */
     const A_MIN = 18;
+    /* v19.1 · PAPER RULE — safed/off-white background par pada soft ground-shadow
+       (grey ellipse) aur halka white halo model-fit se bahar reh jata tha. Ab flood
+       "paper" pixels me bhi creep karta hai: light + kam saturation + step par
+       luminance sirf thoda badle (smooth gradient). Character ke outline par
+       luminance/saturation turant badal jate hain → leak nahi hota. */
+    const PAPER_LUM = 176;    /* isse roshan pixel hi paper */
+    const PAPER_SAT = 34;     /* itna hi range (max-min) paper */
+    const PAPER_RAMP = 17;    /* ek step me luminance ka allowed farq */
 
     function dist(r, g, b, c) {
       const dr = r - c[0], dg = g - c[1], db = b - c[2];
@@ -1519,6 +1527,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         const p = stack[--sp];
         const x = p % W, y = (p - x) / W;
         const pi = p * 4, pr = d[pi], pg = d[pi + 1], pb = d[pi + 2];
+        const pLum = (pr + pg + pb) / 3;
+        const pSat = Math.max(pr, pg, pb) - Math.min(pr, pg, pb);
+        const pPaper = (pLum > PAPER_LUM && pSat < PAPER_SAT);
         for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
           const nx = x + ox, ny = y + oy;
           if ((!ox && !oy) || nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
@@ -1530,6 +1541,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           if (!okPixel && LOCAL > 0 && dm <= T * 1.35) {
             const dl = Math.abs(d[qi] - pr) + Math.abs(d[qi + 1] - pg) + Math.abs(d[qi + 2] - pb);
             okPixel = dl <= LOCAL;
+          }
+          if (!okPixel && pPaper) {
+            const qr = d[qi], qg = d[qi + 1], qb = d[qi + 2];
+            const qLum = (qr + qg + qb) / 3;
+            const qSat = Math.max(qr, qg, qb) - Math.min(qr, qg, qb);
+            if (qLum > PAPER_LUM && qSat < PAPER_SAT && Math.abs(qLum - pLum) <= PAPER_RAMP) okPixel = true;
           }
           if (okPixel) { mark[q] = 1; stack[sp++] = q; }
         }
@@ -1588,7 +1605,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           if (!touch) continue;
           const c = model.at(x / W, y / H);
           const dd = dist(d[i], d[i + 1], d[i + 2], c);
-          if (dd > T_SOFT) continue;
+          /* v19.1: paper (safed halo / shadow rim) ho to seedha hatao */
+          const lum2 = (d[i] + d[i + 1] + d[i + 2]) / 3;
+          const sat2 = Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]);
+          if (dd > T_SOFT) {
+            if (lum2 > PAPER_LUM + 20 && sat2 < PAPER_SAT - 6) { edge.push(i, 0); continue; }
+            continue;
+          }
           const k = Math.max(0, (dd - T_HARD) / (T_SOFT - T_HARD));
           const a = Math.round(d[i + 3] * k);
           if (a < d[i + 3]) edge.push(i, a);
@@ -1644,6 +1667,27 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         return { ok: false, uniform: solidPct, mode,
                  msg: 'Background ke saath character bhi hat gaya — is image par character nahi mila.' };
       }
+
+      /* v19.1 · bache hue paper specks (safed halo ke tukde jo flood se chhoot gaye)
+         — sirf jab wo bilkul flat safed hon aur border ke paas hon. */
+      (function killPaperSpecks() {
+        for (let p = 0; p < total; p++) {
+          if (mark[p]) continue;
+          const i = p * 4;
+          if (d[i + 3] < 24) continue;
+          const lum = (d[i] + d[i + 1] + d[i + 2]) / 3;
+          const sat = Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]);
+          if (lum < 244 || sat > 10) continue;                 /* sirf pure safed */
+          const x = p % W, y = (p - x) / W;
+          let near = false;
+          for (let oy = -2; oy <= 2 && !near; oy++) for (let ox = -2; ox <= 2; ox++) {
+            const nx = x + ox, ny = y + oy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+            if (mark[ny * W + nx]) { near = true; break; }
+          }
+          if (near) { d[i + 3] = 0; mark[p] = 1; }
+        }
+      })();
 
       const avg = model.at(0.5, 0.5);
       const hex = '#' + avg.map((v) => Math.max(0, Math.min(255, Math.round(v))).toString(16).padStart(2, '0')).join('').toUpperCase();
