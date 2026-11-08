@@ -4667,7 +4667,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       setTimeout(function () {
         if (target === 'actionanim') {
           /* R105 · seedha WALK animation (Action Studio) — putla apne aap load hota hai */
-          location.href = 'actionanim.html?action=walk&char=auto&name=' + encodeURIComponent(nm) + '&v=' + Date.now();
+          /* live=1 → wahi putla chalti hui tiles me (Idle/Walk/Run/Dance/Wave) + bada studio */
+          location.href = 'actionanim.html?action=walk&char=auto&live=1&name=' + encodeURIComponent(nm) + '&v=' + Date.now();
         } else {
           location.href = 'animations.html?name=' + encodeURIComponent(nm) + '&v=' + Date.now();
         }
