@@ -1434,3 +1434,13 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - **Live test:** cards **1** ✓ · label "Walk" ✓ · badge WALK ✓ · white pixels 7,257 ✓ · **animate ho raha** (frame signature badalta) ✓ · errs 0 ✓.
 - Evidence: `R109-LIVE-PAGE.png` (live page), `R109-LIVE-WHITE-WALK.png` (2 frames), `R109-WHITE-WALK.png` (local).
 - Backup: `animations-backup-r109.html`.
+
+## Round 110 — safed putla AutoDraft jaisa (volume + smooth walk) · live `animations.html` `68e47e6` 67085 B
+- User: "safed putla hi rakhna hai, jab tak AutoDraft jaisa na chale" → flat stick figure ki jagah **AutoDraft jaisa 3D mannequin**.
+- **Reference:** apne hi `VIDEO-grid-a.png` (autodraft.in screenshots) se comparison — unka putla **volume wala safed mannequin** hai, halki shading, koi outline nahi, kandhe chaudi, kamar patli, sar ellipse, panje chhote.
+- **Naya drawing engine (`startWhiteWalk`) ko poora badla:** har limb ab **capsule + cylindrical gradient** (`limb()` helper) se banti hai → 3D volume; torso quadratic-curve silhouette + horizontal gradient; sar **radial gradient** ellipse; pair me hip→knee→ankle (ghutna asli tarah mudta), panja alag shape; peeche wale haath/pair **gehre shade** (`C_LO2`) me pehle draw hote hain → depth.
+- **Motion:** walk cycle **1.25 s**, badan dobara bob (2×), halka lean. Stride tuning: hip **17°→11.5°**, knee **42°→30°**, haath **15°→9.5°** (pehle march karta lag raha tha, ab seedha AutoDraft jaisa).
+- Canvas **320×440** (2× crisp), figure 0.87 scale (card me khula space).
+- **Live test:** cards **1** ✓ · label Walk · badge WALK ✓ · animating ✓ · whitePx 10,476 ✓ · errs 0 ✓.
+- Evidence: `R110-LIVE-WALK-STRIP.png` (live, 4 frames), `R110-PUPPET-STRIP.png` (local), `R109-LIVE-PAGE.png`.
+- Backup: `animations-backup-r110.html`.
