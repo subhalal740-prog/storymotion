@@ -1355,3 +1355,18 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - **Note (honest):** Load Snapshot naye session me pose/pieces 0 dikhata hai kyunki snapshot me original image bytes nahi hote — sirf rig data. Isliye asli file ke liye PNG/JSON hi useful hai; snapshot sirf usi tab ke liye jab image wahi ho.
 - **UI (look same, sirf ek help block add):** Save page par "Kaunsa save kab — 2 line me" box: PNG = dikhane/use karne ke liye (rig data isme nahi), JSON = tool ka data (PNG se animation nahi banti), Snapshot = sirf isi phone me.
 - Evidence: `R102-SAVE-HELP.png` (live), `SAVE-PNG-PREVIEW.png` (test se nikli PNG).
+
+## Round 103 — dhoti/lungi wale character par walk fix (asli bug) + arms-down character test (live `7e4c2b3`, 309664 B)
+- User: arms-down prompt se character banaya; tool me walk test karna tha. Isi test me **asli bug mila**.
+- **Bug:** jab pair neeche **ek hi kapde (dhoti/lungi/chaadar) me** juda hota hai (beech me bg gap nahi), to auto-cut ke labeling me **poora run ek hi pair** ko chala jata tha. Nateeja: leg piece me "comb" — ek row bhara, ek row khaali (legL me 78 khaali rows) → walk par background ki pattiyan pair me se dikhti thin.
+- **Fix 1 (`patch103`)**: `y >= crotchY` wale run me agar `a < cx < b` (ek hi run me dono pair) to run **cx par split** hota hai — baayan hissa legL/shinL, daayan legR/shinR.
+- **Fix 2 (`patch103b`)**: legs ka joint overlap pehle **0** tha (arms/torso ko 6–18px milta tha). Dhoti wale character me isse pair ghumne par beech me background ka wedge dikhta tha. Ab legs bhi ~8px overlap karte hain.
+- **Test (local + LIVE, asli image `vom-single-front.png` 1408×768):**
+  | Test | Pehle | Baad me |
+  |---|---|---|
+  | legL piece ke khaali rows | 78 | **2 (sirf padding)** |
+  | legL ke row-means | 0,16,25,151,228,157,24,23… | **0,124,193,197,201,202,204…** (solid) |
+  | walk | comb artifact | saaf, 8 parts, pair anti-phase 34° |
+- **Regression (sab green, errs 0):** bgiou 7 images IoU 97.2–99.8 / charKept 93.4–98.6; bgleave OLD=NEW (photo-bg par koi change nahi); ck-core coreKept 99.94; ck-pocket2 3,135 px · core 100%; erasertest3 · nav 5/5 · scroll 280px/0 stroke · draw modes safe/brush ✓ · gaitmirror 0.0004 · save PNG+JSON ✓.
+- Evidence: `R103-VOM-WALK-LIVE.png` (live walk, 4 frames), `R103-LEG-FIXED.png` (leg piece solid), `WALK-vom-single-AFTER2.png`.
+- Backup: `rig-backup-103a.html`, `rig-backup-102a.html`.
