@@ -2198,6 +2198,19 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           for (let i = 0; i < r.length - 1; i++) if (r[i][1] < cx && cx < r[i + 1][0]) { gi = i; break; }
           for (let j = 0; j < r.length; j++) {
             const [a, b] = r[j];
+            /* R103 · dhoti/lungi jaisa kapda ho to neeche ke row me DONO pair ek hi
+               run me hote hain (beech me gap nahi). Pehle poora run ek hi pair ko
+               milta tha → piece me "comb" (ek row bhara, ek row patla) ban jata tha
+               aur walk par background ki pattiyan dikhti thin. Ab aisa run cx par
+               SPLIT hota hai: baayan hissa legL, daayan hissa legR. */
+            if (gi < 0 && a < cx && b > cx) {
+              for (let x = a; x <= b; x++) {
+                let id = (x < cx) ? ID.legL : ID.legR;
+                if (y >= kneeY) id = (x < cx) ? ID.shinL : ID.shinR;
+                lab[y * W + x] = id; bodyPx++;
+              }
+              continue;
+            }
             let id;
             if (gi < 0) id = (a + b) / 2 < cx ? ID.legL : ID.legR;
             else if (j < gi) id = ID.armL;
@@ -2315,7 +2328,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
              chhup jata hai) — isliye ghutna mudne par seam bahar nahi dikhta.
              Thigh neeche ki taraf nahi badhta. */
           const isShin = (k === 'shinL' || k === 'shinR');
-          const GR = isShin ? 9 : ((k === 'legL' || k === 'legR') ? 0 : JOINT_R);
+          /* R103b · dhoti / lungi / chaadar jaisa kapda ho to pair beech me juda
+             rehta hai (koi gap nahi). Pehle legs ka overlap 0 tha, isliye ek pair
+             ghumne par beech me background ka wedge dikhta tha. Ab legs bhi ek
+             dusre ke andar thoda (8px) failte hain — seam dhak jata hai. */
+          const GR = isShin ? 9 : ((k === 'legL' || k === 'legR') ? Math.max(8, Math.round(JOINT_R * 0.8)) : JOINT_R);
           for (let it = 0; it < GR; it++) {
             const nm = m.slice();
             for (let y = bMinY; y <= bMaxY; y++) for (let x = bMinX; x <= bMaxX; x++) {
