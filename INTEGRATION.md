@@ -1255,3 +1255,14 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - Regression: nav (1/2→pg1, 3→pgPos, 4→pg3, 5→pgSave) ✓, eraser apply (3,328 px, 8 pieces) ✓, `errs 0`.
 - Evidence: `GAIT-MIRROR-SHEET.png` (3 frames normal vs 3 frames mirrored), `GAIT-RAHUL-A/B.png`, `gs-normal-*.png`, `gs-mirror-*.png`.
 - Note: auto facing detect 3/4 characters par neutral (`front`) aata hai — us case me user ek tap se direction set karta hai (manual), aur wo choice re-cut tak nahi udti jab tak naya image upload na ho.
+
+## Round 99 — ERASER ab "Sirf BG" (chrome-key): character ka koi hissa nahi katta — live `d9b5c75` (285909 B)
+- User: "Chrom key eraser rakho — wo sirf usi hisse ko saaf karega jahan background reh gaya, baki character ko koi nuksan na ho."
+- Pehle: brush jahan chalta, wahan ka sab (character bhi) mit jata tha. Ab do modes:
+  - **Sirf BG** (default): sirf wahi pixel mita hai jo (a) brush ke neeche hai, (b) transparent BG ke kinare se 10px ke andar ka halo/rim hai (bg se 100 tak), YA (c) bg-jaisa rang rakhta hai, bg se juda hai, patla hai (≤26px) aur tez outline nahi hai. Charan-dhaar/kapda/skin par brush chala do — kuch nahi katta.
+  - **Kuch bhi**: purana behaviour (jitna ragdo utna jaata hai) — background ke *andar* phanse dhabbe ke liye.
+- Text: hint + mode note + stat `X px erased · Y px safe · N pieces`; `bgColorAvailable()` guard (reject/`character-lost` image par bhram na ho); `fit()` me `App.W/H` guard (blank canvas bug).
+- **Numeric (7 bgtest images, halo par stroke):** character ke andar ke pixels bache —
+  S1 99.91% (dmg 128), S2 99.91% (128), S3 99.94% (193), S4 99.95%, S5 99.89% (148), S6 99.89% (156), S7 98.72% (1670 — kaala pant/dark bg me thoda overlap). Bina mode ke = 0% safe (sab katta tha). `Kuch bhi` mode = purana behaviour (verify).
+- Visual: `CK-S1_white_greyshadow_halo-PAIR.png`, `CK-S7_dark_bg-PAIR.png` (halo stroke ke baad bhi character jaisa tha waisa), `CK99-LIVE-UI.png` (live UI).
+- Regression: nav 5/5 ✓, eraser (Kuch bhi) 3,328 px ✓, walk mirror ✓, `errs 0` (local + live).
