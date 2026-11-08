@@ -1444,3 +1444,12 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - **Live test:** cards **1** ✓ · label Walk · badge WALK ✓ · animating ✓ · whitePx 10,476 ✓ · errs 0 ✓.
 - Evidence: `R110-LIVE-WALK-STRIP.png` (live, 4 frames), `R110-PUPPET-STRIP.png` (local), `R109-LIVE-PAGE.png`.
 - Backup: `animations-backup-r110.html`.
+
+## Round 111 — user ne poochha: "ring animation khud check karo, chal rahi hai ya nahi" (sirf test, koi code change nahi)
+- **Test setup:** `gh-upload/demo-character.png` (T-pose) → `rig.html` → auto-cut 6 parts → page 4 → WALK → 4 frames + `RIG.Pose.getRotation()` readings.
+- **Nateeja:** rings ✓ (6 rings), walk cycle ✓, pair swing **-0.295 … +0.231 rad (~30°)** ✓, ghutna ✓, bob ✓, page errors **0** ✓.
+- **Do asli kamiyan (±):**
+  1. **Haath ka swing sirf ~6°** (armL -0.076…+0.101 rad) — aankh se lagbhag nahi dikhta. Fix = `ARM_SWING_AMP` 0.2356 → ~0.42 (ya `armAmp`), **user ki anumati chahiye** (v9 look / default behaviour badlega).
+  2. **T-pose photo + "Arms Down (photo)"** = haath bahar hi rehte hain (by design, photo me haath pehle se neeche maana jata hai).
+- **Manual check:** `RIG.Pose.setAngle('armL', 1.4)` → haath upar chala gaya = rig + rings dono sahi kaam karte hain.
+- Evidence: `R111-RING-CHECK.md`, `R111-RING-NUMBERS.json`, `RING-WALK-STRIP.png`, `RING-DOWN-STRIP.png`, `RING-ARMTEST.png`.
