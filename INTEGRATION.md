@@ -1453,3 +1453,13 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
   2. **T-pose photo + "Arms Down (photo)"** = haath bahar hi rehte hain (by design, photo me haath pehle se neeche maana jata hai).
 - **Manual check:** `RIG.Pose.setAngle('armL', 1.4)` → haath upar chala gaya = rig + rings dono sahi kaam karte hain.
 - Evidence: `R111-RING-CHECK.md`, `R111-RING-NUMBERS.json`, `RING-WALK-STRIP.png`, `RING-DOWN-STRIP.png`, `RING-ARMTEST.png`.
+
+## Round 112 — putlo page par **demo wala REAL character chalta** + tap par background par character (live: `animations.html` `dd8d305` 69320 B · `hilao.html` `7b21d1c` 4999025 B · `anim/kaka-walk.png` `2c43a9f` 326922 B · `anim/kaka.png`)
+- User: "video demo wala real character click pe open, putlo wale page select putla background pe show character".
+- **Card:** safed putla hata, **asli chalta hua character** (kaka) — rig.html se **12-frame walk sheet bake** ki (`anim/kaka-walk.png`), background transparent, 10 fps, koi video nahi. Sheet na mile to safed putla fallback.
+- **Bake details:** `rig.html` me `char-small.png` upload → `walk` → `spread 0.08`, `speed 0.85` → 76 frames → har frame se **sirf sabse bada blob** rakha (chhote detached dhoti/pair ke tukde hate), 12 frames 190×250 sheet.
+- **Tap = character background par:** `hilao.html` me hook add — `hilao.pickChar` me `src` (kaka PNG dataURI) jaata hai → hilao `addCharacter()` se **usi image ka character** banata hai → `applyCharacter()` → seedha scene me. "Use character" dabana nahi padta.
+- **Do bug raste me mile:** (1) pick me `src` khaali ja raha tha (fallback nahi chal raha tha) → `anim/kaka.png` + demoChar key; (2) pehle built-in `village-kaka` id par jaa raha tha → **alag character** (safed kurta / green kurta) background par aa raha tha → ab **src-first** hook, isliye card wala hi character aata hai.
+- **Test (local + LIVE):** card me painted pixels 50,473 ✓ · 4 frame me pair badalte ✓ · tap → `hilao.html` → `charVisible: true` ✓ · character **kaka** (wahi kapda) ✓ · errs 0 ✓.
+- Evidence: `R112-LIVE-CARD-STRIP.png` (live card), `R112-LIVE-FINAL.png` (live: tap ke baad background par character), `KAKA-CLEAN-12.png` (baked sheet).
+- Backups: `animations-backup-r112.html`; `hilao.html` ka original `/tmp/hilao.html` se dobara bana sakte hain (patch = boot me pickChar block).
