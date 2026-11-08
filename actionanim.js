@@ -1227,7 +1227,7 @@
     wrap.innerHTML = '';
     const tiles = ACTS.map(function (id) {
       const cv = document.createElement('canvas');
-      cv.width = 132; cv.height = 176;
+      cv.width = 180; cv.height = 240;
       cv.style.cssText = 'width:100%;height:auto;border-radius:12px;background:#101114;border:1px solid rgba(255,255,255,.08);display:block';
       const box = document.createElement('div');
       box.style.cssText = 'text-align:center;font:800 10px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#aab2bb;letter-spacing:.5px';
@@ -1244,7 +1244,8 @@
     function drawSmall(tile, tNorm) {
       const ctx = tile.ctx, W = tile.cv.width, H = tile.cv.height;
       const pose = groundLock(poseAt(tile.id, tNorm));
-      const sc = Math.min(W / CW, H / CH);
+      /* 1.35x par draw → neeche CSS se chhota dikhta hai: mesh seams patli dikhti hain */
+      const sc = Math.min(W / CW, H / CH) * 1.35;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, W, H);
       ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
