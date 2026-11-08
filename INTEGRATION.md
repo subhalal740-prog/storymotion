@@ -1415,3 +1415,12 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - **Result (live):** 5 tiles (IDLE/WALK/RUN/DANCING/WAVING) — kurta flat, koi wing bulge nahi, jali nahi. Evidence: `R107-LIVE-TILES.png` (live), `TILE-ZOOM.png` (3× zoom), `TILES-NOW.png` (local).
 - Test: tiles 5 ✓ · animate ✓ · 30s stable ✓ · errs 0 ✓.
 - Backups: `actionanim-backup-r106.js`.
+
+## Round 108 — **putlo ke page par card khud chalta hai** (live: `actionanim.js` `58b1361` 66030 B · `animations.html` `da7c42c` 61475 B)
+- User: "putlo me convert nahi hoga kya ye" → clarify kiya: **putlo ke page par card chalta-phirta dikhe** (jaise autodraft.in me).
+- **Kaise bana:** Action Studio me naya button **"Putla page par chalao"** → current action ke **12 frames ka sprite sheet** (150×200/frame, horizontal) banata hai → `localStorage['hilao.sprite']` me rakhta hai → `animations.html` par bhej deta hai.
+- **Putlo ka page (`animations.html`):** `hilao.sprite` mila to card me **canvas** par 8fps walk chalta hai + **"WALK · LIVE"** badge; sprite na ho to pehle jaisa static image (koi purana behaviour nahi toota).
+- **Do bug raste me pakde:** (1) sprite `div` ka size 0×0 tha → card khaali; (2) `background-position` method image ko stretch kar rahi thi (aadha character) → ab **canvas + drawImage** se draw hota hai, aspect sahi.
+- **Test (local + LIVE):** button ✓ · sprite 12 frames/282,626 B ✓ · card me canvas walk (do alag frame me pair alag) ✓ · badge WALK · LIVE ✓ · errs 0 ✓.
+- Evidence: `R108-LIVE-PUTLA-WALK.png` (live card, 2 frames), `R108-PUTLA-PROOF.png` (local).
+- Backups: `animations-backup-r108.html`, `actionanim-backup-r108.js`.
