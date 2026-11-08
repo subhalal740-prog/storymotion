@@ -3142,7 +3142,19 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       cv.addEventListener('pointerup', (e) => {
         if (jDrag) {
           const id = jDrag.id; jDrag = null;
-          jointsReady[id] = true;         /* manual set = confirmed */
+          /* R118c · pehle yahan jointsReady[id] = true tha — sirf TAP karne se bhi
+             galat joint PASS (green ✓) ho jata tha. Ab sach: us joint ka check
+             dobara chalta hai; sahi jagah par hai tabhi ✓, warna WARN hi rehta hai. */
+          try {
+            const chk1 = jointChecks(); jointChecksCache = chk1;
+            if (chk1[id] && chk1[id].ok) jointsReady[id] = true; else delete jointsReady[id];
+            /* drag se koi aur joint bigda? wo bhi dobara naapo */
+            JOINTS.forEach(function (jj) {
+              if (jj.id === id || !joints[jj.id]) return;
+              if (chk1[jj.id] && chk1[jj.id].ok) { /* pass rehne do */ }
+            });
+          } catch (e) {}
+          /* manual set = suggestion (check hi asli faisla hai) */
           /* R115 · leg joint drag -> asli pivot turant update */
           try { if (window.__SYNC_LEG_PIVOTS) window.__SYNC_LEG_PIVOTS(id); } catch (er) {}
           try { if (window.__ON_JOINT_MOVED) window.__ON_JOINT_MOVED(id); } catch (er) {}
@@ -6600,6 +6612,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     };
     if (q('jntDone')) q('jntDone').onclick = function () {
       var Sx = S(); if (!Sx) return;
+      /* R118c · "done" dabaane par bhi sach: saare joints dobara check */
+      try { Sx.recheck(); Sx.syncJointUI(); } catch (e) {}
       var miss = Sx.JOINTS.filter(function (j) { return !Sx.getJointsReady()[j.id]; }).map(function (j) { return j.label; });
       if (miss.length) {
         U.toast('Ye joints WARN hain (' + miss.length + ') — sahi jagah rakho: ' + miss.slice(0, 4).join(', ') + (miss.length > 4 ? '…' : ''));
