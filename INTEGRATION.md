@@ -1590,3 +1590,20 @@ Backup: `rig-backup-r116-pre.html`.
 **Visual:** 3× zoom par black wedge/gap **nahi** (1× par downscale artifact); ~55 px stray fragment har frame me (foot/shin cleanup pending); 3D depth (back shoe upar/chhota) 2D rig preserve nahi kar sakta.
 
 Report: `R116B-REDMAN-TEST-REPORT.md`. Evidence: `R116-REDMAN-SUMMARY.png`, `R116-REDMAN-AUTO-VS-FIXED.png`, `R116-REDMAN-FEET.png`, `R116-REDMAN-MOBILE.png`.
+
+## R117 · GREEN-POLO CHARACTER + BUG FIX (live `98c8198`, 385,575 B)
+
+**Character:** 1024×1536 barefoot green-polo, arms down, paer thode alag. `testchars/ch-green-polo.png`.
+
+**BUG #1 FIXED — floating hand fragments:** base auto-cutter ke overlap-grow me connectivity check nahi tha, isliye haath ka hissa `legL/legR` ke canvas me ghus jata tha (851 / 1,653 px) aur walk me alag udta tha. Fix = `dropDangling` island guard (main blob se na jude islands hatao). Green: 3 dirty pieces → 0. **Bonus:** R116 ke Kaka/Woman/Red-man stray-fragment FAIL bhi fix. Regression 6 characters par max Δ0.021.
+
+**BUG #2 REPORTED (fix nahi kiya):** auto-detect leg joints iss character par body se bahar — anL 79 px neeche, anR 69 px neeche, knR off. 15 me 7 joints body par. Ankles manually set karne par footL 6,870→12,236 px, footR 6,428→11,417 px, walk saaf. Yahi red-man (R116-B) me bhi hua → pattern.
+
+**BUG #3 (chhota):** bare-foot extreme swing me 1–2 px seam (rig gap 0.00 px, pure pixel seam).
+
+**ORIG vs FLIP:** flip se kuch improve nahi — sirf L↔R swap (walk 60/59.5 fps, sync −0.904/−0.906, gap 0 dono, dono me 1 component).
+
+**Checks:** alignment PARTIAL · walk PASS (60fps errs 0) · run PASS · sync PASS (−0.904/−0.804) · gap 0.00 px · PNG sha unchanged · mobile 412 overflow 0 · floating fragments PASS after fix.
+
+Report: `R117-GREEN-TEST-REPORT.md`. Evidence: `R117-GREEN-AFTER-FIX.png`, `R117-GREEN-ANKLE-FIX.png`, `R117-GREEN-ORIGvsFLIP.png`, `R117-GREEN-PIECES.png`, `R117-GREEN-MOBILE.png`.
+Backup: `rig-backup-r117-pre.html`.
