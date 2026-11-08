@@ -1545,3 +1545,26 @@ Backups: `rig-backup-r113.html`, `rig-backup-r114.html`, `rig-backup-r114b.html`
 
 Evidence: `R115-LIVE-BOTH.png`, `R115-JOINT-PROOF.png`, `R115-WALK-ZOOM.png`, `R115-VS-R114.png`, `R115-TEST-WALK-kaka.mp4`.
 Backup: `gh-upload/rig-backup-r115-pre.html` (R114 live), `rig-backup-r115-final-local.html`.
+
+---
+
+## R116 · UNIVERSAL CHARACTER VALIDATION (live `8ff5817`, 383,068 B)
+
+**Scope:** rig/UI/head-neck **kuch nahi chhua**. Sirf test + ek engine bug fix.
+
+**6 test characters:** kaka (arms-down), adult-man (arms-down), woman (arms-down), demo-boy (T-pose), tpose-man (T-pose), tpose-boy (T-pose).
+
+**Natije:** 4/6 clean PASS, 2/6 me cosmetic stray-fragment FAIL.
+- Alignment: 15/15 joints har character, L/R dy = 0 (100% symmetric), hip<knee<ankle 12/12.
+- Walk+Run: dono chalte, errs 0 (6/6); run knee walk se ~40–45% zyada.
+- Arm↔opposite-leg sync: Pearson −0.78 … −0.92 (6/6), control same-side +0.79 … +0.83.
+- Ankle gap: **0.00 px** (6/6, walk+run); sole drift 2–4 px.
+- Original PNG: SHA-256 unchanged (6/6).
+- Mobile 412×915 + 360×740: horizontal overflow 0, koi element bahar nahi; joint buttons 25 px (R113 se same, iss task me nahi badla).
+
+**BUG FIX (R114 se maujood):** forearm ka rotation relative bhej raha tha, draw absolute maanta hai → **T-pose me forearm 90° galat**. Fix: `AR15[foreId] = foreTotal` (absolute). Arms-down characters me bug chhupa hua tha (armRot≈0).
+
+**Baaki (imaandaari se):** kaka par 2 + woman par 1 stray outline fragment (11–13 px) — foot/shin split me blob cleanup nahi hai; ankle joint 3 chars me 3–7 px neeche; fps headless me 18–60 (software raster).
+
+Report: `R116-TEST-REPORT.md`. Evidence: `R116-LIVE-MATRIX.png`, `R116-JOINTS-REST.png`, `R116-MOBILE-412.png`, `test116/`.
+Backup: `rig-backup-r116-pre.html`.
