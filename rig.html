@@ -2561,6 +2561,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       /* v17: stage = character se 1.55x chaudi — walk/run me aage badhne ki jagah */
       baseScale = Math.min(availW / (bbox.w * STAGE_MUL), maxH / bbox.h);
       if (!wide) baseScale = Math.min(baseScale, 0.50);
+      /* Order 93: stage thoda zoom-out — character frame me thoda chhota, aas-paas saans lene ki jagah */
+      baseScale *= STAGE_ZOOM;
       /* v18.4 · SHARP SYNC: canvas bitmap = CSS size × devicePixelRatio.
          Isse character aur rings dono ek hi pixel grid par hote hain
          (pehle canvas 1x tha aur browser usko stretch karta tha — rings
@@ -2602,6 +2604,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     }
 
     const STAGE_MUL = 1.45;                    /* travel room (left + right) */
+    const STAGE_ZOOM = 0.86;                   /* Order 93: rig page zoom-out (~14% chhota) */
     function padX() { return (bbox.w * STAGE_MUL - bbox.w) / 2; }   /* character start = center */
     function toScreen(x, y) { return { x: (x - bbox.x + padX()) * scale, y: (y - bbox.y) * scale }; }
 
