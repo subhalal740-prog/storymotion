@@ -1404,3 +1404,14 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - **Live test (Village-Kaka type character):** tiles 5 ✓ · **sab 5 animate ho rahi hain** (frame signature badalta hai) ✓ · **30+ second tak stable, page crash nahi** ✓ · errs 0 ✓.
 - Evidence: `R106-LIVE-TILES-LIVE.png` (live grid), `R106-LIVE-TILES.png` (pehla local run), `VIDEO-grid-a.png` / `VIDEO-grid-b.png` (user ke video se nikale frames).
 - Note: tiles me mesh-strip warp ki patli seams dikhti hain (procedural rig ki seema) — Rig page ka walk sabse saaf hai.
+
+## Round 107 — live tiles ki "phooli hui kurta / wing bulges / honeycomb" theek (live `actionanim.js` `6b7fbcb` 62919 B)
+- User ne screenshot bheja: tiles me kurta beech se phoola, kandhon par ajeeb "wing" bulges, aur kapde par honeycomb/jali pattern. (🙃🥲 — sahi complaint thi.)
+- **3 asli wajah mili aur fix hui:**
+  1. **Arm bone ka weight A-pose me galat** — arms-down character me haath ke strips me **kurta** bhi aa jata hai, isliye haath ghumane par kurta kheench kar phoolta tha. Ab A-pose me arm weights **zero** (haath torso ke saath chalte hain) → silhouette saaf, purana "arms down" look intact. T-pose characters par purana behaviour.
+  2. **Triangle inflate silhouette par bhi lag raha tha** — dest-tri ko 0.95px bahar kheenchne se kinare ka pixel bahar nikal ke kandhe par chhote "wing" bulge bana deta tha. Ab **sirf interior triangles** inflate hote hain (`rig.triPad`, kinare par 0).
+  3. **Aliasing** — tiles chhote the (180×240) aur ek hi pass me draw hote the, isliye mesh ki patli seams honeycomb jaisi dikhti thin. Ab **1.5× supersampling** (offscreen par draw → chhota karke paste) → seams average ho ke gayab.
+- **Mesh density 1150 quads try kiya → headless/page crash** (memory) → 640 par wapas; seams ka ilaaj weight + supersampling se kiya.
+- **Result (live):** 5 tiles (IDLE/WALK/RUN/DANCING/WAVING) — kurta flat, koi wing bulge nahi, jali nahi. Evidence: `R107-LIVE-TILES.png` (live), `TILE-ZOOM.png` (3× zoom), `TILES-NOW.png` (local).
+- Test: tiles 5 ✓ · animate ✓ · 30s stable ✓ · errs 0 ✓.
+- Backups: `actionanim-backup-r106.js`.
