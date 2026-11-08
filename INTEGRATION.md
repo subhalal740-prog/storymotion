@@ -1266,3 +1266,28 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
   S1 99.91% (dmg 128), S2 99.91% (128), S3 99.94% (193), S4 99.95%, S5 99.89% (148), S6 99.89% (156), S7 98.72% (1670 — kaala pant/dark bg me thoda overlap). Bina mode ke = 0% safe (sab katta tha). `Kuch bhi` mode = purana behaviour (verify).
 - Visual: `CK-S1_white_greyshadow_halo-PAIR.png`, `CK-S7_dark_bg-PAIR.png` (halo stroke ke baad bhi character jaisa tha waisa), `CK99-LIVE-UI.png` (live UI).
 - Regression: nav 5/5 ✓, eraser (Kuch bhi) 3,328 px ✓, walk mirror ✓, `errs 0` (local + live).
+
+## Round 99b — ERASER CRITICAL FIX: "Sirf BG" me haath/sleeve kat raha tha — CORE LOCK + mask-safe preview (live `186d8df`, 294798 B)
+- User report + screenshot: "Sirf BG" chunne ke baad bhi brush character ka poora haath/sleeve mita deta tha. User ne teen requirement diye: (1) alpha 1.0 wale character pixels na chhue, (2) auto-cut ke asli mask se boundary lock — brush sirf bahar ka halo/shadow (alpha < 0.9) saaf kare, (3) "Apply & re-cut" bina full-body clipping ke layers dobara banaye.
+- Wajah (3 bug):
+  1. `computeCore()` `pc.imgData` padh raha tha — asal me piece ki **`pc.canvas`** hoti hai → core mask khaali → lock lagta hi nahi tha (iske chalte haath kat raha tha).
+  2. Rim/patch rules **semi-transparent** pixels ke liye the, par inki koi alpha shart nahi thi — solid character pixels bhi "bg-jaisa rang" hone par mit jate the (dark pant/dark bg; haath ke kinare ka warm-brown edge).
+  3. Preview canvas `destination-out` se stroke dikhata tha — brush character ke upar chalta to **poora transparent daba** dikhta tha (user ko laga sab kat gaya), halanki Apply ke baad character bacha tha.
+- Fix:
+  - **Core lock (absolute):** auto-cut pieces (alpha ≥ 230) se core mask, 1px fill (dilate→erode), halo rim ko lock se bahar (sirf semi-transparent + bg ke rang ke kareeb ≤90 wale rim pixels). `origCore` = pehla auto-cut mask, har re-cut par sirf JODTA hai (ghatata nahi) — `window.__rigNewImage` par reset. Core pixel par brush **kabhi** nahi lagta (2px tolerant).
+  - **Preview:** "Sirf BG" me stroke ab halka hara nishaan (`rgba(130,240,175,.22)`) hai — character katta hua nahi dikhta; "Kuch bhi" me purana transparent preview.
+  - **Canvas fit:** `k = min(1, maxW/W, 460/H)` — pura character dikhta hai (pehle fixed width se 390px par neeche pair/chehra cut ho jata tha).
+  - **Apply ke baad** `strokes = []` — bake hua, canvas saaf se shuru; "kuch nahi hata" toast ab saaf: "Yahan sirf character hai — kuch nahi hataya (safe)…".
+- **Test report (headless Chromium, local + LIVE dono par same):**
+  | test | result |
+  |---|---|
+  | A · Sirf BG + brush **seedha haath ke beech se neeche tak** (70px) — S7 dark bg | 97 px erased · 39,502 px safe · core pixels **100% bache** (coreHit 6/145592) · pieces 8→8 · bbox same |
+  | A · wahi test S1 white+shadow | 113 px erased · 37,189 px safe · core **100%** |
+  | A · S3 tight crop | 140 px erased · 33,788 px safe · core **100%** |
+  | B · Sirf BG + brush **halo/parachhain par** | 632–1,196 px halo safaya, arm 94.9–100% bacha |
+  | C · "Kuch bhi" + wahi haath stroke | 39,599 px (purana behaviour, jaan-boojh kar) |
+  | D · canvas fit | 296×460, `expectedH == canvasH` ✓ (clipping nahi) |
+  | 4-round mixed stress (halo → arm → halo → arm) | har round me min kept 99.41%, bg hataya 6–403 px, pieces 8 |
+  | Regression | nav 5/5 ✓ · eraser "Kuch bhi" 3,698 px ✓ · walk mirror err 0.0004 ✓ · `errs 0` |
+- Evidence: `R99-CORE-LOCK-PROOF.png` (pehle/baad me haath jaisa tha waisa), `R99-LIVE-UI.png` (live, stroke ke waqt halka nishaan), `r99-*-before/after.png`.
+- **Seema (honest):** an-pratik alpha < 0.9 wala halo core ke bahar hi saaf hota hai; core ke *andar* chipke (jaise dark pant par dark shadow) dhabbe ke liye "Kuch bhi" mode hai — jaan-boojh kar, taaki character kabhi na kate.
