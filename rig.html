@@ -6808,7 +6808,15 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
        =============================================================================== */
     const isRun = (Anim.kind === 'run');
     const T = 1 / Math.max(0.15, Anim.speed);
-    const A = Anim.spread * (isRun ? 1.55 : 1.35);
+    /* R119 · ASLI WALK GATE — pehle spread itna bada tha ki pair AAGE-PEECHE nahi,
+       SIDE me failte the (video me ladka "tirchha" chalta dikh raha tha).
+       Ab: swing amplitude chhoti + spread ka asar kam, taaki pair aage-peeche jaye. */
+    /* R119b · SIDE vs FRONT: front-facing photo me pair side me failte hain,
+       isliye swing bahut chhoti. Side view (profile) me poori swing chalti hai. */
+    const FM = (RIG.App && RIG.App.facing && RIG.App.facing.mode) || 'front';
+    const FRONTVIEW = (FM !== 'left' && FM !== 'right');
+    const A = Math.min(FRONTVIEW ? 0.13 : 0.30,
+                       Anim.spread * (isRun ? 0.70 : 0.62) * (FRONTVIEW ? 0.45 : 1));
     const L = BH * (isRun ? 0.44 : 0.42);
     const STANCE = 0.62;
     const u = ((Anim.phase / (Math.PI * 2)) % 1 + 1) % 1;
@@ -6828,7 +6836,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const sL = legPhase(u);
     const sR = legPhase(u + 0.5);
 
-    const liftAmp = BH * (isRun ? 0.030 : 0.020);
+    /* R119 · pair zameen se itna hi utha (pehle 136px tak hawa me latakta tha) */
+    const liftAmp = BH * (isRun ? 0.024 : 0.014) * (FRONTVIEW ? 0.45 : 1);
     /* bob — per step: down par neecha, passing par ooncha */
     const bobAmp = BH * (isRun ? 0.012 : 0.007);
     const rise = bobAmp * (0.5 - 0.5 * Math.cos(Math.PI * 2 * 2 * (u - 0.10)));
@@ -6867,7 +6876,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     let A15 = A, KNEE15 = KNEE_AMP;
     if (LG15) {
       const legLen = (LG15.L.t1 + LG15.L.t2) || 200;
-      A15 = Math.max(0.10, Math.min(0.46, (Anim.spread * 1.35) * (BH * 0.42) / legLen));
+      /* R119c · asli swing amplitude YAHI se aati hai (P.legL/legR isi A15 par
+         depend karte hain, isliye sirf `A` ghatane se kuch nahi hota tha).
+         Front view me 0.45x — pair side me failte hain, aage-peeche nahi. */
+      const fvAmp = FRONTVIEW ? 0.45 : 1;
+      A15 = Math.max(0.045, Math.min(0.46, (Anim.spread * 1.35) * (BH * 0.42) / legLen * fvAmp));
     }
     /* ---- ARMS: Arm Posture button ke hisaab se rest angle ----
        T-Pose  -> arms ko pehle neeche laao (-ARM_DOWN_LOCK), phir usi ke around swing
@@ -7227,7 +7240,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     if (p === 'walk' || p === 'run') {
       e.preventDefault();
       if (!jointsGateOk()) { jointsBlockedMsg(); return; }
-      Anim.spread = p === 'walk' ? 0.22 : 0.30;
+      Anim.spread = p === 'walk' ? 0.16 : 0.20;   /* R119 · chhota step = asli chalne jaisa */
       Anim.armAmp = p === 'walk' ? ARM_SWING_AMP : ARM_SWING_AMP * 2.2;
       Anim.torso  = p === 'walk' ? 0.03 : 0.09;
       Anim.speed  = p === 'walk' ? 1.0 : 1.6;
