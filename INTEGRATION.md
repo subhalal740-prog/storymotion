@@ -1291,3 +1291,13 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
   | Regression | nav 5/5 ✓ · eraser "Kuch bhi" 3,698 px ✓ · walk mirror err 0.0004 ✓ · `errs 0` |
 - Evidence: `R99-CORE-LOCK-PROOF.png` (pehle/baad me haath jaisa tha waisa), `R99-LIVE-UI.png` (live, stroke ke waqt halka nishaan), `r99-*-before/after.png`.
 - **Seema (honest):** an-pratik alpha < 0.9 wala halo core ke bahar hi saaf hota hai; core ke *andar* chipke (jaise dark pant par dark shadow) dhabbe ke liye "Kuch bhi" mode hai — jaan-boojh kar, taaki character kabhi na kate.
+
+## Round 99c — BG-POCKET rule: kapde/haath ke beech bachi flat background patti bhi "Sirf BG" se saaf (live `4421b7e`, 295276 B)
+- User screenshot: character ke haath ke bagal me **safed patti** (auto-cut ke baad bacha hua background) khadi thi; poochha "ise kaise hataun".
+- Fix: 5va rule **BG POCKET** — pixel jata hai agar: `conn[i]` (background se juda) + `!inDeep` (body ke 3px andar nahi) + alpha ≥ 240 (poora opaque) + bg se doori ≤ 45 (bg ke rang ke bilkul paas) + gradient ≤ 40 (bilkul flat, koi silwat/outline nahi).
+- Safety: core lock absolute hi hai — body ke 3px andar wala koi pixel nahi jata, isliye character ka kapda/skin kabhi nahi katta.
+- **Test:** synthetic leftover-bg test (S2 white bg + arm ke bagal me 26×120 white opaque patch, bilkul user wali sthiti):
+  - pehle: patch bilkul visible; "Sirf BG" brush ke baad **3,131 px safaya** (= patch ke 3,120 px + anti-alias), **character core 100% bacha** (coreHit 0/151,511), pieces 8.
+  - LIVE par bhi same: erased 3,131 · coreKept 100% · pieces 8 · errs 0.
+  - Regression: arm-stroke coreKept 100% ✓, halo stroke 1,196 px ✓, nav 5/5 ✓, errs 0 (local + live).
+- Evidence: `R99B-POCKET-PROOF.png` (pehle safed patti / baad me gayab, character same), `R99-CORE-LOCK-PROOF.png` (haath par brush — kuch nahi katta).
