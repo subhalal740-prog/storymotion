@@ -3704,24 +3704,33 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         if (!onBody) bad.push('transparent par');
         res.head = { ok: bad.length === 0, code: bad.length ? bad[0] : 'OK', msg: bad.join(' · '), onBody: onBody };
       })();
-      /* NECK: neck column (head ke neeche patla hissa) — torso ke top ke paas */
-      if (boxT) {
-        const tTop = firstRow(M.torso, 0.004);
+      /* NECK — R118d · asli anatomy ka rule.
+         Purana rule torso piece ke TOP se doori naapta tha — par torso piece
+         kandhe/chhat bhi leta hai, isliye gale par sahi baitha neck bhi WARN
+         ho jata tha (red shirt par exactly yahi hua).
+         Ab: (1) sar ke centre se kaafi neeche, (2) kandhe se zyada neeche na,
+         (3) gardan ke column par, (4) body par.
+         Aur user ka rule: |neckY - headY| bahut kam ho to WARN. */
+      (function () {
         const j = joints.neck;
-        if (!j) fail('neck', 'set nahi hua');
-        else {
-          const bH = maskBox(M.head);
-          const yRef = tTop ? tTop.y : boxT.y0;
-          const nearEdge = Math.abs(j.y - yRef) <= Math.max(16, boxT.h * 0.06);
-          const xOk = bH ? Math.abs(j.x - bH.cx) <= Math.max(10, bH.w * 0.22) : true;
-          const onBody = alphaOf(j.x, j.y) > 40;
-          const bad = [];
-          if (!nearEdge) bad.push('torso top se ' + Math.round(Math.abs(j.y - yRef)) + 'px door');
-          if (!xOk) bad.push('gardan ke column se ' + Math.round(Math.abs(j.x - (bH ? bH.cx : j.x))) + 'px door');
-          if (!onBody) bad.push('transparent par');
-          res.neck = { ok: bad.length === 0, code: bad.length ? bad[0] : 'OK', msg: bad.join(' · '), onBody: onBody };
+        if (!j) return fail('neck', 'set nahi hua');
+        const bH = maskBox(M.head);
+        const bad = [];
+        const onBody = alphaOf(j.x, j.y) > 40;
+        if (bH) {
+          const headCY = bH.y0 + bH.h / 2;
+          const dy = j.y - headCY;                          /* + = sar ke neeche */
+          if (Math.abs(dy) < Math.max(15, bH.h * 0.16)) bad.push('sar ke centre ke bilkul paas');
+          if (Math.abs(j.x - bH.cx) > Math.max(12, bH.w * 0.24)) bad.push('gardan ke column se door');
         }
-      } else fail('neck', 'torso part nahi mila');
+        if (boxT) {
+          const so = j.y - boxT.y0;                          /* torso piece ke top se neeche */
+          if (so < -6) bad.push('kandhe se upar');
+          else if (so > Math.max(26, boxT.h * 0.12)) bad.push('kandhe se ' + Math.round(so) + 'px neeche');
+        }
+        if (!onBody) bad.push('transparent par');
+        res.neck = { ok: bad.length === 0, code: bad.length ? bad[0] : 'OK', msg: bad.join(' · '), onBody: onBody };
+      })();
       /* SPINE: torso mask ke beech me, body par */
       (function () {
         const j = joints.spine;
