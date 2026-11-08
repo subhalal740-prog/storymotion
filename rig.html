@@ -1091,6 +1091,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           <button class="btn tiny" id="eraseModeBg" data-mode="bg" style="background:rgba(90,220,150,.14);border-color:rgba(90,220,150,.45);color:#bff0cf">Sirf BG</button>
           <button class="btn tiny ghost" id="eraseModeAll" data-mode="all" style="opacity:.62">Kuch bhi</button>
         </div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px" id="eraseDrawRow">
+          <button class="btn tiny" id="eraseScrollSafe" style="background:rgba(120,170,255,.14);border-color:rgba(120,170,255,.45);color:#cfe1ff">&#9995; Scroll safe</button>
+          <button class="btn tiny ghost" id="eraseBrushMode" style="opacity:.62">&#9997; Full brush</button>
+        </div>
+        <p id="eraseDrawNote" style="margin:6px 0 0;font-size:11px;opacity:.62;line-height:1.4">Scroll safe: ungli se upar-neeche kheencho to page scroll hota hai (brush nahi chalta). Side me ragdo to brush chalta hai. Poore brush ke liye &ldquo;Full brush&rdquo;.</p>
         <p id="eraseModeNote" style="margin:6px 0 0;font-size:11px;opacity:.62;line-height:1.4">Sirf BG: sirf background/parachhain (shadow, halo, dhabbe) mitega &mdash; character ka koi hissa nahi kategaa.</p>
         <div style="margin-top:12px">
           <label class="sw" style="gap:10px;display:flex;align-items:center;width:100%">Brush
@@ -1577,7 +1582,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             const qr = d[qi], qg = d[qi + 1], qb = d[qi + 2];
             const qLum = (qr + qg + qb) / 3;
             const qSat = Math.max(qr, qg, qb) - Math.min(qr, qg, qb);
-            if (qLum > PAPER_LUM && qSat < PAPER_SAT && Math.abs(qLum - pLum) <= PAPER_RAMP) okPixel = true;
+            const dc = Math.abs(qr - pr) + Math.abs(qg - pg) + Math.abs(qb - pb);
+            /* character ka apna light hissa (skin / halka kapda) halka garam/rangeen hota hai —
+               bg (paper) thanda/neutral. Isliye: bg jitna neutral + padosi se rang me bhi milta ho. */
+            const warm = (qr - qb);
+            if (qLum > PAPER_LUM && qSat < PAPER_SAT && Math.abs(qLum - pLum) <= PAPER_RAMP &&
+                dc <= 24 && warm <= 10) okPixel = true;
           }
           if (okPixel) { mark[q] = 1; stack[sp++] = q; }
         }
@@ -1710,6 +1720,62 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         return { ok: false, uniform: solidPct, mode,
                  msg: 'Background ke saath character bhi hat gaya — is image par character nahi mila.' };
       }
+
+      const hex4 = (v) => '#' + v.map((x) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('');
+      /* R101 · bade pale blotch (safed bg char par safed patch) — jo flood se chhoot gaya:
+         bg ke rang ke kareeb, poora opaque, bhitar bilkul flat, aur transparent bg se chipka hua.
+         Character ka halka hissa (skin/halka kapda) ka gradient 30+ hota hai, isliye safe. */
+      (function killPaleBlotch() {
+        const avg2 = model.at(0.5, 0.5);
+        const B2 = [1, 3, 5].map((k) => parseInt(hex4(avg2), 16));
+        const cand = new Uint8Array(total);
+        for (let p = 0; p < total; p++) {
+          if (mark[p]) continue;
+          const i = p * 4;
+          if (d[i + 3] < 240) continue;
+          if (dist(d[i], d[i + 1], d[i + 2], avg2) > 70) continue;
+          /* padosi gradient: 2px ke andar ka max-min luminance */
+          const x = p % W, y = (p - x) / W;
+          let mn = 999, mx = -1;
+          for (let oy = -2; oy <= 2; oy++) for (let ox = -2; ox <= 2; ox++) {
+            const nx = x + ox, ny = y + oy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+            const j = (ny * W + nx) * 4;
+            const L = (d[j] + d[j + 1] + d[j + 2]) / 3;
+            if (L < mn) mn = L; if (L > mx) mx = L;
+          }
+          if (mx - mn > 26) continue;                      /* flat (patched/skin nahi) */
+          /* transparent bg se chipka hua? */
+          let near = false;
+          for (let oy = -2; oy <= 2 && !near; oy++) for (let ox = -2; ox <= 2; ox++) {
+            const nx = x + ox, ny = y + oy;
+            if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+            if (mark[ny * W + nx]) { near = true; break; }
+          }
+          if (!near) continue;
+          cand[p] = 1;
+        }
+        /* sirf bade dhabbe (>= 40 px connected) — chhote dane character ke andar ho sakte hain */
+        const vis = new Uint8Array(total);
+        const q = new Int32Array(total);
+        for (let p = 0; p < total; p++) {
+          if (!cand[p] || vis[p]) continue;
+          let qh = 0, qt = 0;
+          q[qt++] = p; vis[p] = 1;
+          while (qh < qt) {
+            const i2 = q[qh++];
+            const x2 = i2 % W, y2 = (i2 - x2) / W;
+            const nb = [x2 > 0 ? i2 - 1 : -1, x2 < W - 1 ? i2 + 1 : -1, y2 > 0 ? i2 - W : -1, y2 < H - 1 ? i2 + W : -1];
+            for (let k = 0; k < 4; k++) {
+              const j2 = nb[k];
+              if (j2 < 0 || vis[j2] || !cand[j2]) continue;
+              vis[j2] = 1; q[qt++] = j2;
+            }
+          }
+          if (qt < 40) continue;
+          for (let k = 0; k < qt; k++) { const pp = q[k]; d[pp * 4 + 3] = 0; mark[pp] = 1; }
+        }
+      })();
 
       /* v19.1 · bache hue paper specks (safed halo ke tukde jo flood se chhoot gaye)
          — sirf jab wo bilkul flat safed hon aur border ke paas hon. */
@@ -3464,6 +3530,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   const Eraser = (function () {
     let srcCv = null, srcCtx = null, strokes = [], active = null, lastRedraw = 0, lastApply = null;
     let mode = 'bg';   /* 'bg' = sirf background saaf (chrome-key), 'all' = jahan ragdo wahan se */
+    let drawMode = 'safe';   /* 'safe' = vertical drag = page scroll, 'brush' = har direction brush */
 
     /* BG-jaisa pixel? -> sirf wahi mitata hai, character ke rang bache rehte hain.
        Pehchan: bg ke rang ke bahut kareeb, YA bg jitna hi phika (low chroma) + brightness bg ke aas-paas. */
@@ -3486,6 +3553,22 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       r2.B = B;
       return r2;
     }
+    function setDrawMode(v) {
+      drawMode = (v === 'brush') ? 'brush' : 'safe';
+      const c = cv();
+      if (c) c.style.touchAction = drawMode === 'brush' ? 'none' : 'pan-y';
+      const a = U.$('eraseScrollSafe'), b = U.$('eraseBrushMode'), note = U.$('eraseDrawNote');
+      if (a) { a.style.background = drawMode === 'safe' ? 'rgba(120,170,255,.14)' : 'transparent';
+               a.style.borderColor = drawMode === 'safe' ? 'rgba(120,170,255,.45)' : '';
+               a.style.color = drawMode === 'safe' ? '#cfe1ff' : ''; a.style.opacity = drawMode === 'safe' ? '1' : '.62'; }
+      if (b) { b.style.background = drawMode === 'brush' ? 'rgba(255,190,110,.14)' : 'transparent';
+               b.style.borderColor = drawMode === 'brush' ? 'rgba(255,190,110,.45)' : '';
+               b.style.color = drawMode === 'brush' ? '#ffd9a8' : ''; b.style.opacity = drawMode === 'brush' ? '1' : '.62'; }
+      if (note) note.textContent = drawMode === 'brush'
+        ? 'Full brush: har direction me brush chalta hai (upar-neeche bhi). Page scroll ke liye canvas ke bahar se ungli kheencho.'
+        : 'Scroll safe: ungli se upar-neeche kheencho to page scroll hota hai (brush nahi chalta). Side me ragdo to brush chalta hai. Patli khadi safed patti hatane ke liye ek baar \u201cFull brush\u201d dabao, ragdo, phir wapas \u201cScroll safe\u201d.';
+    }
+
     function setMode(m) {
       mode = (m === 'all') ? 'all' : 'bg';
       const a = U.$('eraseModeBg'), b = U.$('eraseModeAll'), note = U.$('eraseModeNote');
@@ -3722,8 +3805,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       c.addEventListener('pointerdown', (e) => {
         if (!App.imgData) { U.toast('Pehle image upload karo.'); return; }
         if (e.pointerType === 'mouse' && e.button !== 0) return;
-        gesture = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(),
-                    mode: 'pending', moved: 0 };
+        gesture = { id: e.pointerId, pt: e.pointerType || 'mouse', x0: e.clientX, y0: e.clientY,
+                    t0: performance.now(), mode: 'pending', moved: 0 };
         isDrawing = false;
         /* mobile par preventDefault NAHI — warna browser scroll hi nahi kar payega */
         if (e.pointerType !== 'touch') e.preventDefault();
@@ -3734,12 +3817,14 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         const adx = Math.abs(dx), ady = Math.abs(dy);
         gesture.moved = Math.max(gesture.moved, Math.hypot(dx, dy));
         if (gesture.mode === 'pending') {
-          if (ady > SCROLL_DY && ady > adx * 1.2) {          /* = SCROLL */
+          /* TOUCH par vertical = page scroll (browser pan-y leta hai) */
+          if (drawMode === 'safe' && gesture.pt === 'touch' && ady > SCROLL_DY && ady > adx * 1.2) {   /* = SCROLL */
             gesture.mode = 'scroll'; isDrawing = false;
             if (active) { strokes.pop(); active = null; draw(); stat(); }   /* adhoora stroke hatao */
             return;                                           /* aage kuch na karo, page scroll kare */
           }
-          if (adx > DRAW_DX && adx >= ady) {                  /* = DRAW */
+          const isTouch = gesture.pt === 'touch';
+          if ((drawMode === 'brush' || !isTouch) ? (adx > DRAW_DX || ady > SCROLL_DY) : (adx > DRAW_DX && adx >= ady)) {  /* = DRAW */
             gesture.mode = 'draw'; isDrawing = true;
             try { c.setPointerCapture(e.pointerId); } catch (err) {}
             const start = { clientX: gesture.x0, clientY: gesture.y0 };
@@ -3783,6 +3868,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       U.$('eraseApply') && (U.$('eraseApply').onclick = () => applyStrokes());
       U.$('eraseModeBg') && (U.$('eraseModeBg').onclick = () => setMode('bg'));
       U.$('eraseModeAll') && (U.$('eraseModeAll').onclick = () => setMode('all'));
+      U.$('eraseScrollSafe') && (U.$('eraseScrollSafe').onclick = () => setDrawMode('safe'));
+      U.$('eraseBrushMode') && (U.$('eraseBrushMode').onclick = () => setDrawMode('brush'));
     }
     function applyStrokes() {
         if (!App.imgData) { U.toast('Pehle image upload karo.'); return null; }
@@ -3830,6 +3917,37 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
            Core mask (auto-cut ke andar ke opaque pixels) par lock — wahan brush kabhi nahi lagta. */
         if (keepIfChar) {
           const B = keepIfChar.B;
+          /* ---- POCKET MASK: bacha hua flat background (safed patti/dhabba) ----
+             Shart: alpha ~1.0 + bg ke rang ke bahut kareeb + padosi me gradient nahi (flat)
+             + patla (run <= 34px). Isse character ka asli safed kapda (towel/kurta) bachta hai. */
+          const isP = new Uint8Array(W * H);
+          const lumP = new Float32Array(W * H);
+          for (let i = 0, j = 0; i < W * H; i++, j += 4) {
+            if (out.data[j + 3] < 240) continue;
+            const rr = out.data[j], gg = out.data[j + 1], bb = out.data[j + 2];
+            lumP[i] = 0.299 * rr + 0.587 * gg + 0.114 * bb;
+            const dd0 = Math.sqrt((rr - B[0]) * (rr - B[0]) + (gg - B[1]) * (gg - B[1]) + (bb - B[2]) * (bb - B[2]));
+            if (dd0 <= 45) isP[i] = 1;
+          }
+          const pRunH = new Int16Array(W * H), pRunV = new Int16Array(W * H);
+          for (let y = 0; y < H; y++) {
+            let x = 0;
+            while (x < W) {
+              if (!isP[y * W + x]) { x++; continue; }
+              let x2 = x; while (x2 < W && isP[y * W + x2]) x2++;
+              if (x2 - x <= 34) for (let k = x; k < x2; k++) pRunH[y * W + k] = x2 - x;
+              x = x2;
+            }
+          }
+          for (let x = 0; x < W; x++) {
+            let y = 0;
+            while (y < H) {
+              if (!isP[y * W + x]) { y++; continue; }
+              let y2 = y; while (y2 < H && isP[y2 * W + x]) y2++;
+              if (y2 - y <= 34) for (let k = y; k < y2; k++) pRunV[k * W + x] = y2 - y;
+              y = y2;
+            }
+          }
           const dist2 = (j) => Math.sqrt((out.data[j] - B[0]) * (out.data[j] - B[0]) +
                                          (out.data[j + 1] - B[1]) * (out.data[j + 1] - B[1]) +
                                          (out.data[j + 2] - B[2]) * (out.data[j + 2] - B[2]));
@@ -3902,13 +4020,21 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             if (!seed[i] || !out.data[i * 4 + 3]) continue;
             const a = out.data[i * 4 + 3];
             /* CORE LOCK (absolute): auto-cut ke character core ka koi bhi pixel brush se nahi jata —
-               chahe brush poora haath ragad do. Halo/parachhain core ke BAHAR hi saaf hota hai. */
-            if (inCore(i)) { coreSkipped++; skipped++; continue; }
+               chahe brush poora haath ragad do. Halo/parachhain core ke BAHAR hi saaf hota hai.
+               Ek hi chhoot: FLAT BG POCKET (patli safed patti/dhabba) — wo bhi sirf tab jab
+               body se 3px door ho, alpha ~1.0 ho, bg ke rang ke bilkul kareeb ho aur patla ho. */
+            const ix = i % W, iy = (i / W) | 0;
+            const pixEdge = (ix > 0 && ix < W - 1 && iy > 0 && iy < H - 1)
+              ? Math.abs(lum[i + 1] - lum[i - 1]) + Math.abs(lum[i + W] - lum[i - W]) : 0;
+            const pocketPix = isP[i] && !inDeep(i) && pixEdge <= 40 &&
+                              ((pRunH[i] > 0) || (pRunV[i] > 0));
+            if (inCore(i) && !pocketPix) { coreSkipped++; skipped++; continue; }
             const d0 = dist2(i * 4);
             const x = i % W, y = (i / W) | 0;
             const gx = Math.abs(lum[y * W + Math.min(W - 1, x + 1)] - lum[y * W + Math.max(0, x - 1)]);
             const gy = Math.abs(lum[Math.min(H - 1, y + 1) * W + x] - lum[Math.max(0, y - 1) * W + x]);
             const edge = gx + gy;
+            const edge0 = edge;
             const dEdge = dt[i] > 0 ? dt[i] - 1 : 999;
             const nearBg = dt[i] > 0 && dEdge <= 12;
             const rim = nearBg && (a < 230 || d0 <= 60);                        /* 1: anti-alias rim */
@@ -3924,7 +4050,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
                   bg ke rang ke bilkul kareeb hai, poora opaque hai, background se juda hai
                   aur bilkul flat hai (kapde ki silwat/outline nahi). */
             const a9 = out.data[i * 4 + 3];
-            const pocket = conn[i] && !inDeep(i) && a9 >= 240 && d0 <= 45 && edge <= 40;
+            /* enclosed bhi: kapde/haath ke beech phansi bg patti bg se judi nahi hoti —
+               isliye yahan conn[] ki shart nahi; core-lock (3px andar) phir bhi lagu hai. */
+            const pocket = !inDeep(i) && a9 >= 240 && d0 <= 45 && edge <= 40;
             if (rim || thinLine || patch || soft || pocket) { out.data[i * 4 + 3] = 0; n++; }
             else skipped++;
           }
@@ -3961,10 +4089,18 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         U.toast('Erase apply · ' + n + ' px hataye' + skipTxt + ' · re-cut (' + cut.pieces.length + ' pieces)');
         return cut;
     }
-    return { refresh() { if (!fit()) return; bind(); setMode(mode); }, fits: fit, bind: bind, draw: draw, setMode: setMode, mode: () => mode,
+    return { refresh() { if (!fit()) return; bind(); setMode(mode); setDrawMode(drawMode); }, fits: fit, bind: bind, draw: draw, setMode: setMode, mode: () => mode, setDrawMode: setDrawMode, drawMode: () => drawMode,
              drawing: () => !!isDrawing, gesture: () => (gesture ? gesture.mode : null),
              apply: applyStrokes,
              addStroke(r, pts) { strokes.push({ r: r, pts: pts }); draw(); stat(); },
+             debugStrokes: () => strokes.map((s) => ({ r: s.r, n: s.pts.length, p0: s.pts[0] })),
+             /* canvas-px points (test/debug ke liye) — image space me badal kar daalta hai */
+             addStrokeUI(rCanvasPx, ptsCanvasPx) {
+               const k = (cv() && cv()._k) || 1;
+               const c = cv().getBoundingClientRect();
+               const conv = (q) => ({ x: (c.left + q.x - c.left) / k, y: q.y / k });
+               strokes.push({ r: rCanvasPx / k, pts: ptsCanvasPx.map(conv) }); draw(); stat();
+             },
              count() { return strokes.length; } };
   })();
 
