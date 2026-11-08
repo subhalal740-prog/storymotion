@@ -1083,10 +1083,15 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="width:1em;height:1em;vertical-align:-0.15em;margin-right:0.3em;flex:none"><path d="M4 20h16"/><path d="M8.5 17.5 4 13a2 2 0 0 1 0-2.8l7-7a2 2 0 0 1 2.8 0l5 5a2 2 0 0 1 0 2.8l-6.5 6.5z"/></svg> Eraser <span style="font-weight:400;opacity:.6;font-size:.8em;white-space:nowrap">(bacha hua BG)</span></h3>
           <div class="pill" id="erasePill" style="color:#cfe1ff;background:rgba(120,170,255,.08);border-color:rgba(120,170,255,.22);white-space:nowrap;flex:none">BG OFF</div>
         </div>
-        <p id="eraseHint" style="margin:10px 0 0;font-size:12px;opacity:.72;line-height:1.45">Auto-cut ke baad jo background bacha ho, us par ungli se ragdo — seedha transparent ho jayega. Phir “Apply &amp; re-cut” dabao.</p>
+        <p id="eraseHint" style="margin:10px 0 0;font-size:12px;opacity:.72;line-height:1.45">Auto-cut ke baad jo background bacha ho (halo, shadow, dhabbe), us par ungli ragdo &mdash; <b style="opacity:.95">sirf background mitega</b>, character ka koi hissa nahi kategaa. Phir &ldquo;Apply &amp; re-cut&rdquo; dabao.</p>
         <div class="checker" style="margin-top:10px;padding:10px;display:grid;place-items:center">
           <canvas id="eraseCv" style="display:block;max-width:100%;height:auto;touch-action:none;cursor:crosshair"></canvas>
         </div>
+        <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px" id="eraseModeRow">
+          <button class="btn tiny" id="eraseModeBg" data-mode="bg" style="background:rgba(90,220,150,.14);border-color:rgba(90,220,150,.45);color:#bff0cf">Sirf BG</button>
+          <button class="btn tiny ghost" id="eraseModeAll" data-mode="all" style="opacity:.62">Kuch bhi</button>
+        </div>
+        <p id="eraseModeNote" style="margin:6px 0 0;font-size:11px;opacity:.62;line-height:1.4">Sirf BG: sirf background/parachhain (shadow, halo, dhabbe) mitega &mdash; character ka koi hissa nahi kategaa.</p>
         <div style="margin-top:12px">
           <label class="sw" style="gap:10px;display:flex;align-items:center;width:100%">Brush
             <input type="range" id="eraseSize" min="8" max="90" value="30" style="flex:1;min-width:0">
@@ -3457,9 +3462,48 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
   const Eraser = (function () {
     let srcCv = null, srcCtx = null, strokes = [], active = null, lastRedraw = 0, lastApply = null;
+    let mode = 'bg';   /* 'bg' = sirf background saaf (chrome-key), 'all' = jahan ragdo wahan se */
+
+    /* BG-jaisa pixel? -> sirf wahi mitata hai, character ke rang bache rehte hain.
+       Pehchan: bg ke rang ke bahut kareeb, YA bg jitna hi phika (low chroma) + brightness bg ke aas-paas. */
+    function bgColorAvailable() {
+      const B0 = App.bg, m = B0 && B0.meta;
+      if (!B0 || !m || !m.bg) return false;
+      /* bg solid tha lekin guard ne poora bacha liya (removed=false) — tab bhi rang se key chalega */
+      return (B0.removed === true || m.guard === 'character-lost');
+    }
+    function bgMatcher() {
+      if (mode !== 'bg') return null;
+      if (!bgColorAvailable()) return null;
+      const B0 = App.bg, m = B0.meta;
+      const v = String(m.bg).match(/\d+/g) || [];
+      const B = [ +v[0], +v[1], +v[2] ];
+      if (B.some((x) => !isFinite(x))) return null;
+      const r2 = function (r, g, b) {
+        return Math.sqrt((r - B[0]) * (r - B[0]) + (g - B[1]) * (g - B[1]) + (b - B[2]) * (b - B[2]));
+      };
+      r2.B = B;
+      return r2;
+    }
+    function setMode(m) {
+      mode = (m === 'all') ? 'all' : 'bg';
+      const a = U.$('eraseModeBg'), b = U.$('eraseModeAll'), note = U.$('eraseModeNote');
+      if (a) { a.style.background = mode === 'bg' ? 'rgba(90,220,150,.14)' : 'transparent';
+               a.style.borderColor = mode === 'bg' ? 'rgba(90,220,150,.45)' : '';
+               a.style.color = mode === 'bg' ? '#bff0cf' : ''; a.style.opacity = mode === 'bg' ? '1' : '.62'; }
+      if (b) { b.style.background = mode === 'all' ? 'rgba(255,190,110,.14)' : 'transparent';
+               b.style.borderColor = mode === 'all' ? 'rgba(255,190,110,.45)' : '';
+               b.style.color = mode === 'all' ? '#ffd9a8' : ''; b.style.opacity = mode === 'all' ? '1' : '.62'; }
+      if (note) {
+        const has = bgColorAvailable();
+        if (mode === 'all') note.textContent = 'Kuch bhi: jahan ungli ragdogi wahan se sab hat jayega (character bhi). Dhyan se.';
+        else if (!has) note.textContent = 'Is image ka background auto-detect nahi hua, isliye brush jahan ragdogi wahin se mitega — dhyan se.';
+        else note.textContent = 'Sirf BG: sirf background/parachhain (shadow, halo, dhabbe) mitega — character ka koi hissa nahi kategaa.';
+      }
+    }
     const cv = () => U.$('eraseCv');
     function fit() {
-      const c = cv(); if (!c || !App.imgData) return false;
+      const c = cv(); if (!c || !App.imgData || !App.W || !App.H) return false;   /* guard: reject hua to K, H nahi hote */
       const W = App.W, H = App.H;
       const maxW = Math.min(340, ((c.parentElement && c.parentElement.clientWidth) || 340) - 24);
       const k = Math.min(1, maxW / W);
@@ -3541,13 +3585,18 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       });
       U.$('eraseReset') && (U.$('eraseReset').onclick = () => { fit(); lastApply = null; stat(); U.toast('Erase reset.'); });
       U.$('eraseApply') && (U.$('eraseApply').onclick = () => applyStrokes());
+      U.$('eraseModeBg') && (U.$('eraseModeBg').onclick = () => setMode('bg'));
+      U.$('eraseModeAll') && (U.$('eraseModeAll').onclick = () => setMode('all'));
     }
     function applyStrokes() {
         if (!App.imgData) { U.toast('Pehle image upload karo.'); return null; }
         if (!strokes.length) { U.toast('Kuch erase nahi kiya.'); return null; }
         const W = App.W, H = App.H;
         const out = new ImageData(new Uint8ClampedArray(App.imgData.data), W, H);
-        let n = 0;
+        const keepIfChar = bgMatcher();
+        const skipMask = keepIfChar ? new Uint8Array(W * H) : null;
+        const seed = keepIfChar ? new Uint8Array(W * H) : null;
+        let n = 0, skipped = 0;
         for (const st of strokes) {
           const r = Math.max(1, st.r), r2 = r * r;
           const pts = st.pts;
@@ -3567,13 +3616,109 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
                   const dx = x - cx2;
                   if (dx * dx + dy * dy > r2) continue;
                   const ai = (y * W + x) * 4 + 3;
-                  if (out.data[ai]) { out.data[ai] = 0; n++; }
+                  if (!out.data[ai]) continue;
+                  if (keepIfChar) { seed[y * W + x] = 1; continue; }   /* pehle sirf seed mark — fill baad me */
+                  out.data[ai] = 0; n++;
                 }
               }
             }
           }
         }
-        if (!n) { U.toast('Kuch naya erase nahi hua.'); return null; }
+        /* ---- CHROME KEY (safe) ----
+           Mitao sirf wahi pixel jo stroke ke neeche hai AUR:
+             A) transparent BG ke bilkul kinare ka halo/antialias rim hai (bg se 80 tak, 8px patti), YA
+             B) bg-jaisa rang rakhta hai, transparent BG se juda hua hai (flood), aur patla hai (mota character-kapda nahi).
+           Isi liye brush character par bhi chal jaye to uske andar kuch nahi jata. ---- */
+        if (keepIfChar) {
+          const B = keepIfChar.B;
+          const dist2 = (j) => Math.sqrt((out.data[j] - B[0]) * (out.data[j] - B[0]) +
+                                         (out.data[j + 1] - B[1]) * (out.data[j + 1] - B[1]) +
+                                         (out.data[j + 2] - B[2]) * (out.data[j + 2] - B[2]));
+          const chB = Math.max(B[0], B[1], B[2]) - Math.min(B[0], B[1], B[2]);
+          /* transparent bg se BFS doori (max 64 tak) */
+          const dt = new Uint8Array(W * H);
+          const q = new Int32Array(W * H);
+          let qh = 0, qt = 0;
+          for (let i = 0; i < W * H; i++) if (out.data[i * 4 + 3] === 0) { dt[i] = 1; q[qt++] = i; }
+          while (qh < qt) {
+            const i = q[qh++];
+            if (dt[i] > 64) continue;
+            const x = i % W, y = (i / W) | 0;
+            const nb = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1];
+            for (let k = 0; k < 4; k++) {
+              const j = nb[k];
+              if (j < 0 || dt[j]) continue;
+              dt[j] = dt[i] + 1; q[qt++] = j;
+            }
+          }
+          /* bg-jaisa colour mask */
+          const like = new Uint8Array(W * H);
+          for (let i = 0, j = 0; i < W * H; i++, j += 4) {
+            if (!out.data[j + 3]) continue;
+            const r = out.data[j], g = out.data[j + 1], b = out.data[j + 2];
+            if (dist2(j) > 100) continue;
+            if (Math.max(r, g, b) - Math.min(r, g, b) > chB + 24) continue;
+            like[i] = 1;
+          }
+          /* like-mask flood transparent bg se */
+          const conn = new Uint8Array(W * H);
+          let qh2 = 0, qt2 = 0;
+          const q2 = new Int32Array(W * H);
+          for (let i = 0; i < W * H; i++) if (dt[i] === 1) { conn[i] = 1; q2[qt2++] = i; }
+          while (qh2 < qt2) {
+            const i = q2[qh2++];
+            const x = i % W, y = (i / W) | 0;
+            const nb = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1];
+            for (let k = 0; k < 4; k++) {
+              const j = nb[k];
+              if (j < 0 || conn[j] || !like[j]) continue;
+              conn[j] = 1; q2[qt2++] = j;
+            }
+          }
+          /* patlapan: horizontal + vertical run length */
+          const thin = new Uint8Array(W * H);
+          const MAXT = 26;
+          for (let y = 0; y < H; y++) {
+            let x = 0;
+            while (x < W) {
+              if (!conn[y * W + x]) { x++; continue; }
+              let x2 = x; while (x2 < W && conn[y * W + x2]) x2++;
+              if (x2 - x <= MAXT) for (let k = x; k < x2; k++) thin[y * W + k] |= 1;
+              x = x2;
+            }
+          }
+          for (let x = 0; x < W; x++) {
+            let y = 0;
+            while (y < H) {
+              if (!conn[y * W + x]) { y++; continue; }
+              let y2 = y; while (y2 < H && conn[y2 * W + x]) y2++;
+              if (y2 - y <= MAXT) for (let k = y; k < y2; k++) thin[k * W + x] |= 2;
+              y = y2;
+            }
+          }
+          /* luminance gradient — character ka outline tez kinar hai, halo nahi */
+          const lum = new Float32Array(W * H);
+          for (let i = 0, j = 0; i < W * H; i++, j += 4) lum[i] = 0.299 * out.data[j] + 0.587 * out.data[j + 1] + 0.114 * out.data[j + 2];
+          const GMAX = 55;
+          for (let i = 0; i < W * H; i++) {
+            if (!seed[i] || !out.data[i * 4 + 3]) continue;
+            const x = i % W, y = (i / W) | 0;
+            const gx = Math.abs(lum[y * W + Math.min(W - 1, x + 1)] - lum[y * W + Math.max(0, x - 1)]);
+            const gy = Math.abs(lum[Math.min(H - 1, y + 1) * W + x] - lum[Math.max(0, y - 1) * W + x]);
+            const strongEdge = (gx + gy) > GMAX;                     /* character ka apna outline */
+            const d0 = dist2(i * 4);
+            const rim = dt[i] > 0 && dt[i] - 1 <= 10 && d0 <= 100;   /* A: bg ke kinare ka halo (outline ke bagal me bhi) */
+            const flat = conn[i] && thin[i] && d0 <= 100 && !strongEdge;  /* B: patla bg-jaisa dhabba */
+            if (rim || flat) { out.data[i * 4 + 3] = 0; n++; }
+            else skipped++;
+          }
+        }
+        if (!n) {
+          U.toast(skipped
+            ? 'Yahan background jaisa kuch nahi mila — character safe raha (' + skipped + ' px chhode). Poora mitana ho to “Kuch bhi” dabao.'
+            : 'Kuch naya erase nahi hua.');
+          return null;
+        }
         const prev = App.imgData;
         let aBefore = 0, aAfter = 0;
         for (let i = 3; i < prev.data.length; i += 4) if (prev.data[i]) aBefore++;
@@ -3591,11 +3736,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         }
         lastApply = prev;
         fit();
-        if (U.$('eraseStat')) U.$('eraseStat').textContent = n.toLocaleString('en-IN') + ' px erased · ' + cut.pieces.length + ' pieces';
-        U.toast('Erase apply · ' + n + ' px hataye · re-cut ho gaya (' + cut.pieces.length + ' pieces)');
+        const skipTxt = skipped ? ' · ' + skipped.toLocaleString('en-IN') + ' px character ke bache' : '';
+        if (U.$('eraseStat')) U.$('eraseStat').textContent = n.toLocaleString('en-IN') + ' px erased' + (skipped ? ' · ' + skipped.toLocaleString('en-IN') + ' px safe' : '') + ' · ' + cut.pieces.length + ' pieces';
+        U.toast('Erase apply · ' + n + ' px hataye' + skipTxt + ' · re-cut (' + cut.pieces.length + ' pieces)');
         return cut;
     }
-    return { refresh() { if (!fit()) return; bind(); }, fits: fit, bind: bind, draw: draw,
+    return { refresh() { if (!fit()) return; bind(); setMode(mode); }, fits: fit, bind: bind, draw: draw, setMode: setMode, mode: () => mode,
              apply: applyStrokes,
              addStroke(r, pts) { strokes.push({ r: r, pts: pts }); draw(); stat(); },
              count() { return strokes.length; } };
