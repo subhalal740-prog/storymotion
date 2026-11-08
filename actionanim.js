@@ -765,6 +765,7 @@
   /* ───────────────────────── 7. render loop ───────────────────────── */
   let raf = 0, lastT = 0;
   function actionDef() { return ACTIONS.find(a => a.id === S.action) || ACTIONS[0]; }
+  let lastBigDraw = 0;
   function loop(now) {
     raf = requestAnimationFrame(loop);
     if (!lastT) lastT = now;
@@ -773,8 +774,14 @@
       S.t += dt * S.speed;
       const d = actionDef().dur;
       if (S.t > d * 6) S.t = 0;                       /* preview safety */
-      renderNow();
-      syncScrub();
+      const paused = document.hidden;
+      /* R106 · live tiles chalu hote hain to bada stage 12fps par — phone garam/bhara na ho */
+      const minGap = document.getElementById('liveTiles') ? 84 : 0;
+      if (!paused && (now - lastBigDraw) >= minGap) {
+        lastBigDraw = now;
+        renderNow();
+        syncScrub();
+      }
     }
   }
   function renderNow() {
@@ -1249,7 +1256,7 @@
     let last = 0;
     (function tick(now) {
       if (!startLiveTiles.alive) return;
-      if (now - last > 200) {                  /* 5 fps — halka rehta hai */
+      if (!document.hidden && now - last > 200) {   /* 5 fps · tab hidden ho to band */
         last = now;
         for (let i = 0; i < tiles.length; i++) {
           const dur = (ACTIONS.find(function (a) { return a.id === tiles[i].id; }) || { dur: 1 }).dur;
