@@ -2410,6 +2410,49 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             m.set(nm);
           }
         }
+        /* R117 · DANGLING-ISLAND GUARD — ASLI BUG FIX
+           Problem: overlap grow sirf apne mask ka 4-neighbour dekhta tha, isliye
+           arm ka haath (jo thigh ke bilkul paas latak raha hota hai) `legL/legR`
+           ke canvas me chala jata tha aur WALK me alag floating piece ban kar
+           udta tha — kyunki leg ka pivot hip par hota hai.
+           Fix: koi bhi island jo piece ke MAIN blob se nahi juda (body ka sirf
+           ek patli patti/edge se juda ho) use hata do. Overlap wala asli hissa
+           main blob se juda hota hai, isliye wo bacha rehta hai.              */
+        (function dropDangling(mm) {
+          try {
+            let seen = new Uint8Array(W * H);
+            let best = -1, bestN = 0;
+            for (let y = bMinY; y <= bMaxY; y++) for (let x = bMinX; x <= bMaxX; x++) {
+              const i0 = y * W + x;
+              if (!mm[i0] || seen[i0]) continue;
+              const st = [i0]; seen[i0] = 1; let n = 0;
+              while (st.length) {
+                const q = st.pop(); n++;
+                const qx = q % W, qy = (q - qx) / W;
+                if (q + 1 < W * H && qx < W - 1 && mm[q + 1] && !seen[q + 1]) { seen[q + 1] = 1; st.push(q + 1); }
+                if (q - 1 >= 0 && qx > 0 && mm[q - 1] && !seen[q - 1]) { seen[q - 1] = 1; st.push(q - 1); }
+                if (q + W < W * H && mm[q + W] && !seen[q + W]) { seen[q + W] = 1; st.push(q + W); }
+                if (q - W >= 0 && mm[q - W] && !seen[q - W]) { seen[q - W] = 1; st.push(q - W); }
+              }
+              if (n > bestN) { bestN = n; best = i0; }
+            }
+            if (best < 0 || bestN < 40) return;
+            seen = new Uint8Array(W * H);
+            const st2 = [best]; seen[best] = 1;
+            while (st2.length) {
+              const q = st2.pop();
+              const qx = q % W;
+              if (qx < W - 1 && mm[q + 1] && !seen[q + 1]) { seen[q + 1] = 1; st2.push(q + 1); }
+              if (qx > 0 && mm[q - 1] && !seen[q - 1]) { seen[q - 1] = 1; st2.push(q - 1); }
+              if (q + W < W * H && mm[q + W] && !seen[q + W]) { seen[q + W] = 1; st2.push(q + W); }
+              if (q - W >= 0 && mm[q - W] && !seen[q - W]) { seen[q - W] = 1; st2.push(q - W); }
+            }
+            for (let y = bMinY; y <= bMaxY; y++) for (let x = bMinX; x <= bMaxX; x++) {
+              const i0 = y * W + x;
+              if (mm[i0] && !seen[i0]) mm[i0] = 0;      /* dangling island hatao */
+            }
+          } catch (e) {}
+        })(m);
         grown[k] = m;
       }
 
