@@ -1370,3 +1370,14 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - **Regression (sab green, errs 0):** bgiou 7 images IoU 97.2–99.8 / charKept 93.4–98.6; bgleave OLD=NEW (photo-bg par koi change nahi); ck-core coreKept 99.94; ck-pocket2 3,135 px · core 100%; erasertest3 · nav 5/5 · scroll 280px/0 stroke · draw modes safe/brush ✓ · gaitmirror 0.0004 · save PNG+JSON ✓.
 - Evidence: `R103-VOM-WALK-LIVE.png` (live walk, 4 frames), `R103-LEG-FIXED.png` (leg piece solid), `WALK-vom-single-AFTER2.png`.
 - Backup: `rig-backup-103a.html`, `rig-backup-102a.html`.
+
+## Round 104 — tool se seedha "Send to Animations" (putlo ka page) (live `09eba2b`, 311440 B)
+- User: "ab isme tool me character chalana aur upload kardo putlo ke page par walk animation me".
+- **Naya button (Save page par, purane buttons ke neeche, same look):** **Send to Animations →**
+  - character ka flattened PNG (max height 420px) banata hai,
+  - `localStorage['hilao.charImg']` me daalta hai — **wahi channel jo character cards use karte hain** (`hilao.html` ka `charToAnimJS`),
+  - phir `animations.html?name=my-character` kholta hai. Kuch server par nahi jata, koi API/paisa nahi.
+- **Live test (asli character `vom-single-front.png`):** button text "Send to Animations →" ✓ · click par URL `animations.html?name=my-character` ✓ · putla card bana (**img 146×420**, data-URI 98,182 B) ✓ · card tap → `hilao.html` (editor) khulta hai, `hilao.pickChar` set hoke editor use kar leta hai ✓ · errs 0.
+- **Action Studio (walk) test:** `actionanim.html?action=walk` par wahi image upload → prepImage flood-fill 398,705 px bg hataya · normalize 215×619 px · neck y197 · shoulders · A-pose detect · `WALK · LIVE` chal raha (play enabled), errs 0. Evidence: `R104-ACTION-WALK-FRAMES.png` (4 frames).
+- Evidence: `R104-SAVE-BUTTON.png`, `R104-ANIM-PAGE-LIVE.png`, `R104-ANIM-PAGE.png`, `R104-ACTIONANIM.png`.
+- Backup: `rig-backup-103b.html`.
