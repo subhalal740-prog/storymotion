@@ -1477,3 +1477,42 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - **Test (local + LIVE):** 15 joints detect ✓ · T-pose (haath bahar) aur haath-latke character **dono** par sahi ✓ · drag (14px) se joint khiska ✓ · arrows +2px ✓ · labels ON/OFF ✓ · Walk block (`animOn:false, pose: idle`) ✓ · Joints done ke baad Walk (`cycle: walk`) ✓ · errs **0** ✓.
 - Evidence: `R113-FINAL.png` (dono characters), `R113-LIVE-LOCK.png`, `R113-LIVE-WALK.png`.
 - Backup: `rig-backup-r113.html`; localStorage keys `rigstudio.joints.v1` / `rigstudio.joints.ok.v1`.
+
+## Round 114 — **FULL 15-JOINT WALK** (live `rig.html` `159f38e` 363251 B)
+Goal: joints visual guide na rahen, asli movement control karein. "Ring ghumana" nahi — insaan jaisa chalna.
+
+### 1) ARM SPLIT (bina iske elbow mud hi nahi sakta)
+- Pehle arm ek hi piece tha. Ab **UPPER ARM (`armL/armR`) + FOREARM (`foreL/foreR`)**.
+- **Sirf joints confirm hone ke baad** hota hai (`__SPLIT_ARMS_NOW`), pipeline me nahi — warna original arm canvas kat jata tha (bug pakda).
+- Pristine pieces `window.__RIG_BASE_PIECES` me safe.
+- Split geometry **user ke joints se**: axis = shoulder→wrist, elbow line usi axis par, `isFore = (t > tElbow)` (tube filter nahi — curved sleeve me tukde ho jate the). Chhote detached blobs (<90px BFS) hata diye.
+- Pixels **resample nahi** hote — dono pieces original orientation me; isliye rest par character bilkul wahi dikhta hai.
+
+### 2) RENDER FIX — forearm double rotation (asli bug)
+- `partRot()` forearm par parent ka angle **jod** raha tha + `partPivot()` bhi parent se ghumata tha → angle double, forearm shareer se alag.
+- Ab: `PARENT` (rotation accumulate) sirf knee (`shinL/R`) ke liye; naya `PIVOT_PARENT` (pivot only) forearm ke liye. `parOf()` dono jagah.
+
+### 3) 15-JOINT WALK ENGINE (`step()`)
+- Har frame: shoulder (user joint) → elbow bend → wrist flick, L aur R **alag-alag**.
+- Shoulder swing **saamne wale pair ke ulte** (side L ↔ legR): `swing = -legN * armAmp15 * 0.9 + small sine`.
+- **Elbow bend**: base `0.07` + `0.15` jab haath peeche jaye (asli gait me elbow peeche mudta hai).
+- **Forearm rotation** (wrist/flick): `wristAmp 0.045` sine.
+- **Body balance**: pelvis side sway `swayAmp 0.030` (root.x), bob + knee + hip swing jaise the waise.
+- Sab `clamp ±0.95 rad` — joint separation / distortion nahi. Haath ko torso se chipakne se bachane ke liye `outBoard 0.055` (haath thoda bahar).
+- Walk ke doran joint markers auto-hide (`setJointsVisible(false)`), stop par wapas.
+
+### 4) Test — 2 characters (requirement #11) — **local + LIVE dono**
+| Character | Split | Frames | Haath move | errs |
+|---|---|---|---|---|
+| Village Kaka (haath latke) | joints ✓ | 49 | shoulder −0.22 … +, elbow/wrist alag | 0 |
+| Demo boy (T-pose) | joints ✓ | 49 | shoulder −1.57 (T→neeche) + elbow bend | 0 |
+
+Purana walk **nahi toota**: split na ho to wahi 6-part gait chalti hai (fallback).
+
+### 5) Honest limits (user ko batana)
+- **Wrist joint abhi visual/guide hai** — forearm ka rotation hi "wrist movement" ka kaam karta hai (alag hand piece nahi kiya, warna haath ke ungli pixels katne ka risk).
+- **T-pose character**: sleeve pixels chest ke saath shared hain, isliye arms neeche aane par sleeve ka hissa chhota sa reh jata hai (geometry limit, bug nahi).
+- Knee/hip ke joint markers abhi bhi thigh region par hain (knee bend kaam karta hai par joint marker ka refinement baaki).
+
+Evidence: `R114-LIVE-BOTH.png` (live, dono characters), `R114-ZOOM-FINAL2.png` (zoom), `R114-FINAL-WALK.png`, `R114-WALK15-TPOSE.png`.
+Backups: `rig-backup-r113.html`, `rig-backup-r114.html`, `rig-backup-r114b.html`.
