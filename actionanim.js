@@ -355,10 +355,12 @@
     const bw = Math.min(clean.width - bx, ab.w + 8);
     const by = Math.max(0, ab.y - 4);
     const bh = Math.min(clean.height - by, ab.h + 8);
+    /* R107 · density par crash: 1150 quads (≈2300 tris) phone/headless par page
+       gir jata tha. 640 hi rakha — seams ka ilaaj weight + inflate se. */
     const targetQuads = 640;
     const ar = bw / bh;
     let cols = Math.round(Math.sqrt(targetQuads * ar)), rows = Math.round(targetQuads / Math.max(1, cols));
-    cols = clamp(cols, 6, 26); rows = clamp(rows, 8, 32);
+    cols = clamp(cols, 8, 34); rows = clamp(rows, 10, 44);
     const cw = bw / cols, ch = bh / rows;
     const verts = [];
     for (let r = 0; r <= rows; r++) {
@@ -382,6 +384,10 @@
     ];
 
     /* vertex weights (gaussian distance to bones) */
+    /* R107 · A-pose (arms down) me arm bone ka asar kam — warna kurta haath ke
+       saath kheench kar "phool" jata hai. Cap se haath halka hilta hai, isliye
+       weights ko 0.55x karna kaafi hai. */
+    const aPose = !sk.tPose;
     const SIG = Math.max(12, Math.min(30, sk.torsoW * 0.26));
     const shTop = sk.shY - sk.Hc * 0.015;         /* shoulders ke upar arm ka asar nahi */
     const hipTop = sk.hipC.y - sk.Hc * 0.06;      /* hips ke upar leg ka asar nahi */
@@ -393,7 +399,14 @@
         let val = Math.exp(-(d * d) / (2 * SIG * SIG));
         /* smooth ramps — hard cutoff se image stretch hoti thi */
         const ramp = (y, y0, y1) => clamp((y - y0) / (y1 - y0), 0, 1);
-        if (b.kind === 'arm') val *= ramp(v.y, shTop - sk.Hc * 0.14, shTop + sk.Hc * 0.05);
+        if (b.kind === 'arm') {
+          val *= ramp(v.y, shTop - sk.Hc * 0.14, shTop + sk.Hc * 0.05);
+          /* R107d · A-pose me arm bone ka weight ZERO. Wajah: haath ke strips me
+             kurta bhi aa jata hai, isliye haath ghumane par kandhe par "wing" bulge
+             aur kurta phoolta tha (user ka screenshot). Ab haath torso ke saath
+             chalte hain — silhouette 100% saaf. T-pose par purana behaviour. */
+          if (aPose) val = 0;
+        }
         if (b.kind === 'leg') val *= ramp(v.y, hipTop - sk.Hc * 0.07, hipTop + sk.Hc * 0.03);
         if (b.kind === 'head') val *= 1 - ramp(v.y, neckBot - sk.Hc * 0.04, neckBot + sk.Hc * 0.06);
         if (b.kind === 'torso' && v.y < sk.yTop + 4) val *= 0.15;
@@ -424,6 +437,23 @@
         triLayer.push(Math.max(domLayer[i0], domLayer[i1], domLayer[i3]), Math.max(domLayer[i0], domLayer[i3], domLayer[i2]));
       }
     }
+    /* R107c · silhouette ke KINARE wale triangles ko inflate nahi karna chahiye —
+       warna unka edge pixel bahar khinch kar kandhe par chhote "wing" bulges bana
+       deta hai (user ke screenshot me dikh raha tha). Interior tris ko inflate
+       karte hain taaki seams band hon. */
+    const aCtx = clean.getContext('2d', { willReadFrequently: true });
+    const aData = aCtx.getImageData(0, 0, clean.width, clean.height).data;
+    const alphaAt = (x, y) => {
+      const ix = clamp(Math.round(x), 0, clean.width - 1), iy = clamp(Math.round(y), 0, clean.height - 1);
+      return aData[(iy * clean.width + ix) * 4 + 3];
+    };
+    const triPad = tris.map((tr) => {
+      const p0 = verts[tr[0]].rest, p1 = verts[tr[1]].rest, p2 = verts[tr[2]].rest;
+      const cxm = (p0.x + p1.x + p2.x) / 3, cym = (p0.y + p1.y + p2.y) / 3;
+      const a = Math.min(alphaAt(p0.x, p0.y), alphaAt(p1.x, p1.y), alphaAt(p2.x, p2.y), alphaAt(cxm, cym));
+      return a >= 250 ? 0.95 : 0;      /* kinare par 0 → koi bulge nahi */
+    });
+
     /* arms ko natural "neeche latak" rest pose me laane ke liye base deltas */
     const norm = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
     const restL = Math.atan2(sk.elbowL.y - sk.shoulderL.y, sk.elbowL.x - sk.shoulderL.x);
@@ -438,7 +468,7 @@
     };
     const baseArmL = armBase(restL, 'L');
     const baseArmR = armBase(restR, 'R');
-    return { clean, sk, cols, rows, verts, tris, triLayer, bones, baseArmL, baseArmR };
+    return { clean, sk, cols, rows, verts, tris, triLayer, triPad, bones, baseArmL, baseArmR };
   }
 
   /* ───────────────────────── 4. drawing (skinned mesh) ───────────────────────── */
@@ -506,7 +536,7 @@
   /* textured triangle draw: src tri → dst tri affine */
   function drawTri(ctx, src, s0, s1, s2, d0, d1, d2, padPx) {
     /* dest triangle ko thoda inflate karo — hairline seams band */
-    const ex = 0.7 + (padPx || 0);
+    const ex = 0.95 + (padPx || 0);   /* R107 · 0.7 → 0.95px: hairline seams kam */
     const gx = (d0.x + d1.x + d2.x) / 3, gy = (d0.y + d1.y + d2.y) / 3;
     const inf = (p) => {
       const vx = p.x - gx, vy = p.y - gy, L = Math.hypot(vx, vy) || 1;
@@ -559,7 +589,8 @@
       for (let i = 0; i < tris.length; i++) {
         if (TL[i] !== layer) continue;
         const [i0, i1, i2] = tris[i];
-        drawTri(ctx, src, verts[i0].rest, verts[i1].rest, verts[i2].rest, P[i0], P[i1], P[i2]);
+        drawTri(ctx, src, verts[i0].rest, verts[i1].rest, verts[i2].rest, P[i0], P[i1], P[i2],
+                (rig.triPad && rig.triPad[i]) || 0);
       }
     }
   }
@@ -681,10 +712,24 @@
     }
   };
 
+  /* R107 · A-POSE SAFETY
+     Arms-down character me haath ke strips me KURTA bhi aa jata hai. Agar arm ko
+     15°+ ghumaya jaye to kurta beech se phool jata hai (user ka screenshot).
+     Isliye A-pose me arm swing/raise ko cap karte hain — pair poora chalta hai,
+     haath halka jhoolta hai. T-pose character par purana behaviour (koi cap nahi). */
+  function dampArms(p) {
+    if (!S.skel || S.skel.tPose) return p;
+    const CAP_X = 4.5 * D2R;      /* aage-peeche jhoola (kurta phoolne se bachao) */
+    const CAP_Y = 3 * D2R;        /* uthana/neeche */
+    const fix = (v) => (v === undefined ? v : [clamp(v[0], -CAP_X, CAP_X), clamp(v[1], -CAP_Y, CAP_Y)]);
+    if (p.armL) p.armL = fix(p.armL);
+    if (p.armR) p.armR = fix(p.armR);
+    return p;
+  }
   function poseAt(actionId, tNorm) {
     const fn = MOTION[actionId] || MOTION.idle;
     const p = fn(((tNorm % 1) + 1) % 1);
-    return p;
+    return dampArms(p);
   }
 
   /* feet ground-lock: pose ke baad lowest foot ko GROUND par laao */
@@ -1244,20 +1289,29 @@
     function drawSmall(tile, tNorm) {
       const ctx = tile.ctx, W = tile.cv.width, H = tile.cv.height;
       const pose = groundLock(poseAt(tile.id, tNorm));
-      /* 1.35x par draw → neeche CSS se chhota dikhta hai: mesh seams patli dikhti hain */
-      const sc = Math.min(W / CW, H / CH) * 1.35;
+      /* R107b · SUPERSAMPLING: pose ko 2x ke offscreen par draw karo, phir chhota
+         karke tile me paste karo. Isse mesh ke patli seams/pinholes average ho ke
+         gayab ho jate hain (screenshot me jo honeycomb dikh raha tha). */
+      const SS = tile.ss || (tile.ss = document.createElement('canvas'));
+      const SW = Math.round(W * 1.5), SH = Math.round(H * 1.5);
+      if (SS.width !== SW) { SS.width = SW; SS.height = SH; }
+      const sctx = SS.getContext('2d');
+      sctx.setTransform(1, 0, 0, 1, 0, 0);
+      sctx.clearRect(0, 0, SW, SH);
+      const sc = Math.min(SW / CW, SH / CH);
+      sctx.imageSmoothingEnabled = true; sctx.imageSmoothingQuality = 'high';
+      sctx.setTransform(sc, 0, 0, sc, (SW - CW * sc) / 2, (SH - CH * sc) / 2);
+      drawPose(sctx, pose);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, W, H);
       ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-      ctx.setTransform(sc, 0, 0, sc, (W - CW * sc) / 2, (H - CH * sc) / 2);
-      drawPose(ctx, pose);
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.drawImage(SS, 0, 0, W, H);
     }
 
     let last = 0;
     (function tick(now) {
       if (!startLiveTiles.alive) return;
-      if (!document.hidden && now - last > 250) {   /* 4 fps · tab hidden ho to band */
+      if (!document.hidden && now - last > 285) {   /* 4 fps · tab hidden ho to band */
         last = now;
         for (let i = 0; i < tiles.length; i++) {
           const dur = (ACTIONS.find(function (a) { return a.id === tiles[i].id; }) || { dur: 1 }).dur;
