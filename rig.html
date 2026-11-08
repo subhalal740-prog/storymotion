@@ -2374,7 +2374,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       /* v17.4 · DEFAULT LAYER ORDER (fixed, user spec):
          HEAD Z6 > ARM R Z5 > LEG R Z4 > TORSO Z3 > ARM L Z2 > LEG L Z1
          (dahina paer hamesha dhad ke upar aur sir ke neeche) */
-      const Z0 = { legL: 1, shinL: 1.5, armL: 2, torso: 3, legR: 4, shinR: 4.5, armR: 5, head: 6 };
+      const Z0 = { legL: 1, shinL: 1.5, armL: 2, foreL: 2.2, torso: 3, legR: 4, shinR: 4.5, armR: 5, foreR: 5.2, head: 6 };
       /* ---------- JOINT OVERLAP MARGIN (v15.3) ----------
          Har piece ko padosi piece ke andar R px tak badhaya jata hai. Yani
          arm ke canvas me shoulder ka thoda torso, torso ke canvas me shoulder
@@ -2600,7 +2600,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       onChange();
     }
     /* v17.4 · strict base order — sirf ye ids, sirf ye z (reset / integrity ke liye) */
-    const Z_BASE = { legL: 1, shinL: 1.5, armL: 2, torso: 3, legR: 4, shinR: 4.5, armR: 5, head: 6 };
+    const Z_BASE = { legL: 1, shinL: 1.5, armL: 2, foreL: 2.2, torso: 3, legR: 4, shinR: 4.5, armR: 5, foreR: 5.2, head: 6 };
 
     function normalize() { items.forEach((it, i) => { it.z = i + 1; }); }
 
@@ -2681,11 +2681,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
      Snapshot-based state controller. Har change JSON snapshot banata hai ->
      undo / redo / reset / localStorage save / export.                        */
   const Pose = (function () {
-    const RING_IDS = ['head', 'torso', 'armL', 'armR', 'legL', 'legR'];
+    const RING_IDS = ['head', 'torso', 'armL', 'armR', 'legL', 'legR', 'foreL', 'foreR'];   /* R114: forearm apna joint */
     /* v19.0 · KNEE — shin ka apna angle (thigh ke relative). Ring nahi, UI me
        sirf legs ke ring se control hota hai (walk khud bend karta hai). */
     const KNEE_IDS = ['shinL', 'shinR'];
-    const PARENT = { shinL: 'legL', shinR: 'legR' };
+    const PARENT = { shinL: 'legL', shinR: 'legR', foreL: 'armL', foreR: 'armR' };
     let knee = {};
     KNEE_IDS.forEach((k) => { knee[k] = 0; });
     let rotation = {};
@@ -2844,7 +2844,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     /* ---------- v19.0 · PARENT CHAIN (knee joint) ----------
        shin ka pivot thigh ke hip-pivot ke around ghumta hai, aur uska apna angle
        = thigh angle + knee bend. Isse ghutna asli jagah par mudta hai.        */
-    const PARENT = { shinL: 'legL', shinR: 'legR' };
+    const PARENT = { shinL: 'legL', shinR: 'legR' };           /* rotation accumulate (knee) */
+    /* R114 · forearm: pivot parent ke saath chalta hai, par rotation APNA (absolute)
+       — warna parent ka angle double ho jata hai aur haath alag ho jata hai. */
+    const PIVOT_PARENT = { foreL: 'armL', foreR: 'armR' };
+    const parOf = (id) => PARENT[id] || PIVOT_PARENT[id];
     function partRot(p) {
       const par = PARENT[p.id];
       if (!par) return Pose.get(p.id) || 0;
@@ -2852,13 +2856,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     }
     function partOff(p) {
       const o = (Pose.getOffset ? Pose.getOffset(p.id) : { dx: 0, dy: 0 }) || { dx: 0, dy: 0 };
-      const par = PARENT[p.id];
+      const par = parOf(p.id);
       if (!par) return { dx: o.dx || 0, dy: o.dy || 0 };
       const po = (Pose.getOffset ? Pose.getOffset(par) : { dx: 0, dy: 0 }) || { dx: 0, dy: 0 };
       return { dx: (o.dx || 0) + (po.dx || 0), dy: (o.dy || 0) + (po.dy || 0) };
     }
     function partPivot(p) {
-      const par = PARENT[p.id];
+      const par = parOf(p.id);
       if (!par || !p.pivot) return p.pivot;
       const pp = Layers.byId(par);
       if (!pp || !pp.pivot) return p.pivot;
@@ -2915,7 +2919,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       const RR = rootSnap || (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
       for (const p of list) {
         if (!p.pivot || p.kind === 'cloth') continue;
-        if (PARENT[p.id]) continue;                   /* v19.0: shin ka ring nahi — thigh ka hi kaafi */
+        if (parOf(p.id)) continue;                    /* v19.0/v114: shin/forearm ring nahi */
         /* v18.4 · RING SYNC: Position step me part ox/oy se jo khiska hai, uska pivot
            bhi utna hi khisko — warna ring purani jagah par locked reh jaati hai. */
         const pdx = (p.ox !== undefined ? p.ox : p.x) - p.x;
@@ -3072,7 +3076,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     ];
     let joints = {};              /* id -> {x,y} image space me */
     let jointsReady = {};         /* id -> true (sahi jagah set hai) */
-    let jointSel = null, labelsOn = true, jointsConfirmed = false, mode = 'auto';
+    let jointSel = null, labelsOn = true, jointsConfirmed = false, mode = 'auto', jointsVisible = true;
     let jDrag = null;
 
     function partById(id) { const l = Layers.order(); for (const p of l) if (p.id === id) return p; return null; }
@@ -3164,28 +3168,34 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       out.hipR = { x: cx + tw * 0.17, y: hipY };
 
       if (S) {
-        /* ---------- HAATH (T-pose ya latke hue — dono) ---------- */
-        /* arm band: shoulder se hip ke neeche tak; us band me sabse door ka pixel = hand */
-        const legLen = Math.max(60, (T && tb.y1) ? (ownOfP(T).y1 + 0) - hipY : th * 0.5);
-        const yTop = Math.max(0, Math.round(shY - th * 0.05));
-        const yBot = Math.min(S.H - 1, Math.round(hipY + legLen * 2.2));
+        /* ---------- HAATH (T-pose ya latke hue — dono) ----------
+           Wrist = arm piece ka wo painted pixel jo TORSO ke centre se sabse door
+           hai. Latke haath me wo neeche hota hai, T-pose me bahar — dono sahi.
+           (Piece ka box bharosemand nahi hota, isliye pixels hi ginte hain.)   */
+        const tc = { x: cx, y: (tb.y0 + tb.y1) / 2 };
+        const armPiece = (id) => { const l = Layers.order(); for (const q of l) if (q.id === id) return q; return null; };
         ['L', 'R'].forEach((side) => {
-          const sign = (side === 'L') ? -1 : 1;
-          let best = null, bestScore = 0;
-          for (let y = yTop; y <= yBot; y++) {
-            for (let x = (sign < 0 ? 0 : Math.round(cx)); sign < 0 ? x < cx : x < S.W; x += (sign < 0 ? 1 : 1)) {
-              if (alphaAt(S, x, y) <= 40) continue;
-              const dx = Math.abs(x - cx);
-              if (dx > tw * 0.62) {                        /* sirf torso se bahar */
-                const score = dx + (y - yTop) * 0.35;      /* door + neeche = hand */
-                if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
-              }
+          const P2 = armPiece(side === 'L' ? 'armL' : 'armR');
+          if (!P2 || !P2.canvas || !P2.pivot) return;
+          try {
+            const W2 = P2.canvas.width, H2 = P2.canvas.height;
+            const d2 = P2.canvas.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, W2, H2).data;
+            const ox2 = (P2.ox !== undefined) ? P2.ox : P2.x, oy2 = (P2.oy !== undefined) ? P2.oy : P2.y;
+            let best = null;
+            const halfTorso = Math.max(20, (tb.x1 - tb.x0) * 0.5 + 2);
+            for (let y = 0, i = 0; y < H2; y++) for (let x = 0; x < W2; x++, i += 4) {
+              if (d2[i + 3] < 40) continue;
+              const ix = x + ox2, iy = y + oy2;
+              if (Math.abs(ix - tc.x) < halfTorso) continue;   /* torso/leg pixels chhod do */
+              const dd = (ix - tc.x) * (ix - tc.x) + (iy - tc.y) * (iy - tc.y);
+              if (!best || dd > best.d) best = { d: dd, x: ix, y: iy };
             }
-          }
-          if (!best) best = { x: (side === 'L' ? tb.x0 : tb.x1), y: shY + th * 0.5 };
-          out['wr' + side] = { x: best.x, y: best.y };
-          const sh = out['sh' + side];
-          out['el' + side] = { x: (sh.x + best.x) / 2, y: (sh.y + best.y) / 2 };
+            if (!best) return;
+            const wrImg = { x: best.x, y: best.y };
+            const shImg = joints['sh' + side] || { x: P2.pivot.x, y: P2.pivot.y };
+            out['wr' + side] = wrImg;
+            out['el' + side] = { x: shImg.x + (wrImg.x - shImg.x) * 0.55, y: shImg.y + (wrImg.y - shImg.y) * 0.55 };
+          } catch (e) {}
         });
 
         /* ---------- PAIR (knee / ankle) ---------- */
@@ -3234,6 +3244,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     }
 
     function drawJoints() {
+      if (!jointsVisible) return;
       const t = performance.now() / 1000;
       /* selected joint ka poora naam — upar ek pill me (labels overlap na hon) */
       if (jointSel && joints[jointSel] && labelsOn) {
@@ -3370,8 +3381,291 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
              setJointSel, setLabels, setJointsConfirmed, syncJointUI,
              get jointSel() { return jointSel; }, get labelsOn() { return labelsOn; },
              get jointsConfirmed() { return jointsConfirmed; },
+             setJointsVisible(v) { jointsVisible = !!v; render(); },
+             get jointsVisible() { return jointsVisible; },
              get readyCount() { return JOINTS.filter((j) => jointsReady[j.id]).length; } };
   })();
+
+  /* ==================================================================
+     R114 · ARM SPLIT — haath ko UPPER ARM + FOREARM me todta hai
+     Bina iske elbow mud nahi sakta (ek hi piece ko sirf ghumaya ja sakta hai).
+     Kaam:
+       1) arm piece ka axis nikaalo (pivot = shoulder, tip = sabse door pixel)
+       2) elbow = shoulder + 55% tip ki taraf
+       3) pixels ko elbow par -armAngle ghumao (seedha frame) -> elbow row par cut
+       4) upper arm = ORIGINAL pixels jo elbow ke upar hain (koi resample nahi)
+       5) forearm = straightened crop; pivot = elbow (parent = arm)
+     Split fail ho to purana 8-piece rig hi chalta rahega (fallback).
+     ================================================================== */
+  const WALK15 = { ARM_REST: 1.40, ELBOW_FRAC: 0.55, on: true };
+
+  function splitArms(pieces) {
+    try { window.WALK15 = WALK15; } catch (e) {}
+    if (!WALK15.on) return pieces;
+    /* idempotent — dobara split na ho (armL + foreL pehle se hain) */
+    if (pieces.some((p) => p.id === 'foreL' || p.id === 'foreR')) return pieces;
+    const has = pieces.some((p) => p.id === 'armL' || p.id === 'armR');
+    if (!has) return pieces;
+    const out = [];
+    for (const p of pieces) {
+      if (p.id !== 'armL' && p.id !== 'armR') { out.push(p); continue; }
+      try {
+        const isL = (p.id === 'armL');
+        const fwd = (window.__RIG_FACING && window.__RIG_FACING.dir < 0) ? -1 : 1;
+        /* base rest angle: left arm neeche = -REST, right = +REST (screen me dono latak jate hain) */
+        const rest = isL ? (-WALK15.ARM_REST * fwd) : (WALK15.ARM_REST * fwd);
+
+        const cv = p.canvas;
+        const cw = cv && cv.width, ch = cv && cv.height;
+        if (!cv || !cw || !ch || cw < 8 || ch < 8) { out.push(p); continue; }   /* canvas free/khali */
+        if (!p.pivot) { out.push(p); continue; }
+        const c = cv.getContext('2d', { willReadFrequently: true });
+        const img = c.getImageData(0, 0, cw, ch);
+        const d = img.data;
+
+        /* pivot (shoulder) piece-local coords */
+        const ox = (p.ox !== undefined) ? p.ox : p.x, oy = (p.oy !== undefined) ? p.oy : p.y;
+        const pvx = p.pivot.x - ox, pvy = p.pivot.y - oy;
+
+        /* ---- R114b · JOINTS SE AXIS ----
+           User ne jo shoulder / elbow / wrist joints set kiye hain, wahi arm ko
+           todte hain — piece geometry par bharosa nahi. PCA sirf fallback.  */
+        const JT = (function () { try { return (RIG.Studio && RIG.Studio.getJoints) ? RIG.Studio.getJoints() : null; } catch (e) { return null; } })();
+        const SJ = JT ? JT[isL ? 'shL' : 'shR'] : null;
+        const EJ = JT ? JT[isL ? 'elL' : 'elR'] : null;
+        const WJ = JT ? JT[isL ? 'wrL' : 'wrR'] : null;
+        if (SJ && EJ && WJ) {
+          const sx0 = SJ.x - ox, sy0 = SJ.y - oy, ex0 = EJ.x - ox, ey0 = EJ.y - oy, wx0 = WJ.x - ox, wy0 = WJ.y - oy;
+          let axj = wx0 - sx0, ayj = wy0 - sy0;
+          const alj = Math.hypot(axj, ayj) || 1;
+          axj /= alj; ayj /= alj;
+          const tElbowJ = (ex0 - sx0) * axj + (ey0 - sy0) * ayj;      /* elbow axis par */
+          /* handEnd = axis par sabse door painted pixel (wrist joint se bhi aage
+             kapda/ungli ho sakti hai). Isse elbow ki asli lambai milti hai. */
+          let handEnd = tElbowJ;
+          for (let y = 0, i = 0; y < ch; y++) for (let x = 0; x < cw; x++, i += 4) {
+            if (d[i + 3] < 40) continue;
+            const t2 = (x + 0.5 - sx0) * axj + (y + 0.5 - sy0) * ayj;
+            if (t2 > handEnd) handEnd = t2;
+          }
+          /* forearm = axis par elbow ke aage + arm ki tube ke andar */
+          let tubeJ = 0;
+          for (let y = 0, i = 0; y < ch; y++) for (let x = 0; x < cw; x++, i += 4) {
+            if (d[i + 3] < 40) continue;
+            const t = (x + 0.5 - sx0) * axj + (y + 0.5 - sy0) * ayj;
+            if (Math.abs(t - tElbowJ) > 12) continue;
+            const perp = Math.abs(-(x + 0.5 - sx0) * ayj + (y + 0.5 - sy0) * axj);
+            if (perp > tubeJ) tubeJ = perp;
+          }
+          tubeJ = Math.max(10, tubeJ + 6);
+          const upCv = document.createElement('canvas'); upCv.width = cw; upCv.height = ch;
+          const foCv = document.createElement('canvas'); foCv.width = cw; foCv.height = ch;
+          const uc = upCv.getContext('2d'), fc2 = foCv.getContext('2d');
+          const upImg = uc.createImageData(cw, ch), foImg = fc2.createImageData(cw, ch);
+          const ud = upImg.data, fd = foImg.data;
+          let upN = 0, foN = 0;
+          for (let y = 0, i = 0; y < ch; y++) for (let x = 0; x < cw; x++, i += 4) {
+            if (d[i + 3] === 0) continue;
+            const t = (x + 0.5 - sx0) * axj + (y + 0.5 - sy0) * ayj;
+            const perp = Math.abs(-(x + 0.5 - sx0) * ayj + (y + 0.5 - sy0) * axj);
+            /* arm piece me sirf arm ke pixels hain — isliye elbow LINE ke neeche
+               sab kuch forearm hai (koi tube filter nahi; curved sleeve safe) */
+            const isFore = (t > tElbowJ);
+            const dst = isFore ? fd : ud;
+            dst[i] = d[i]; dst[i + 1] = d[i + 1]; dst[i + 2] = d[i + 2]; dst[i + 3] = d[i + 3];
+            if (isFore) foN++; else upN++;
+          }
+          uc.putImageData(upImg, 0, 0);
+          fc2.putImageData(foImg, 0, 0);
+          /* chhote detached tukde hatao (kabhi kabhi original image me haath
+             kurte ke peeche hota hai — wo pixels forearm me aa kar alag dikhte) */
+          (function cleanBlobs(canvas2d, w2, h2) {
+            try {
+              const im2 = canvas2d.getImageData(0, 0, w2, h2);
+              const dd = im2.data;
+              const seen = new Uint8Array(w2 * h2);
+              for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) {
+                const p0 = y * w2 + x;
+                if (seen[p0] || dd[p0 * 4 + 3] < 40) continue;
+                /* BFS */
+                const stack = [p0]; seen[p0] = 1;
+                const comp = [];
+                while (stack.length) {
+                  const q0 = stack.pop(); comp.push(q0);
+                  const qx = q0 % w2, qy = (q0 - qx) / w2;
+                  const nb = [[qx - 1, qy], [qx + 1, qy], [qx, qy - 1], [qx, qy + 1]];
+                  for (let k = 0; k < 4; k++) {
+                    const nx = nb[k][0], ny = nb[k][1];
+                    if (nx < 0 || ny < 0 || nx >= w2 || ny >= h2) continue;
+                    const q1 = ny * w2 + nx;
+                    if (seen[q1] || dd[q1 * 4 + 3] < 40) continue;
+                    seen[q1] = 1; stack.push(q1);
+                  }
+                }
+                if (comp.length < 90) {                     /* chhota tukda -> hatao */
+                  for (let k = 0; k < comp.length; k++) dd[comp[k] * 4 + 3] = 0;
+                }
+              }
+              canvas2d.putImageData(im2, 0, 0);
+            } catch (e) {}
+          })(fc2, cw, ch);
+          WALK15.splitMode = 'joints';
+          WALK15.splitN = { up: upN, fore: foN, tube: Math.round(tubeJ), tElbow: Math.round(tElbowJ) };
+          if (foN >= 40 && upN >= 40) {
+            /* UPPER ARM: pivot = SHOULDER joint (user ka), content wahi jagah */
+            const upper = Object.assign({}, p, { canvas: upCv, pivot: { x: SJ.x, y: SJ.y } });
+            /* elbow: user ka joint, par axis par project karke (warna ghumne par gap) */
+            const tE = Math.max(tElbowJ, Math.min(handEnd * 0.92, tElbowJ));
+            const elbowPt = { x: SJ.x + axj * tE, y: SJ.y + ayj * tE };
+            /* user ka elbow joint bhi axis par snap kar do (consistency) */
+            try {
+              const jj = RIG.Studio.getJoints();
+              const ek = isL ? 'elL' : 'elR';
+              if (jj[ek]) { jj[ek] = { x: elbowPt.x, y: elbowPt.y }; RIG.Studio.setJoints(jj); }
+            } catch (e0) {}
+            /* FOREARM: pivot = ELBOW joint (user ka) */
+            const forearm = Object.assign({}, p, {
+              id: isL ? 'foreL' : 'foreR',
+              label: isL ? 'FOREARM L' : 'FOREARM R',
+              z: (p.z || 2) + 0.2,
+              canvas: foCv,
+              pivot: { x: elbowPt.x, y: elbowPt.y },
+              isFore: true
+            });
+            out.push(upper); out.push(forearm);
+            WALK15.splitOk = true;
+            WALK15.pieces = WALK15.pieces || {};
+            const theta = Math.atan2(wy0 - sy0, wx0 - sx0);      /* shoulder->wrist angle */
+            const rest = (Math.PI / 2) - theta;                  /* isse haath neeche latakta hai */
+            WALK15.pieces[p.id] = { rest: rest, theta: theta, len: Math.round(handEnd), tube: Math.round(tubeJ),
+                                    sh: { x: SJ.x, y: SJ.y }, el: elbowPt, wr: { x: WJ.x, y: WJ.y },
+                                    foreLen: Math.round(handEnd - tE) };
+            WALK15.pieces[forearm.id] = { parent: p.id, len: Math.round(Math.hypot(WJ.x - EJ.x, WJ.y - EJ.y)) };
+            continue;
+          }
+        }
+        /* ---- PCA fallback: arm strip ka principal axis ---- */
+        let n = 0, sx = 0, sy = 0;
+        for (let y = 0, i = 0; y < ch; y++) for (let x = 0; x < cw; x++, i += 4) {
+          if (d[i + 3] >= 40) { n++; sx += x; sy += y; }
+        }
+        if (n < 60) { out.push(p); continue; }
+        const mx = sx / n, my = sy / n;
+        let cxx = 0, cyy = 0, cxy = 0;
+        for (let y = 0, i = 0; y < ch; y++) for (let x = 0; x < cw; x++, i += 4) {
+          if (d[i + 3] < 40) continue;
+          const dx0 = x - mx, dy0 = y - my;
+          cxx += dx0 * dx0; cyy += dy0 * dy0; cxy += dx0 * dy0;
+        }
+        cxx /= n; cyy /= n; cxy /= n;
+        const tr = cxx + cyy, det = cxx * cyy - cxy * cxy;
+        const l1 = tr / 2 + Math.sqrt(Math.max(0, tr * tr / 4 - det));
+        let ax = cxy, ay = (l1 - cxx);
+        if (Math.abs(ax) < 1e-6 && Math.abs(ay) < 1e-6) { ax = 0; ay = 1; }
+        let alen = Math.hypot(ax, ay) || 1;
+        ax /= alen; ay /= alen;
+
+        /* axis par extent + shoulder kis end par hai */
+        let tmin = 1e9, tmax = -1e9;
+        for (let y = 0, i = 0; y < ch; y++) for (let x = 0; x < cw; x++, i += 4) {
+          if (d[i + 3] < 40) continue;
+          const t = (x - mx) * ax + (y - my) * ay;
+          if (t < tmin) tmin = t;
+          if (t > tmax) tmax = t;
+        }
+        const tp = (pvx - mx) * ax + (pvy - my) * ay;
+        WALK15.debug = { pvx: +pvx.toFixed(0), pvy: +pvy.toFixed(0), tp: +tp.toFixed(0), tmin: +tmin.toFixed(0), tmax: +tmax.toFixed(0), ax: +ax.toFixed(2), ay: +ay.toFixed(2), cw: cw, ch: ch };
+        const shoulderAtMin = (Math.abs(tp - tmin) <= Math.abs(tp - tmax));
+        /* elbow: shoulder se 55% — arm ki asli lambai ke hisaab se */
+        const tElbow = shoulderAtMin ? (tmin + (tmax - tmin) * WALK15.ELBOW_FRAC)
+                                     : (tmax - (tmax - tmin) * WALK15.ELBOW_FRAC);
+        const elbow = { x: mx + ax * tElbow, y: my + ay * tElbow };   /* piece-local */
+        const handSign = shoulderAtMin ? 1 : -1;                      /* hand ki taraf */
+        const tproj = Math.abs(tmax - tmin);
+
+        /* tube half-width (elbow ke aas-paas perpendicular spread) */
+        let tube = 0;
+        for (let y = 0, i = 0; y < ch; y++) for (let x = 0; x < cw; x++, i += 4) {
+          if (d[i + 3] < 40) continue;
+          const t = (x - mx) * ax + (y - my) * ay;
+          if (Math.abs(t - tElbow) > 14) continue;
+          const perp = Math.abs(-(x - mx) * ay + (y - my) * ax);
+          if (perp > tube) tube = perp;
+        }
+        tube = Math.max(8, tube + 5);
+
+        (function splitNow() {
+          const upCv = document.createElement('canvas'); upCv.width = cw; upCv.height = ch;
+          const foCv = document.createElement('canvas'); foCv.width = cw; foCv.height = ch;
+          const uc = upCv.getContext('2d'), fc2 = foCv.getContext('2d');
+          const upImg = uc.createImageData(cw, ch), foImg = fc2.createImageData(cw, ch);
+          const ud = upImg.data, fd = foImg.data;
+          let upN = 0, foN = 0;
+          for (let y = 0, i = 0; y < ch; y++) for (let x = 0; x < cw; x++, i += 4) {
+            if (d[i + 3] === 0) continue;
+            const ddx = x + 0.5 - pvx, ddy = y + 0.5 - pvy;
+            const t = ddx * ax + ddy * ay;                     /* axis par distance */
+            const perp = Math.abs(-ddx * ay + ddy * ax);       /* axis se doori */
+            const isFore = (handSign * (t - tElbow) > 0) && (perp <= tube);
+            const dst = isFore ? fd : ud;
+            dst[i] = d[i]; dst[i + 1] = d[i + 1]; dst[i + 2] = d[i + 2]; dst[i + 3] = d[i + 3];
+            if (isFore) foN++; else upN++;
+          }
+          uc.putImageData(upImg, 0, 0);
+          fc2.putImageData(foImg, 0, 0);
+          WALK15.splitN = { up: upN, fore: foN, tube: Math.round(tube), elbowLocal: { x: Math.round(elbow.x), y: Math.round(elbow.y) } };
+          if (foN < 40 || upN < 40) { WALK15.splitFail = (WALK15.splitFail || 0) + 1; out.push(p); return; }
+
+          const upper = Object.assign({}, p, { canvas: upCv });
+          const forearm = Object.assign({}, p, {
+            id: isL ? 'foreL' : 'foreR',
+            label: isL ? 'FOREARM L' : 'FOREARM R',
+            z: (p.z || 2) + 0.2,
+            canvas: foCv,
+            pivot: { x: elbow.x + ox, y: elbow.y + oy },   /* ELBOW (image space) */
+            isFore: true
+          });
+          out.push(upper);
+          out.push(forearm);
+          WALK15.splitOk = true;
+          WALK15.pieces = WALK15.pieces || {};
+          /* rest = wo rotation jisse haath seedha neeche latak jaye (down = π/2) */
+          /* axis angle (hand ki taraf) — down (π/2) laane ke liye kitna ghumana hai */
+          const theta = Math.atan2(ay * handSign, ax * handSign);
+          WALK15.pieces[p.id] = { rest: (Math.PI / 2) - theta, len: Math.round(tproj), elbowFrac: WALK15.ELBOW_FRAC, theta: theta, handSign: handSign, tube: Math.round(tube) };
+          WALK15.pieces[forearm.id] = { elbow: forearm.pivot, len: Math.round(tproj * (1 - WALK15.ELBOW_FRAC)) };
+        })();
+      } catch (e) {
+        out.push(p);
+      }
+    }
+    return out;
+  }
+
+  /* R114d · JOINTS -> ARM SPLIT hook (RIG ke scope me, kyunki splitArms yahin hai).
+     Sirf tab chalta hai jab 15 joints ready hon. Ek hi baar (idempotent). */
+  window.__SPLIT_ARMS_NOW = function () {
+    try {
+      if (WALK15.splitMode === 'joints') return 'already';
+      const S = Studio;
+      if (!S || S.readyCount < S.JOINTS.length) return 'not-ready';
+      const cut = App.cut;
+      if (!cut || !cut.pieces) return 'no-cut';
+      const base = (window.__RIG_BASE_PIECES || cut.pieces).filter(function (q) { return q && !q.isFore; });
+      const pieces = splitArms(base.map(function (q) { return q; }));
+      if (WALK15.splitMode !== 'joints') return 'split-failed';
+      cut.pieces = pieces;
+      Layers.load(pieces);
+      Layers.setOnChange(function () { renderLayers(); Studio.render(); });
+      Pose.init();
+      Studio.setScene(cut.bbox, 1);
+      Studio.syncJointUI();
+      Studio.render();
+      return 'ok';
+    } catch (e) { return 'error:' + (e && e.message); }
+  };
+  /* base pieces yaad rakho (split se pehle) */
+  window.__RIG_BASE_PIECES = window.__RIG_BASE_PIECES || null;
 
   /* ----------------------------------------------------------------- 07 · APP */
   const App = {
@@ -3909,6 +4203,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       window.__RIG_FACING = App.facing;
       applyFacingUI();
     } catch (e) { App.facing = { dir: 1, mode: 'front', score: 0, auto: true }; }
+    /* R114c · split SIRF joints confirm hone ke baad (__RESPLIT_ARMS).
+       Pipeline me split karne se original arm canvas kat jata tha. */
+    try { window.__RIG_BASE_PIECES = cut.pieces; WALK15.splitMode = null; } catch (e) {}
     Layers.load(cut.pieces);
     Layers.setOnChange(() => { renderLayers(); Studio.render(); });
     renderCut();
@@ -3964,6 +4261,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       window.__RIG_FACING = App.facing;
       applyFacingUI();
     } catch (e) {}
+    /* R114c · split SIRF joints confirm hone ke baad (__RESPLIT_ARMS).
+       Pipeline me split karne se original arm canvas kat jata tha. */
+    try { window.__RIG_BASE_PIECES = cut.pieces; WALK15.splitMode = null; } catch (e) {}
     Layers.load(cut.pieces);
     Layers.setOnChange(() => { renderLayers(); Studio.render(); });
     renderCut();
@@ -5401,6 +5701,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       }
       Sx.setJointsConfirmed(true);
       saveJoints(); Sx.syncJointUI();
+      /* R114b · ab joints se arm split + walk engine */
+      try { if (window.__RESPLIT_ARMS) window.__RESPLIT_ARMS(); } catch (e) {}
       U.toast('Sab 15 joints set ✓ — ab Walk/Run chalega');
       setMeta('pose: idle');
     };
@@ -5421,6 +5723,15 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       /* arrows se set karna bhi confirm hai */
       saveJoints();
     });
+    /* R114d · joints confirm hone ke baad arm split (RIG scope ka hook) */
+    window.__RESPLIT_ARMS = function () {
+      try {
+        var r = (window.__SPLIT_ARMS_NOW ? window.__SPLIT_ARMS_NOW() : 'no-hook');
+        try { console.log('[R114] split:', r, window.WALK15 && window.WALK15.splitN); } catch (e) {}
+        return r;
+      } catch (e) { return 'err'; }
+    };
+
     /* joint drag hone par ready ho jaye — Studio ke andar se callback */
     window.__JOINTS_ON_SET = function (id) { saveJoints(); };
     /* naya upload / page 4 par aane par auto-detect */
@@ -5503,7 +5814,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     spread: 0.22,          /* legs amplitude (rad) */
     armAmp: 0.30,
     speed: 1.0,            /* cycles per second base */
-    torso: 0.03
+    torso: 0.03,
+    /* R114 · 15-joint walk params */
+    armAmp15: 0.085,       /* shoulder swing (rad) — front view: subtle */
+    elbowBase: 0.07,       /* elbow ka base bend */
+    elbowAmp: 0.15,        /* elbow bend ka swing */
+    wristAmp: 0.045,       /* wrist flick (forearm ka extra rotation) */
+    swayAmp: 0.030         /* pelvis side sway (body balance) */
   };
   try { window.__RIG_ANIM = Anim; } catch (e) {}
 
@@ -5588,6 +5905,65 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       torso: Anim.torso * (0.6 + 0.4 * Math.cos(Anim.phase * 2)),
       head: 0
     };
+    /* ================= R114 · 15-JOINT ARMS =================
+       Har frame par joints se asli haath banate hain:
+         shoulder (user ka joint) -> elbow (bend) -> wrist (flick)
+       Upper arm aur forearm ALAG pieces hain, isliye elbow asli me mudta hai.
+       Arm swing saamne wale pair ke ULTE hota hai (natural gait).
+       Kuch bhi clamp ke bahar nahi jata -> joint separation / distortion nahi.
+       ======================================================= */
+    let AR15 = null;
+    if (WALK15.splitMode === 'joints' && WALK15.pieces && WALK15.pieces.armL && WALK15.pieces.foreL) {
+      try {
+        const jj = RIG.Studio.getJoints();
+        AR15 = {};
+        const TWO = Math.PI * 2;
+        ['L', 'R'].forEach(function (side) {
+          const isL = (side === 'L');
+          const armId = 'arm' + side, foreId = 'fore' + side;
+          const info = WALK15.pieces[armId];
+          if (!info) return;
+          const sh = jj['sh' + side] || info.sh;
+          const th0 = Math.atan2(info.wr.y - info.sh.y, info.wr.x - info.sh.x);  /* original dir */
+          const L1 = Math.hypot(info.el.x - info.sh.x, info.el.y - info.sh.y);
+          const L2 = Math.hypot(info.wr.x - info.el.x, info.wr.y - info.el.y);
+          if (!(L1 > 4) || !(L2 > 4)) return;
+
+          /* swing: saamne wale pair ka ULTA (side L -> legR, side R -> legL) */
+          const opposite = isL ? sR : sL;
+          const legN = opposite.ang / Math.max(0.06, A);          /* -1..1 */
+          const ph = (side === 'L') ? u : (u + 0.5);
+          const swing = -legN * Anim.armAmp15 * 0.9 + 0.045 * Math.sin(TWO * ph);
+          /* side sign: screen me left arm ka bahar = -1 */
+          const sideSign = isL ? -1 : 1;
+          const torsoLean = Anim.torso * 0.6;
+
+          /* upper arm ka angle (vertical se) — bahar ki taraf halka */
+          /* haath ko kambal (torso) se CHIPAKNE se bachao: jitna neeche elbow
+             utna haath thoda bahar (tola). Isse sleeve me gap nahi banta. */
+          const outBoard = 0.055;      /* ~3° bahar */
+          const a1 = sideSign * (outBoard + 0.022 * Math.abs(legN)) + swing * 0.30 - torsoLean * 0.35;
+          /* elbow bend: zyada jab haath peeche jaye */
+          const bendBack = Math.max(0, -legN);
+          const a2 = a1 + sideSign * (Anim.elbowBase + Anim.elbowAmp * bendBack);
+          /* wrist flick (forearm ka extra rotation) */
+          const flick = sideSign * Anim.wristAmp * Math.sin(TWO * ph + 0.9);
+          /* clamp — joint chhoote na, body distort na ho */
+          const clampA = (v) => Math.max(-0.95, Math.min(0.95, v));
+          const A1 = clampA(a1), A2 = clampA(a2), FL = clampA(flick);
+
+          /* render convention: piece apni ORIGINAL direction (th0) se r ghumta hai */
+          const armRot   = (Math.PI / 2 + A1) - th0;
+          const foreTotal = (Math.PI / 2 + A2 + FL) - th0;
+          const foreRot  = foreTotal - armRot;
+          AR15[armId] = armRot;
+          AR15[foreId] = foreRot;
+          /* debug: asli joint positions (target) */
+          AR15['_el' + side] = { x: sh.x + Math.sin(A1 + Math.PI / 2 - Math.PI / 2) * 0, y: 0,
+                                 ang1: A1, ang2: A2, L1: L1, L2: L2 };
+        });
+      } catch (e) { AR15 = null; }
+    }
     const KN = { shinL: KNEE_SIGN * sL.knee, shinR: KNEE_SIGN * sR.knee };
     let oyL = dyL, oyR = dyR;
     if (FD < 0) {                                       /* mirror: side swap + sign ulta */
@@ -5600,7 +5976,16 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     }
     try {
       if (RIG.Pose.setKnee) RIG.Pose.setKnee(KN);
-      RIG.Pose.setPair(P);
+      if (AR15) {
+        /* 15-joint arms: shoulder + forearm angles (mirror system ko bypass) */
+        try { RIG.Pose.setMirror(false); } catch (e0) {}
+        RIG.Pose.setPair(P);
+        if (AR15.armL !== undefined) RIG.Pose.setPair({ armL: AR15.armL, armR: AR15.armR });
+        if (AR15.foreL !== undefined) RIG.Pose.setPair({ foreL: AR15.foreL, foreR: AR15.foreR });
+        try { RIG.Pose.setMirror(true); } catch (e0) {}
+      } else {
+        RIG.Pose.setPair(P);
+      }
       /* step offsets + poore character ki position */
       if (RIG.Pose.setOffset) {
         RIG.Pose.setOffset('legL', 0, oyL);
@@ -5608,7 +5993,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         RIG.Pose.setOffset('armL', 0, 0);
         RIG.Pose.setOffset('armR', 0, 0);
       }
-      if (RIG.Pose.setRoot) RIG.Pose.setRoot(Anim.travel, -rise);
+      /* body balance — pelvis side sway (har step par halka jhukav) */
+      const sway = AR15 ? (BH * Anim.swayAmp * 0.01) * Math.sin(Anim.phase) : 0;
+      if (RIG.Pose.setRoot) RIG.Pose.setRoot(Anim.travel + sway, -rise);
       RIG.Studio.render();
     } catch (e) { Anim.on = false; return; }
     Anim.raf = requestAnimationFrame(step);
@@ -5649,6 +6036,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     Anim.kind = kind || 'walk';
     try { RIG.Layers.setFaceDir(RIG.App && RIG.App.facing ? RIG.App.facing.dir : 1); } catch (e) {}
     Anim.on = true; Anim.last = 0;
+    try { RIG.Studio.setJointsVisible(false); } catch (e) {}
     Anim.travel = 0; Anim.dir = 1;      /* v17: centre se shuru, phir aage */
     cancelAnimationFrame(Anim.raf);
     /* instant snap: pehla frame turant (user ko wait na karna pade) */
@@ -5656,6 +6044,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   }
   function stopAnim(silent) {
     Anim.on = false; cancelAnimationFrame(Anim.raf);
+    try { RIG.Studio.setJointsVisible(true); } catch (e) {}
     try { if (RIG.Pose.clearRoot) RIG.Pose.clearRoot(); } catch (e) {}
     if (!silent) { try { RIG.Studio.render(); } catch (e) {} }
   }
