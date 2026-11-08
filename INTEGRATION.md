@@ -1240,3 +1240,18 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
   - nav: step 1→pg1, 2→pg1, 3→pgPos, 4→pg3, 5→pgSave, BACK pg3/pgPos/pgSave par, `errs 0`.
   - erase ke baad Position → Rig: 8 pieces, `bad 0`, rings/quick-pose normal (`LIVE-ERASE-RIG.png`).
 - Evidence: `ERASE-S3-BEFORE/PREVIEW/AFTER.png`, `ERASE-S7-*`, `LIVE-ERASE-S7-*`, `LIVE-ERASE-RIG.png`, `ER-CARD.png`.
+
+## Round 98 — FACING MIRROR: walk ab character ki taraf chalta hai (flip ki zaroorat khatam) — live `08f3383` (277282 B)
+- User: "kisi character ko flip karo tab sahi chalta hai" + "flip karne ke liye BACK jaana padta hai".
+- Wajah: gait (walk/run) standard side ke liye likha tha — hamesha `legL` peeche/`legR` aage draw + swing sign fix. Left-dekhne wale character me isliye ulta lagta tha; image flip karne se mirror ho jata tha.
+- Fix (`walk step`):
+  - `FD = (RIG.App.facing.dir < 0) ? -1 : 1`; `FD < 0` par poora gait mirror — `legL↔legR`, `armL↔armR`, `shinL↔shinR` swap + sign ulta, torso rotate ulta, leg lift offsets swap. Ragdna/keys/pose kuch reset nahi hota.
+  - `Layers.setFaceDir(dir)` + `order()` me `legL↔legR`, `armL↔armR`, `shinL↔shinR` ki **draw order** bhi mirror (aage wala pair hi aage draw hota hai). Export/composite bhi isi order se.
+  - Rig page ka **MIRROR ON/OFF** switch (pehle inert tha) ab `flipFacing()` se juda hai; `RIG.flipFacing` expose; `applyFacingUI()` switch ka label + state sync karta hai.
+  - `facing Front/Left/Right` label tap = turant direction flip (Rig page par hi, BACK nahi, re-cut nahi).
+- **Numeric test** (in-page rAF sampling, 260 frames, 2 characters: original + horizontally mirrored):
+  - `legL/legR/armL/armR/shinL/shinR` ka mirrored pose vs normal pose **avg error 0.0005–0.0016 rad** (≈0.03–0.09°) — exact mirror.
+  - amplitude same (0.296 / 0.297), `Layers.order()` swap ✓, `facingMeta` tap se dir +1→−1 ✓, MIRROR switch ✓, local + **live `errs 0`**.
+- Regression: nav (1/2→pg1, 3→pgPos, 4→pg3, 5→pgSave) ✓, eraser apply (3,328 px, 8 pieces) ✓, `errs 0`.
+- Evidence: `GAIT-MIRROR-SHEET.png` (3 frames normal vs 3 frames mirrored), `GAIT-RAHUL-A/B.png`, `gs-normal-*.png`, `gs-mirror-*.png`.
+- Note: auto facing detect 3/4 characters par neutral (`front`) aata hai — us case me user ek tap se direction set karta hai (manual), aur wo choice re-cut tak nahi udti jab tak naya image upload na ho.
