@@ -1348,3 +1348,10 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
   | Full brush mode | vertical swipe = 2 strokes, scroll 0 (jaan-boojh kar) |
   | regression | nav 5/5 ✓ · eraser apply ✓ · walk mirror 0.0004 ✓ · errs 0 (local + live) |
 - Evidence: `R101-POCKET-PROOF.png` (safed patti pehle/baad), `R101-LIVE-UI.png` (live UI: Scroll safe / Full brush), `R100-SCROLL-OK.png`.
+
+## Round 102 — "Gallery me kaun sa save karun?" → Save page par seedha guide + download test (live `00f8bd6`, 308575 B)
+- User poochha: gallery me kaun si file save karein (tool ka Save page confused kar raha tha).
+- **Test kiya (headless, local + LIVE):** `Save Character PNG` → `rig-character.png` **290×900 px RGBA** (261,942 B) — character transparent PNG, poora joda hua; `Save Rig Data` → `rig-data.json` (3,193 B, 8 layers, har layer me x/y/w/h/**pivot**/rotation/z); `Save Snapshot` → localStorage `rigstudio.rig` (1,704 B) + toast "Snapshot saved"; `Load Snapshot` → toast "Snapshot loaded" (naya page, naya session). errs 0.
+- **Note (honest):** Load Snapshot naye session me pose/pieces 0 dikhata hai kyunki snapshot me original image bytes nahi hote — sirf rig data. Isliye asli file ke liye PNG/JSON hi useful hai; snapshot sirf usi tab ke liye jab image wahi ho.
+- **UI (look same, sirf ek help block add):** Save page par "Kaunsa save kab — 2 line me" box: PNG = dikhane/use karne ke liye (rig data isme nahi), JSON = tool ka data (PNG se animation nahi banti), Snapshot = sirf isi phone me.
+- Evidence: `R102-SAVE-HELP.png` (live), `SAVE-PNG-PREVIEW.png` (test se nikli PNG).
