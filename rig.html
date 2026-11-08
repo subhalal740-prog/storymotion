@@ -1231,6 +1231,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
               <b class="smWalkVal" id="smWalkVal">39%</b>
             </div>
             <input class="ppRange" id="smWalkSlider" type="range" min="0" max="100" value="39" step="1" aria-label="Leg stretch range">
+            <div class="smWalkHead" style="margin-top:8px">
+              <span class="smWalkIc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg></span>
+              <span class="smWalkTxt">Speed<span class="smWalkSub">चाल (kitni tez)</span></span>
+              <b class="smWalkVal" id="smSpeedVal">1.0×</b>
+            </div>
+            <input class="ppRange" id="smSpeedSlider" type="range" min="30" max="240" value="100" step="5" aria-label="Walk speed">
 
             <div class="smArm smPost">
               <div class="smArmLab"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v16"/><path d="M6 8l6-4 6 4"/><path d="M6 16l6 4 6-4"/></svg></span> Arm Posture</div>
@@ -7183,7 +7189,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   const smWalk = {
     box: document.getElementById('smWalkPanel'),
     slider: document.getElementById('smWalkSlider'),
-    val: document.getElementById('smWalkVal')
+    val: document.getElementById('smWalkVal'),
+    speed: document.getElementById('smSpeedSlider'),
+    speedVal: document.getElementById('smSpeedVal')
   };
   const SPREAD_MIN = 0.04, SPREAD_SPAN = 0.46;
   let ARM_POSTURE = 'tpose';       /* 'tpose' | 'down' — down = arms already neeche, lock 0° */
@@ -7191,11 +7199,28 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   const ARM_SWING_AMP = 0.2356;    /* ~13.5° low-amplitude pendulum */
   function spreadToPct(v) { return Math.max(0, Math.min(100, Math.round(((v - SPREAD_MIN) / SPREAD_SPAN) * 100))); }
   function syncWalkPanel() {
-    if (!smWalk.slider) return;
-    const pct = spreadToPct(Anim.spread);
-    smWalk.slider.value = pct;
-    if (smWalk.val) smWalk.val.textContent = pct + '%';
+    if (smWalk.slider) {
+      const pct = spreadToPct(Anim.spread);
+      smWalk.slider.value = pct;
+      if (smWalk.val) smWalk.val.textContent = pct + '%';
+    }
+    /* R122 · SPEED — walk ke dauraan hi badla ja sakta hai */
+    if (smWalk.speed) {
+      smWalk.speed.value = Math.round(Anim.speed * 100);
+      if (smWalk.speedVal) smWalk.speedVal.textContent = Anim.speed.toFixed(1) + '×';
+    }
   }
+  /* R122 · SPEED slider — chalti hui walk par bhi turant asar */
+  if (smWalk.speed) smWalk.speed.addEventListener('input', function () {
+    Anim.speed = Math.max(0.3, Math.min(2.4, (+this.value || 100) / 100));
+    if (smWalk.speedVal) smWalk.speedVal.textContent = Anim.speed.toFixed(1) + '×';
+    try { localStorage.setItem('rigstudio.speed.v1', String(Anim.speed)); } catch (e) {}
+  });
+  try {
+    const sv = parseFloat(localStorage.getItem('rigstudio.speed.v1'));
+    if (isFinite(sv) && sv >= 0.3 && sv <= 2.4) Anim.speed = sv;
+  } catch (e) {}
+
   function showWalkPanel() {
     if (!smWalk.box) return;
     syncWalkPanel();
