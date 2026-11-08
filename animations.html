@@ -1247,8 +1247,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     }
     /* Order 60: editor me character ASLI layer ban kar jata hai (timeline me uski
        apni track), background-ghost nahi. Isliye hilao.sel nahi likhte. */
+    /* R112b · tap par character KHUD background par lage. `id` do to hilao.html
+       seedha applyCharacter() chalata hai (Use character dabana nahi padta).
+       Demo card ke liye built-in id 'village-kaka' use hota hai. */
+    var pickId = charId || '';
+    if (!pickId && !charImg && !charTex) pickId = 'village-kaka';
     try {
-      localStorage.setItem('hilao.pickChar', JSON.stringify({ id: charId || '', name: charName, src: tex || '' , anim: a.id }));
+      localStorage.setItem('hilao.pickChar', JSON.stringify({ id: pickId, name: charName, src: tex || '' , anim: a.id }));
       localStorage.removeItem('hilao.sel');
     } catch (e) {}
     showToast(charName + ' editor me aa raha hai');
