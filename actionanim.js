@@ -1216,6 +1216,26 @@
   $('mClose').onclick = () => { $('modal').hidden = true; };
   $('modal').onclick = (e) => { if (e.target.id === 'modal') $('modal').hidden = true; };
 
+  /* R108 · "Putla page par chalta dikhao" button — controls ke row me add */
+  (function addSpriteBtn() {
+    try {
+      const row = document.querySelector('.ctrl .row');
+      if (!row) return;
+      const btn = document.createElement('button');
+      btn.className = 'pill';
+      btn.id = 'spriteBtn';
+      btn.style.cssText = 'background:linear-gradient(135deg,#7c5cff,#ff6ba8);color:#fff;border-color:transparent';
+      btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg> Putla page par chalao';
+      btn.onclick = function () {
+        const sp = window.__actionStudio.pushSpriteToPutlaPage(S.action);
+        if (!sp) return;
+        btn.textContent = 'Bhej diya ✓';
+        setTimeout(function () { location.href = 'animations.html?name=' + encodeURIComponent(S.charName || 'my-character') + '&v=' + Date.now(); }, 700);
+      };
+      row.appendChild(btn);
+    } catch (e) {}
+  })();
+
   /* boot */
   buildChips();
   markChips();
@@ -1324,6 +1344,50 @@
     window.addEventListener('pagehide', function () { startLiveTiles.alive = false; });
   }
 
+  /* ------------------------------------------------------------------
+     R108 · SPRITE EXPORT — putlo ke page ke liye
+     Current action ko N frames me render karke ek horizontal sprite PNG banata hai
+     aur localStorage['hilao.sprite'] me rakh deta hai. Animations page ka card
+     usse apne aap chalta hua dikhata hai (koi video file nahi).
+     ------------------------------------------------------------------ */
+  function exportSprite(actionId, frames) {
+    if (!S.rig) return null;
+    frames = frames || 12;
+    const FW = 150, FH = 200;
+    const ss = document.createElement('canvas');
+    ss.width = FW * frames; ss.height = FH;
+    const sc = ss.getContext('2d');
+    sc.imageSmoothingEnabled = true; sc.imageSmoothingQuality = 'high';
+    const big = document.createElement('canvas'); big.width = FW * 1.5; big.height = FH * 1.5;
+    const bc = big.getContext('2d');
+    const action = actionId || S.action;
+    for (let f = 0; f < frames; f++) {
+      const pose = groundLock(poseAt(action, f / frames));
+      bc.setTransform(1, 0, 0, 1, 0, 0);
+      bc.clearRect(0, 0, big.width, big.height);
+      const k = Math.min(big.width / CW, big.height / CH);
+      bc.setTransform(k, 0, 0, k, (big.width - CW * k) / 2, (big.height - CH * k) / 2);
+      drawPose(bc, pose);
+      sc.drawImage(big, 0, 0, big.width, big.height, f * FW, 0, FW, FH);
+    }
+    return { url: ss.toDataURL('image/png'), frames: frames, w: FW, h: FH, action: action };
+  }
+
+  function pushSpriteToPutlaPage(actionId) {
+    const sp = exportSprite(actionId, 12);
+    if (!sp) { toast('Pehle puppet load karo', 2200); return null; }
+    try {
+      localStorage.setItem('hilao.sprite', JSON.stringify(sp));
+      localStorage.setItem('hilao.spriteAction', sp.action);
+    } catch (e) {
+      toast('Storage bhar gaya — sprite save nahi hua', 3000);
+      return null;
+    }
+    toast('Sprite taiyaar — putlo ke page par putla chalta dikhega', 2600);
+    return sp;
+  }
+
   /* debug hook */
-  window.__actionStudio = { S, processFile, poseAt, renderNow, exportFrames, saveCurrent, buildRig, analyze, startLiveTiles };
+  window.__actionStudio = { S, processFile, poseAt, renderNow, exportFrames, saveCurrent, buildRig, analyze,
+                            startLiveTiles, exportSprite, pushSpriteToPutlaPage };
 })();
