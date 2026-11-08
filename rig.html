@@ -1083,9 +1083,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="width:1em;height:1em;vertical-align:-0.15em;margin-right:0.3em;flex:none"><path d="M4 20h16"/><path d="M8.5 17.5 4 13a2 2 0 0 1 0-2.8l7-7a2 2 0 0 1 2.8 0l5 5a2 2 0 0 1 0 2.8l-6.5 6.5z"/></svg> Eraser <span style="font-weight:400;opacity:.6;font-size:.8em;white-space:nowrap">(bacha hua BG)</span></h3>
           <div class="pill" id="erasePill" style="color:#cfe1ff;background:rgba(120,170,255,.08);border-color:rgba(120,170,255,.22);white-space:nowrap;flex:none">BG OFF</div>
         </div>
-        <p id="eraseHint" style="margin:10px 0 0;font-size:12px;opacity:.72;line-height:1.45">Auto-cut ke baad jo background bacha ho (halo, shadow, dhabbe), us par ungli ragdo &mdash; <b style="opacity:.95">sirf background mitega</b>, character ka koi hissa nahi kategaa. Phir &ldquo;Apply &amp; re-cut&rdquo; dabao.</p>
+        <p id="eraseHint" style="margin:10px 0 0;font-size:12px;opacity:.72;line-height:1.45">Auto-cut ke baad jo background bacha ho (halo, shadow, dhabbe), us par ungli ragdo &mdash; <b style="opacity:.95">sirf background mitega</b>, character ka koi hissa nahi kategaa. Phir &ldquo;Apply &amp; re-cut&rdquo; dabao.<br><span style="opacity:.75">Page scroll karna ho to ungli se <b>seedha upar-neeche</b> kheencho &mdash; brush nahi chalega. Brush sirf side me ragdne par chalta hai.</span></p>
         <div class="checker" style="margin-top:10px;padding:10px;display:grid;place-items:center">
-          <canvas id="eraseCv" style="display:block;max-width:100%;height:auto;touch-action:none;cursor:crosshair"></canvas>
+          <canvas id="eraseCv" style="display:block;max-width:100%;height:auto;touch-action:pan-y;cursor:crosshair"></canvas>
         </div>
         <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px" id="eraseModeRow">
           <button class="btn tiny" id="eraseModeBg" data-mode="bg" style="background:rgba(90,220,150,.14);border-color:rgba(90,220,150,.45);color:#bff0cf">Sirf BG</button>
@@ -3707,23 +3707,70 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function stat() {
       if (U.$('eraseStat')) U.$('eraseStat').textContent = strokes.length + (strokes.length === 1 ? ' stroke' : ' strokes');
     }
+    /* ---- GESTURE GATE (mobile scroll fix) ----
+       Ungli rakhne par turant brush shuru nahi hota. Pehle thodi doori dekhte hain:
+         · seedha upar/neeche (|dy| > 10 aur |dy| > |dx|)  -> SCROLL: brush band, page scroll
+         · side me (|dx| > 8 aur |dx| >= |dy|)             -> DRAW: tabhi stroke shuru
+       Isse page scroll karte waqt canvas par lines nahi banti.
+       CSS me canvas par touch-action:pan-y hai, isliye browser vertical pan khud le leta hai
+       (aur pointercancel bhej deta hai) — brush ko rokne ke liye ye gate upar se hi laga hai. */
+    const SCROLL_DY = 10, DRAW_DX = 8;
+    let isDrawing = false, gesture = null;
     function bind() {
       const c = cv(); if (!c) return;
+      const abortGesture = () => { gesture = null; isDrawing = false; };
       c.addEventListener('pointerdown', (e) => {
         if (!App.imgData) { U.toast('Pehle image upload karo.'); return; }
-        e.preventDefault(); c.setPointerCapture(e.pointerId);
-        active = { r: rImg(), pts: [pos(e)] };
-        strokes.push(active); draw(); stat();
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        gesture = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t0: performance.now(),
+                    mode: 'pending', moved: 0 };
+        isDrawing = false;
+        /* mobile par preventDefault NAHI — warna browser scroll hi nahi kar payega */
+        if (e.pointerType !== 'touch') e.preventDefault();
       });
       c.addEventListener('pointermove', (e) => {
-        if (!active) return;
+        if (!gesture || e.pointerId !== gesture.id) return;
+        const dx = e.clientX - gesture.x0, dy = e.clientY - gesture.y0;
+        const adx = Math.abs(dx), ady = Math.abs(dy);
+        gesture.moved = Math.max(gesture.moved, Math.hypot(dx, dy));
+        if (gesture.mode === 'pending') {
+          if (ady > SCROLL_DY && ady > adx * 1.2) {          /* = SCROLL */
+            gesture.mode = 'scroll'; isDrawing = false;
+            if (active) { strokes.pop(); active = null; draw(); stat(); }   /* adhoora stroke hatao */
+            return;                                           /* aage kuch na karo, page scroll kare */
+          }
+          if (adx > DRAW_DX && adx >= ady) {                  /* = DRAW */
+            gesture.mode = 'draw'; isDrawing = true;
+            try { c.setPointerCapture(e.pointerId); } catch (err) {}
+            const start = { clientX: gesture.x0, clientY: gesture.y0 };
+            active = { r: rImg(), pts: [pos(start)] };
+            strokes.push(active); draw(); stat();
+          } else return;
+        }
+        if (!isDrawing || !active) return;
         e.preventDefault();
         active.pts.push(pos(e));
         const now = performance.now();
         if (now - lastRedraw > 16) { lastRedraw = now; draw(); }
       });
-      const end = (e) => { if (!active) return; active = null; draw(); stat(); };
-      c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end); c.addEventListener('pointerleave', end);
+      const end = (e) => {
+        if (!gesture || (e && e.pointerId !== undefined && e.pointerId !== gesture.id)) return;
+        /* chhota tap (na scroll, na drag) = ek dab — jaan-boojh kar lagne do */
+        if (gesture.mode === 'pending' && gesture.moved < 8) {
+          const dab = { r: rImg(), pts: [{ x: (gesture.x0 - c.getBoundingClientRect().left) / (c._k || 1),
+                                           y: (gesture.y0 - c.getBoundingClientRect().top) / (c._k || 1) }] };
+          strokes.push(dab); draw(); stat();
+        }
+        active = null; isDrawing = false; gesture = null; draw(); stat();
+      };
+      c.addEventListener('pointerup', end);
+      c.addEventListener('pointercancel', (e) => {   /* browser ne scroll ke liye gesture le liya */
+        if (active) { active = null; }
+        abortGesture(); draw(); stat();
+      });
+      c.addEventListener('pointerleave', end);
+      /* page scroll hote hi brush band (safety) */
+      window.addEventListener('scroll', () => { if (!isDrawing) return; isDrawing = false; }, { passive: true });
       U.$('eraseUndo') && (U.$('eraseUndo').onclick = () => {
         if (strokes.length) { strokes.pop(); draw(); stat(); return; }
         if (!lastApply) { U.toast('Undo ke liye kuch nahi.'); return; }
@@ -3915,6 +3962,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         return cut;
     }
     return { refresh() { if (!fit()) return; bind(); setMode(mode); }, fits: fit, bind: bind, draw: draw, setMode: setMode, mode: () => mode,
+             drawing: () => !!isDrawing, gesture: () => (gesture ? gesture.mode : null),
              apply: applyStrokes,
              addStroke(r, pts) { strokes.push({ r: r, pts: pts }); draw(); stat(); },
              count() { return strokes.length; } };
