@@ -2688,8 +2688,24 @@ if(auto?.project?.scenes?.length){if(!auto.__arch){try{await dbPut({id:uid(),dat
 try{
   var __pc=JSON.parse(localStorage.getItem('hilao.pickChar')||'null');
   if(__pc){ localStorage.removeItem('hilao.pickChar');
-    if(__pc.id&&assets.chars.get(__pc.id)){ pendingChar=__pc.id; applyCharacter(); markDirty(); }
-    else if(__pc.src){ window.__smEd&&window.__smEd.addCustomChar&&window.__smEd.addCustomChar(__pc.name||'Character',__pc.src).then(function(){ markDirty(); }); }
+    /* R112b · putla page se aaya character ASLI usi image se banao (card wala hi
+       character background par dikhe). addCharacter() image se hi char banata hai,
+       isliye pehle usse banao; keval agar wo fail ho to built-in id par jao. */
+    if(__pc.src){
+      var __made=false;
+      try{
+        var __m={id:'custom-'+String(Date.now()),name:__pc.name||'Character',category:'My uploads',tags:['My uploads'],
+                 head:{x:.30,y:.02,w:.40,h:.22},ring:{x:.5,y:.26}};
+        var __a=null;
+        try{ __a=await addCharacter(__m,__pc.src,true); }catch(e){ __a=null; }
+        if(__a && __a.id){
+          project.customChars.push({id:__a.id,name:__a.name,category:__a.category,head:__a.head,ring:__a.ring,src:__a.src});
+          pendingChar=__a.id; applyCharacter(); markDirty(); __made=true;
+        }
+      }catch(e){ __made=false; }
+      if(!__made && __pc.id && assets.chars.get(__pc.id)){ pendingChar=__pc.id; applyCharacter(); markDirty(); }
+    }
+    else { if(__pc.id&&assets.chars.get(__pc.id)){ pendingChar=__pc.id; applyCharacter(); markDirty(); } }
     /* background ghost (BG chip wala duplicate character) hata do */
     try{ if(window.__smBgAnim&&window.__smBgAnim.remove) window.__smBgAnim.remove(); }catch(e){}
     try{ localStorage.removeItem('hilao.sel'); localStorage.removeItem('hilao.anim'); }catch(e){}
