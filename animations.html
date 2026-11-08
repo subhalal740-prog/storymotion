@@ -113,6 +113,11 @@
 .putlaCard:active{ border-color:#f2f2f5; }
 .putlaCard .putlaArt{ flex:1 1 auto; min-height:0; width:100%; display:flex; align-items:center; justify-content:center; }
 .putlaCard .putlaArt img{ max-width:100%; max-height:100%; object-fit:contain; }
+  /* R108 · chalta hua putla — sprite sheet (12 frames, horizontal strip) */
+  /* R108c · sprite = canvas (aspect sahi rehta hai, koi stretch nahi) */
+  .putlaArt .spriteCv{ display:block; max-width:100%; max-height:100%; }
+  .putlaLiveBadge{ position:absolute; top:8px; right:8px; font-size:9px; font-weight:800; letter-spacing:.5px;
+    padding:3px 7px; border-radius:999px; background:rgba(124,92,255,.9); color:#fff; }
 .putlaCard .putlaLbl{ align-self:flex-start; font-size:10px; line-height:1; color:#c6ccd3; }
 
 /* Order 58 — chips aur Action Studio ek doosre par chadh rahe the */
@@ -1014,15 +1019,48 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       return;
     }
     var tex = charImg || charTex;   /* selected character pehle, IDB ka purana tex baad me */
-    var art = tex ? '<img src="' + tex + '" alt="' + label + '">' : '';
+    /* R108 · sprite hai to CHALTA hua putla, warna purana static image */
+    var spr = null;
+    try { spr = JSON.parse(localStorage.getItem('hilao.sprite') || 'null'); } catch (e) { spr = null; }
+    var art;
+    if (spr && spr.url) {
+      art = '<canvas class="spriteCv" width="' + spr.w + '" height="' + spr.h + '" role="img" aria-label="' + label + ' walk"></canvas>';
+    } else {
+      art = tex ? '<img src="' + tex + '" alt="' + label + '">' : '';
+    }
     putlaWrap.innerHTML =
-      '<button class="putlaCard" id="putlaTap" type="button" aria-label="' + label + ' background par lagao">' +
+      '<button class="putlaCard" id="putlaTap" type="button" style="position:relative" aria-label="' + label + ' background par lagao">' +
+        (spr && spr.url ? '<span class="putlaLiveBadge">' + (spr.action || 'walk').toUpperCase() + ' · LIVE</span>' : '') +
         '<span class="putlaArt">' + art + '</span>' +
         '<span class="putlaLbl">' + label + '</span>' +
       '</button>';
     var tap = document.getElementById('putlaTap');
     if (tap) tap.onclick = pickPutla;
     if (useBtn) useBtn.disabled = true;
+    if (spr && spr.url) startSprite(spr);
+  }
+
+  /* R108c · putle ka chalta hua card — sprite sheet se frames draw karta hai */
+  var spriteRAF = null, spriteImg = null, spriteSheet = null;
+  function startSprite(spr) {
+    var cv = document.querySelector('#putlaWrap .spriteCv');
+    if (!cv) return;
+    if (spriteRAF) { cancelAnimationFrame(spriteRAF); spriteRAF = null; }
+    var img = new Image();
+    img.onload = function () {
+      var ctx = cv.getContext('2d');
+      var n = spr.frames || 12, fw = spr.w || 150, fh = spr.h || 200;
+      var t0 = performance.now();
+      function frame(now) {
+        if (!document.body.contains(cv)) { spriteRAF = null; return; }
+        var idx = Math.floor(((now - t0) / 1000) * 8) % n;      /* ~8 fps */
+        ctx.clearRect(0, 0, cv.width, cv.height);
+        ctx.drawImage(img, idx * fw, 0, fw, fh, 0, 0, cv.width, cv.height);
+        spriteRAF = requestAnimationFrame(frame);
+      }
+      spriteRAF = requestAnimationFrame(frame);
+    };
+    img.src = spr.url;
   }
 
   /* putla tap: asli character texture editor me bhejo -> background par dikhega */
