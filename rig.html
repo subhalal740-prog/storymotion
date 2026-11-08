@@ -135,6 +135,47 @@
   .smArmBtn.on:after{content:"";position:absolute;left:50%;bottom:4px;width:4px;height:4px;border-radius:50%;
     transform:translateX(-50%);background:#00d95f;box-shadow:0 0 8px rgba(0,230,118,.95)}
   @media(max-width:400px){ .smArmBtn{font-size:8.5px;letter-spacing:.3px;padding:8px 4px} }
+  /* ===== R113 · 15-JOINT RIG PANEL ===== */
+  .jntWrap{margin-top:12px;padding-top:11px;border-top:1px solid var(--line)}
+  .jntHead{display:flex;align-items:center;gap:7px;font-size:10.5px;letter-spacing:1.4px;font-weight:800;
+    color:#9ca3af;margin-bottom:9px;text-transform:uppercase}
+  .jntHead:before{content:"";width:6px;height:6px;border-radius:50%;background:#ffb020;box-shadow:0 0 9px rgba(255,176,32,.85)}
+  .jntStatus{margin-left:auto;font-size:9px;font-weight:900;letter-spacing:.6px;padding:4px 8px;border-radius:999px;
+    background:rgba(255,176,32,.12);color:#ffc247;border:1px solid rgba(255,176,32,.3);white-space:nowrap}
+  .jntStatus.ok{background:rgba(0,230,118,.12);color:#3dffa0;border-color:rgba(0,230,118,.32)}
+  .jntBar{display:flex;align-items:center;gap:7px;font-size:9.5px;font-weight:900;letter-spacing:.5px;
+    color:#a8aeb9;margin-bottom:8px}
+  .jntBar .bar{flex:1;height:5px;border-radius:99px;background:rgba(255,255,255,.09);overflow:hidden}
+  .jntBar .bar i{display:block;height:100%;width:0%;border-radius:99px;background:linear-gradient(90deg,#ffb020,#00e676);transition:width .18s}
+  .jntSel{display:flex;align-items:center;gap:7px;margin-bottom:9px;flex-wrap:wrap}
+  .jntSel .pill{font-size:9.5px;font-weight:900;letter-spacing:.5px;padding:6px 10px;border-radius:999px;
+    background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.13);color:#e8ecf3;cursor:pointer;
+    -webkit-tap-highlight-color:transparent}
+  .jntSel .pill.on{background:rgba(0,230,118,.16);border-color:rgba(0,230,118,.45);color:#9dffcf}
+  .jntGrid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+  .jnt{position:relative;font:800 9px/1.15 inherit;font-family:inherit;letter-spacing:.2px;padding:7px 2px 6px;
+    border-radius:9px;cursor:pointer;text-align:center;color:#cfd5df;background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.10);-webkit-tap-highlight-color:transparent}
+  .jnt.ok{color:#9dffcf;background:rgba(0,230,118,.10);border-color:rgba(0,230,118,.35)}
+  .jnt.mis{color:#ffb3b3;background:rgba(255,80,80,.10);border-color:rgba(255,80,80,.35)}
+  .jnt.sel{box-shadow:0 0 0 2px rgba(120,180,255,.85),0 0 14px rgba(120,180,255,.4)}
+  .jntRow{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+  .jntBtn{flex:1;min-width:88px;font:900 9.5px/1 inherit;font-family:inherit;letter-spacing:.55px;text-transform:uppercase;
+    padding:10px 6px;border-radius:999px;cursor:pointer;color:#14161a;background:#fff;
+    background-image:linear-gradient(180deg,#fff,#eef0f4);border:1px solid rgba(255,255,255,.95);
+    -webkit-tap-highlight-color:transparent;box-shadow:inset 0 1px 0 #fff,0 8px 16px -8px rgba(0,0,0,.7)}
+  .jntBtn:active{transform:translateY(1px)}
+  .jntBtn.ghost{background:rgba(255,255,255,.06);color:#dfe4ec;border-color:rgba(255,255,255,.14);box-shadow:none}
+  .jntNudge{display:grid;grid-template-columns:repeat(3,38px);gap:5px;justify-content:center;margin-top:9px}
+  .jntNudge button{font:900 13px/1 inherit;font-family:inherit;padding:9px 0;border-radius:9px;cursor:pointer;
+    color:#dfe4ec;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);
+    -webkit-tap-highlight-color:transparent}
+  .jntNudge button:active{background:rgba(0,230,118,.18)}
+  .jntNote{font-size:9.5px;line-height:1.5;color:#8b919c;margin-top:8px}
+  .qpRow.locked{opacity:.42;pointer-events:none;filter:grayscale(.5)}
+  .jntLockNote{font-size:9.5px;line-height:1.45;color:#ffc247;margin-top:6px;padding:7px 9px;border-radius:9px;
+    background:rgba(255,176,32,.10);border:1px solid rgba(255,176,32,.26)}
+  @media(max-width:400px){ .jntGrid{grid-template-columns:repeat(4,minmax(0,1fr))} .jnt{font-size:8.5px} }
   /* ===== QUICK POSE (premium white) ===== */
   .qpWrap{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
   .qpTitle{display:flex;align-items:center;gap:7px;font-size:10.5px;letter-spacing:1.6px;font-weight:800;color:#9ca3af;margin-bottom:9px}
@@ -1153,6 +1194,28 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         <div class="kv"><span>state</span><b id="stateMeta">—</b></div>
         <div class="kv"><span>facing</span><b id="facingMeta" role="button" tabindex="0"
              style="cursor:pointer;border-bottom:1px dashed rgba(255,255,255,.25)">—</b></div>
+        <div class="jntWrap">
+          <div class="jntHead">Joints <span class="jntStatus" id="jntStatus">0 / 15</span></div>
+          <div class="jntBar"><span id="jntCount">0 / 15</span><span class="bar"><i id="jntBarFill"></i></span><span id="jntPct">0%</span></div>
+          <div class="jntSel">
+            <button type="button" class="pill on" id="jntAuto">Auto-detect</button>
+            <button type="button" class="pill" id="jntManual">Manual</button>
+            <button type="button" class="pill" id="jntLabels">Labels: ON</button>
+          </div>
+          <div class="jntGrid" id="jntGrid"></div>
+          <div class="jntNudge" id="jntNudge" hidden>
+            <span></span><button type="button" data-nx="0" data-ny="-2" aria-label="up">&#9650;</button><span></span>
+            <button type="button" data-nx="-2" data-ny="0" aria-label="left">&#9664;</button>
+            <button type="button" data-nx="0" data-ny="0" aria-label="center">&#9679;</button>
+            <button type="button" data-nx="2" data-ny="0" aria-label="right">&#9654;</button>
+            <span></span><button type="button" data-nx="0" data-ny="2" aria-label="down">&#9660;</button><span></span>
+          </div>
+          <div class="jntRow">
+            <button type="button" class="jntBtn" id="jntDone">Joints done</button>
+            <button type="button" class="jntBtn ghost" id="jntReset">Reset joints</button>
+          </div>
+          <div class="jntNote" id="jntNote">Har joint ko body ke landmark par set karo — phir Walk khulega. Ring ke beech kheencho (drag) ya joint chun kar arrows dabao.</div>
+        </div>
         <div class="qpWrap">
           <div class="qpTitle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="width:1em;height:1em;vertical-align:middlepx;margin-left:-0.25em;margin-right:0.25em;margin-top:-0.25em;margin-bottom:-0.25em;flex:none"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg> QUICK POSE</div>
           <div class="smWalk" id="smWalkPanel" hidden>
@@ -1187,6 +1250,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             <button class="qp" data-pose="run">Run</button>
             <button class="qp" data-pose="sit">Sit</button>
           </div>
+          <div class="jntLockNote" id="jntLockNote" hidden>Walk/Run band hai — pehle 15 joints sahi jagah set karo, phir "Joints done" dabao.</div>
         </div>
       </div>
 
@@ -2841,6 +2905,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         ctx.restore();
       }
       if (ringsOn) drawRings(R);      /* wahi root snapshot jo layers ko mila — 100% sync */
+      drawJoints();                   /* R113 · 15-joint rig overlay */
     }
 
     function drawRings(rootSnap) {
@@ -2863,25 +2928,29 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         /* breathing: har ring apni phase me, active ring tez saans leta hai */
         const pulse = 0.5 + 0.5 * Math.sin(t * (isHot ? 4.4 : 1.75) + (isHot ? 0 : pv.x * 0.012));
         const D = DPR;
+        /* R113 · joints overlay ke saath rings ko halka karo (clutter na ho) */
+        const RJ = Object.keys(joints).length ? 1 : 0;
+        const ringAlpha = RJ ? 0.34 : 1;
+        const ringR = RJ ? 10 : 13;
         ctx.save();
         ctx.translate(pv.x, pv.y);
         /* neon halo (breathing) */
         ctx.shadowColor = 'rgba(0,230,118,' + (isHot ? '.95' : '.70') + ')';
         ctx.shadowBlur = (isHot ? (15 + 17 * pulse) : (7 + 9 * pulse)) * D;
-        ctx.beginPath(); ctx.arc(0, 0, (13 + (isHot ? 5.4 : 3.0) * pulse) * D, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(0,230,118,' + (isHot ? (.55 + .38 * pulse) : (.16 + .24 * pulse)) + ')';
+        ctx.beginPath(); ctx.arc(0, 0, (ringR + (isHot ? 5.4 : 3.0) * pulse) * D, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(0,230,118,' + ((isHot ? (.55 + .38 * pulse) : (.16 + .24 * pulse)) * ringAlpha) + ')';
         ctx.lineWidth = (isHot ? 2.6 : 1.7) * D; ctx.stroke();
         ctx.shadowBlur = 0;
         /* core ring */
-        ctx.beginPath(); ctx.arc(0, 0, 13 * D, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(0,0,0,.38)'; ctx.fill();
-        ctx.lineWidth = 2 * D; ctx.strokeStyle = isHot ? 'rgba(150,255,205,1)' : 'rgba(0,230,118,.92)'; ctx.stroke();
+        ctx.beginPath(); ctx.arc(0, 0, ringR * D, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(0,0,0,' + (0.38 * ringAlpha) + ')'; ctx.fill();
+        ctx.lineWidth = 2 * D; ctx.strokeStyle = isHot ? 'rgba(150,255,205,1)' : 'rgba(0,230,118,' + (0.92 * ringAlpha) + ')'; ctx.stroke();
         ctx.beginPath(); ctx.arc(0, 0, (isHot ? 3.6 : 3) * D, 0, Math.PI * 2);
         ctx.fillStyle = isHot ? '#9dffcf' : '#00e676'; ctx.fill();
         ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -22 * D); ctx.strokeStyle = 'rgba(0,230,118,' + (isHot ? '.85' : '.55') + ')';
         ctx.lineWidth = 1.5 * D; ctx.stroke();
         ctx.restore();
-        if (Math.abs(rot) > 0.001) {
+        if (Math.abs(rot) > 0.001 && !RJ) {
           ctx.save();
           ctx.fillStyle = 'rgba(0,230,118,.95)';
           ctx.font = (10 * D) + 'px ui-monospace, monospace';
@@ -2915,6 +2984,17 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       cv.addEventListener('pointerdown', (e) => {
         if (!bbox) return;
         const p = pointerPos(e);
+        /* R113 · joint pakadne ki koshish pehle (ring se alag) */
+        const jid = hitJoint(p.x, p.y);
+        if (jid) {
+          jointSel = jid;
+          jDrag = { id: jid };
+          syncJointUI();
+          cv.setPointerCapture(e.pointerId);
+          e.preventDefault();
+          render();
+          return;
+        }
         const target = hit(p.x, p.y);
         if (!target) return;
         const ddx = (target.ox !== undefined ? target.ox : target.x) - target.x;
@@ -2925,6 +3005,17 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         e.preventDefault();
       });
       cv.addEventListener('pointermove', (e) => {
+        if (jDrag) {
+          /* joint ko image space me le jao (ring/scale независимо) */
+          const p = pointerPos(e);
+          const RR = (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
+          const px = p.x - RR.x * scale, py = p.y - RR.y * scale;
+          const ix = bbox.x - padX() + px / scale;
+          const iy = bbox.y + py / scale;
+          setJoint(jDrag.id, ix, iy);
+          e.preventDefault();
+          return;
+        }
         if (!drag) {
           /* hover = neon ring ko 'hot' mode (breathing tez) */
           const p0 = pointerPos(e);
@@ -2940,12 +3031,331 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       });
       cv.addEventListener('pointerleave', () => { if (!drag && hoverId) { hoverId = null; render(); } });
       cv.addEventListener('pointerup', (e) => {
+        if (jDrag) {
+          const id = jDrag.id; jDrag = null;
+          jointsReady[id] = true;         /* manual set = confirmed */
+          try { Pose.push('joint ' + id); } catch (er) {}
+          syncJointUI(); render();
+          return;
+        }
         if (!drag) return;
         const id = drag.id; drag = null;
         Pose.push('rotate ' + id);
         render();
       });
-      cv.addEventListener('pointercancel', () => { drag = null; });
+      cv.addEventListener('pointercancel', () => { drag = null; jDrag = null; });
+    }
+
+    /* ------------------------------------------------------------------
+       R113 · 15-JOINT RIG
+       Pehle sirf 6 ring thi (head, torso, 2 arm, 2 leg) aur wo gardan/kamar
+       par clump ho jati thin. Ab poore 15 anatomical joints — image me hi
+       (bbox ke fraction) rakhe jate hain, isliye zoom/scale se independent.
+       Auto-detect: silhouette + part bbox se asli landmark nikalte hain.
+       ------------------------------------------------------------------ */
+    const JOINTS = [
+      { id: 'head',      label: 'Head',      code: 'HD', src: 'head' },
+      { id: 'neck',      label: 'Neck',      code: 'NK', src: 'head',   rel: 'bottom' },
+      { id: 'spine',     label: 'Spine',     code: 'SP', src: 'torso',  rel: 'mid' },
+      { id: 'shL',       label: 'L Shldr',   code: 'LS', src: 'armL',   rel: 'top' },
+      { id: 'shR',       label: 'R Shldr',   code: 'RS', src: 'armR',   rel: 'top' },
+      { id: 'elL',       label: 'L Elbow',   code: 'LE', src: 'armL',   rel: 'mid' },
+      { id: 'elR',       label: 'R Elbow',   code: 'RE', src: 'armR',   rel: 'mid' },
+      { id: 'wrL',       label: 'L Wrist',   code: 'LW', src: 'armL',   rel: 'end' },
+      { id: 'wrR',       label: 'R Wrist',   code: 'RW', src: 'armR',   rel: 'end' },
+      { id: 'hipL',      label: 'L Hip',     code: 'LH', src: 'legL',   rel: 'top' },
+      { id: 'hipR',      label: 'R Hip',     code: 'RH', src: 'legR',   rel: 'top' },
+      { id: 'knL',       label: 'L Knee',    code: 'LK', src: 'shinL',  rel: 'top' },
+      { id: 'knR',       label: 'R Knee',    code: 'RK', src: 'shinR',  rel: 'top' },
+      { id: 'anL',       label: 'L Ankle',   code: 'LA', src: 'legL',   rel: 'bottom' },
+      { id: 'anR',       label: 'R Ankle',   code: 'RA', src: 'legR',   rel: 'bottom' }
+    ];
+    let joints = {};              /* id -> {x,y} image space me */
+    let jointsReady = {};         /* id -> true (sahi jagah set hai) */
+    let jointSel = null, labelsOn = true, jointsConfirmed = false, mode = 'auto';
+    let jDrag = null;
+
+    function partById(id) { const l = Layers.order(); for (const p of l) if (p.id === id) return p; return null; }
+
+    /* piece ka asli (own) bbox image space me */
+    function ownOf(p) {
+      return { x0: p.oX0 !== undefined ? p.oX0 : p.x, y0: p.oY0 !== undefined ? p.oY0 : p.y,
+               x1: p.oX1 !== undefined ? p.oX1 : p.x + p.w, y1: p.oY1 !== undefined ? p.oY1 : p.y + p.h };
+    }
+
+    /* ---------------- R113b · SILHOUETTE-BASED LANDMARKS ----------------
+       Piece ke bbox par bharosa nahi (arm piece kabhi sirf upper-arm hota hai,
+       kabhi poora haath). Isliye asli silhouette (alpha mask) se joints nikalte
+       hain — T-pose ho ya haath latke hue, dono me kaam karta hai.          */
+    function sil() {
+      const A = (window.RIG && RIG.App) || {};
+      if (!A.imgData || !A.imgData.data) return null;
+      return { d: A.imgData.data, W: A.imgData.width || A.W, H: A.imgData.height || A.H };
+    }
+    function alphaAt(S, x, y) {
+      if (!S) return 0;
+      x |= 0; y |= 0;
+      if (x < 0 || y < 0 || x >= S.W || y >= S.H) return 0;
+      return S.d[(y * S.W + x) * 4 + 3];
+    }
+    function ownOfP(p) {
+      return { x0: p.oX0 !== undefined ? p.oX0 : p.x, y0: p.oY0 !== undefined ? p.oY0 : p.y,
+               x1: p.oX1 !== undefined ? p.oX1 : p.x + p.w, y1: p.oY1 !== undefined ? p.oY1 : p.y + p.h };
+    }
+    /* kisi row par silhouette ka horizontal extent */
+    function rowSpan(S, y) {
+      let x0 = -1, x1 = -1;
+      for (let x = 0; x < S.W; x++) { if (alphaAt(S, x, y) > 40) { if (x0 < 0) x0 = x; x1 = x; } }
+      return (x0 < 0) ? null : { x0: x0, x1: x1 };
+    }
+    /* kisi column me sabse neeche / upar wala painted pixel */
+    function colExtent(S, x0, x1, yFrom, yTo) {
+      let top = -1, bot = -1;
+      for (let y = Math.max(0, yFrom); y <= Math.min(S.H - 1, yTo); y++) {
+        for (let x = Math.max(0, x0); x <= Math.min(S.W - 1, x1); x++) {
+          if (alphaAt(S, x, y) > 40) { if (top < 0) top = y; bot = y; break; }
+        }
+      }
+      return (top < 0) ? null : { top: top, bot: bot };
+    }
+
+    function detectJoints() {
+      const S = sil();
+      const T = partById('torso'), H = partById('head');
+      if (!T) return null;
+      const tb = ownOfP(T);
+      const tw = tb.x1 - tb.x0, th = tb.y1 - tb.y0;
+      const cx = (tb.x0 + tb.x1) / 2;
+      const out = {};
+
+      /* bbox se basic lines */
+      const shY = tb.y0 + th * 0.11;                 /* shoulder line */
+      const hipY = tb.y1 - th * 0.04;                /* hip line */
+      const headTop = H ? ownOfP(H).y0 : tb.y0 - th * 0.4;
+      const headBot = H ? ownOfP(H).y1 : tb.y0;
+
+      /* HEAD — head piece ka painted centroid */
+      let hx = cx, hy = (headTop + headBot) / 2;
+      if (H) {
+        const hb = ownOfP(H);
+        let n = 0, sx = 0, sy = 0;
+        try {
+          const c = H.canvas.getContext('2d', { willReadFrequently: true });
+          const d = c.getImageData(0, 0, H.canvas.width, H.canvas.height).data;
+          for (let y = 0, i = 0; y < H.canvas.height; y++) for (let x = 0; x < H.canvas.width; x++, i += 4) {
+            if (d[i + 3] > 40) { n++; sx += x; sy += y; }
+          }
+          if (n > 30) {
+            hx = (H.ox !== undefined ? H.ox : H.x) + sx / n;
+            hy = (H.oy !== undefined ? H.oy : H.y) + sy / n;
+          } else { hx = (hb.x0 + hb.x1) / 2; hy = (hb.y0 + hb.y1) / 2; }
+        } catch (e) { hx = (hb.x0 + hb.x1) / 2; hy = (hb.y0 + hb.y1) / 2; }
+      }
+      out.head = { x: hx, y: hy };
+      /* NECK — head ke neeche, torso ke top se thoda pehle */
+      out.neck = { x: cx, y: Math.max(hy + (headBot - hy) * 0.55, headBot - 2) };
+      /* SPINE — kandhe aur kamar ke beech */
+      out.spine = { x: cx, y: shY + (hipY - shY) * 0.46 };
+      /* SHOULDERS — torso ke top corners se thoda andar */
+      out.shL = { x: tb.x0 + tw * 0.13, y: shY };
+      out.shR = { x: tb.x1 - tw * 0.13, y: shY };
+      /* HIPS — kamar se thoda neeche, dono alag */
+      out.hipL = { x: cx - tw * 0.17, y: hipY };
+      out.hipR = { x: cx + tw * 0.17, y: hipY };
+
+      if (S) {
+        /* ---------- HAATH (T-pose ya latke hue — dono) ---------- */
+        /* arm band: shoulder se hip ke neeche tak; us band me sabse door ka pixel = hand */
+        const legLen = Math.max(60, (T && tb.y1) ? (ownOfP(T).y1 + 0) - hipY : th * 0.5);
+        const yTop = Math.max(0, Math.round(shY - th * 0.05));
+        const yBot = Math.min(S.H - 1, Math.round(hipY + legLen * 2.2));
+        ['L', 'R'].forEach((side) => {
+          const sign = (side === 'L') ? -1 : 1;
+          let best = null, bestScore = 0;
+          for (let y = yTop; y <= yBot; y++) {
+            for (let x = (sign < 0 ? 0 : Math.round(cx)); sign < 0 ? x < cx : x < S.W; x += (sign < 0 ? 1 : 1)) {
+              if (alphaAt(S, x, y) <= 40) continue;
+              const dx = Math.abs(x - cx);
+              if (dx > tw * 0.62) {                        /* sirf torso se bahar */
+                const score = dx + (y - yTop) * 0.35;      /* door + neeche = hand */
+                if (score > bestScore) { bestScore = score; best = { x: x, y: y }; }
+              }
+            }
+          }
+          if (!best) best = { x: (side === 'L' ? tb.x0 : tb.x1), y: shY + th * 0.5 };
+          out['wr' + side] = { x: best.x, y: best.y };
+          const sh = out['sh' + side];
+          out['el' + side] = { x: (sh.x + best.x) / 2, y: (sh.y + best.y) / 2 };
+        });
+
+        /* ---------- PAIR (knee / ankle) ---------- */
+        /* pair ki bottom = silhouette ka sabse neeche wala pixel */
+        let bottomY = 0;
+        for (let y = S.H - 1; y >= Math.round(hipY); y--) {
+          const sp = rowSpan(S, y);
+          if (sp) { bottomY = y; break; }
+        }
+        const L = Math.max(40, bottomY - hipY);
+        /* dono tangon ka x — hip ke thoda neeche row par cluster centroid */
+        const probeY = Math.round(hipY + L * 0.22);
+        const sp = rowSpan(S, probeY) || { x0: tb.x0, x1: tb.x1 };
+        const legCxL = (sp.x0 + cx) / 2, legCxR = (cx + sp.x1) / 2;
+        out.knL = { x: legCxL, y: hipY + L * 0.52 };
+        out.knR = { x: legCxR, y: hipY + L * 0.52 };
+        out.anL = { x: legCxL, y: hipY + L * 0.95 };
+        out.anR = { x: legCxR, y: hipY + L * 0.95 };
+      } else {
+        /* silhouette na ho to piece bbox fallback */
+        const A = partById('armL'), B = partById('armR'), SL = partById('shinL'), SR = partById('shinR');
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        if (A) { const b = ownOfP(A); out.wrL = { x: (b.x0 + b.x1) / 2, y: b.y1 - 2 }; out.elL = { x: (b.x0 + b.x1) / 2, y: (shY + b.y1) / 2 }; }
+        if (B) { const b = ownOfP(B); out.wrR = { x: (b.x0 + b.x1) / 2, y: b.y1 - 2 }; out.elR = { x: (b.x0 + b.x1) / 2, y: (shY + b.y1) / 2 }; }
+        if (SL) { const b = ownOfP(SL); out.knL = { x: (b.x0 + b.x1) / 2, y: b.y0 + 2 }; out.anL = { x: (b.x0 + b.x1) / 2, y: b.y1 - 2 }; }
+        if (SR) { const b = ownOfP(SR); out.knR = { x: (b.x0 + b.x1) / 2, y: b.y0 + 2 }; out.anR = { x: (b.x0 + b.x1) / 2, y: b.y1 - 2 }; }
+      }
+      return out;
+    }
+
+    function autoAllJoints() {
+      const d = detectJoints();
+      if (!d) return null;
+      joints = {}; jointsReady = {};
+      JOINTS.forEach((j) => { if (d[j.id]) { joints[j.id] = d[j.id]; jointsReady[j.id] = true; } });
+      jointSel = 'head';
+      syncJointUI();
+      render();
+      return joints;
+    }
+
+    function jScreen(j) {
+      const RR = (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
+      const o = toScreen(j.x, j.y);
+      return { x: o.x + RR.x * scale, y: o.y + RR.y * scale };
+    }
+
+    function drawJoints() {
+      const t = performance.now() / 1000;
+      /* selected joint ka poora naam — upar ek pill me (labels overlap na hon) */
+      if (jointSel && joints[jointSel] && labelsOn) {
+        const jj = JOINTS.filter((x) => x.id === jointSel)[0];
+        const D0 = DPR;
+        ctx.save();
+        ctx.font = '900 ' + (9.5 * D0) + 'px ui-monospace, monospace';
+        const txt = (jj ? jj.label : jointSel) + (jointsReady[jointSel] ? '  ✓' : ' · drag me');
+        const tw = ctx.measureText(txt).width;
+        const px = cv.width / 2, py = 14 * D0;
+        ctx.fillStyle = 'rgba(8,10,14,.88)';
+        ctx.fillRect(px - tw / 2 - 7 * D0, py - 9 * D0, tw + 14 * D0, 15 * D0);
+        ctx.strokeStyle = 'rgba(120,180,255,.85)'; ctx.lineWidth = 1 * D0;
+        ctx.strokeRect(px - tw / 2 - 7 * D0, py - 9 * D0, tw + 14 * D0, 15 * D0);
+        ctx.fillStyle = jointsReady[jointSel] ? '#c9ffe6' : '#ffe3a8';
+        ctx.textAlign = 'center';
+        ctx.fillText(txt, px, py + 2 * D0);
+        ctx.restore();
+      }
+      JOINTS.forEach((j) => {
+        const jp = joints[j.id];
+        if (!jp) return;
+        const pv = jScreen(jp);
+        const sel = jointSel === j.id;
+        const ok = !!jointsReady[j.id];
+        const pulse = 0.5 + 0.5 * Math.sin(t * (sel ? 4.2 : 1.6) + pv.x * 0.01);
+        const D = DPR;
+        ctx.save();
+        ctx.translate(pv.x, pv.y);
+        ctx.shadowColor = ok ? 'rgba(0,230,118,.9)' : 'rgba(255,176,32,.9)';
+        ctx.shadowBlur = (sel ? 14 + 12 * pulse : 6 + 7 * pulse) * D;
+        ctx.beginPath(); ctx.arc(0, 0, (9 + (sel ? 3 : 1.6) * pulse) * D, 0, Math.PI * 2);
+        ctx.strokeStyle = ok ? 'rgba(0,230,118,.85)' : 'rgba(255,176,32,.85)';
+        ctx.lineWidth = (sel ? 2.4 : 1.6) * D; ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.beginPath(); ctx.arc(0, 0, 6.5 * D, 0, Math.PI * 2);
+        ctx.fillStyle = ok ? 'rgba(0,230,118,.85)' : 'rgba(255,176,32,.85)'; ctx.fill();
+        if (sel) { ctx.beginPath(); ctx.arc(0, 0, 12.5 * D, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(120,180,255,1)'; ctx.lineWidth = 2 * D; ctx.stroke(); }
+        ctx.restore();
+        if (labelsOn) {
+          ctx.save();
+          ctx.textAlign = 'center';
+          /* chhota code label — selected ka poora naam canvas ke upar alag pill me
+             (isse head/neck jaise paas-paas joints ke labels overlap nahi karte) */
+          const txt = j.code || j.label.slice(0, 2).toUpperCase();
+          const fs = 8 * D;
+          ctx.font = '900 ' + fs + 'px ui-monospace, monospace';
+          const tw = ctx.measureText(txt).width;
+          const ly = pv.y - 15 * D;
+          const lx = Math.max(tw / 2 + 4, Math.min(cv.width / D - tw / 2 - 4, pv.x));
+          ctx.fillStyle = 'rgba(8,10,14,.72)';
+          ctx.fillRect(lx - tw / 2 - 3 * D, ly - 8.5 * D, tw + 6 * D, 12 * D);
+          ctx.fillStyle = ok ? '#9dffcf' : '#ffd27a';
+          ctx.fillText(txt, lx, ly + 1.5 * D);
+          ctx.restore();
+        }
+      });
+    }
+
+    function hitJoint(x, y) {
+      let best = null, bd = 20 * DPR;
+      JOINTS.forEach((j) => {
+        const jp = joints[j.id]; if (!jp) return;
+        const pv = jScreen(jp);
+        const d = Math.hypot(x - pv.x, y - pv.y);
+        if (d < bd) { bd = d; best = j.id; }
+      });
+      return best;
+    }
+
+    function setJoints(o) {
+      joints = Object.assign({}, o || joints);
+      joints.forEach ? 0 : 0;
+      syncJointUI(); render();
+    }
+    function setJoint(id, x, y) {
+      if (!joints[id]) joints[id] = { x: 0, y: 0 };
+      joints[id].x = x; joints[id].y = y;
+      render();
+    }
+    function getJoints() { return JSON.parse(JSON.stringify(joints)); }
+    function setJointsReady(m) { jointsReady = Object.assign({}, m || {}); syncJointUI(); render(); }
+    function getJointsReady() { return Object.assign({}, jointsReady); }
+    function setJointSel(id) { jointSel = id; syncJointUI(); render(); }
+    function setLabels(v) { labelsOn = !!v; render(); }
+    function setJointsConfirmed(v) { jointsConfirmed = !!v; syncJointUI(); }
+
+    function syncJointUI() {
+      try {
+        const n = JOINTS.filter((j) => jointsReady[j.id]).length;
+        const pct = Math.round(n / JOINTS.length * 100);
+        const g = document.getElementById('jntGrid');
+        if (g) {
+          g.innerHTML = JOINTS.map((j) => {
+            const cls = 'jnt' + (jointsReady[j.id] ? ' ok' : (joints[j.id] ? '' : ' mis')) + (jointSel === j.id ? ' sel' : '');
+            return '<button type="button" class="' + cls + '" data-j="' + j.id + '">' + j.label + '</button>';
+          }).join('');
+          g.querySelectorAll('.jnt').forEach((b) => {
+            b.onclick = function () { setJointSel(b.dataset.j); };
+          });
+        }
+        const st = document.getElementById('jntStatus');
+        if (st) { st.textContent = n + ' / ' + JOINTS.length; st.classList.toggle('ok', n === JOINTS.length); }
+        const c = document.getElementById('jntCount'); if (c) c.textContent = n + ' / ' + JOINTS.length;
+        const f = document.getElementById('jntBarFill'); if (f) f.style.width = pct + '%';
+        const pc = document.getElementById('jntPct'); if (pc) pc.textContent = pct + '%';
+        const nd = document.getElementById('jntNudge'); if (nd) nd.hidden = !jointSel;
+        const row = document.getElementById('qpRow');
+        const allOk = (n === JOINTS.length) && jointsConfirmed;
+        if (row) row.classList.toggle('locked', !allOk);
+        const note = document.getElementById('jntLockNote');
+        if (note) {
+          note.hidden = allOk;
+          note.textContent = (n === JOINTS.length)
+            ? 'Sab 15 joints set hain — "Joints done" dabao, phir Walk/Run khulega.'
+            : 'Walk/Run band hai — pehle 15 joints sahi jagah set karo (' + n + '/' + JOINTS.length + ').';
+        }
+        const lb = document.getElementById('jntLabels'); if (lb) lb.textContent = 'Labels: ' + (labelsOn ? 'ON' : 'OFF');
+        const am = document.getElementById('jntAuto'), mm = document.getElementById('jntManual');
+        if (am) am.classList.toggle('on', mode === 'auto');
+        if (mm) mm.classList.toggle('on', mode === 'manual');
+      } catch (e) {}
     }
 
     function setScene(b, z) { bbox = b; zoom = z || 1; layout(); render(); }
@@ -2954,7 +3364,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function setAA(v) { aaOn = v; render(); }
     function info() { return { scale: +(baseScale * zoom).toFixed(4), baseScale: +baseScale.toFixed(4), zoom, w: Math.round(cv.width / DPR), h: Math.round(cv.height / DPR), dpr: DPR, aa: aaOn, smooth: ctx.imageSmoothingQuality }; }
 
-    return { bind, attach, layout, setScene, setZoom, setRings, setAA, render, info };
+    return { bind, attach, layout, setScene, setZoom, setRings, setAA, render, info,
+             /* R113 · joints API */
+             JOINTS, autoAllJoints, setJoints, setJoint, getJoints, setJointsReady, getJointsReady,
+             setJointSel, setLabels, setJointsConfirmed, syncJointUI,
+             get jointSel() { return jointSel; }, get labelsOn() { return labelsOn; },
+             get jointsConfirmed() { return jointsConfirmed; },
+             get readyCount() { return JOINTS.filter((j) => jointsReady[j.id]).length; } };
   })();
 
   /* ----------------------------------------------------------------- 07 · APP */
@@ -2988,7 +3404,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     });
     App.page = n;
     if (n === 3) { renderPosChips(); renderPosStage(); renderPosReadout(); }
-    if (n === 4) { Studio.layout(); Studio.render(); }   /* v17: stage width page ke hisaab se */
+    if (n === 4) {
+      Studio.layout(); Studio.render();                   /* v17: stage width page ke hisaab se */
+      try { if (window.__JOINTS_REFRESH) window.__JOINTS_REFRESH(); } catch (e) {}
+    }
     if (n === 5) { renderSave(); }
     syncNextBar();
   }
@@ -3345,6 +3764,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     App.cut = null; App.imgData = null; App.badParts = []; App.badOverride = false; App.cutIssues = [];
     try { applyRigLock([]); } catch (e) {}
     (function () { const ac1 = document.getElementById('acCard1'); if (ac1) ac1.classList.remove('show'); })();
+    /* R113: naya character = naye joints (purane joints hata do) */
+    try {
+      localStorage.removeItem('rigstudio.joints.v1');
+      localStorage.removeItem('rigstudio.joints.ok.v1');
+      if (window.RIG && RIG.Studio) { RIG.Studio.setJointsReady({}); }
+    } catch (e) {}
     /* v15.8: naya character = naya rig — purani animation/pose/history saaf */
     (function resetPoseForNewUpload() {
       try {
@@ -4911,7 +5336,103 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     renderUpload(null);
     syncNextBar();
 
-    /* v11: koi demo auto-load nahi — pehle user apna PNG chunta hai */
+    /* ==================================================================
+     R113 · JOINTS panel wiring (15-joint rig)
+     ================================================================== */
+  (function wiresJoints() {
+    function q(id) { return document.getElementById(id); }
+    function S() { return window.RIG && window.RIG.Studio; }
+    var LSKEY = 'rigstudio.joints.v1';
+    var LSOK = 'rigstudio.joints.ok.v1';
+
+    function saveJoints() {
+      try {
+        var Sx = S(); if (!Sx) return;
+        localStorage.setItem(LSKEY, JSON.stringify(Sx.getJoints()));
+        localStorage.setItem(LSOK, JSON.stringify(Sx.getJointsReady()));
+      } catch (e) {}
+    }
+    function loadJoints() {
+      try {
+        var j = JSON.parse(localStorage.getItem(LSKEY) || 'null');
+        var ok = JSON.parse(localStorage.getItem(LSOK) || 'null');
+        var Sx = S(); if (!Sx || !j) return false;
+        Sx.setJoints(j); if (ok) Sx.setJointsReady(ok);
+        Sx.syncJointUI(); Sx.render();
+        return true;
+      } catch (e) { return false; }
+    }
+
+    function autoNow(silent) {
+      var Sx = S(); if (!Sx || !window.RIG.App.cut) return;
+      Sx.autoAllJoints();
+      /* auto = sirf suggestion; user ko har joint confirm karna hai
+         (par neck/spine/hips pehle se theek nikalte hain, to unhe ready mark karo) */
+      saveJoints(); Sx.syncJointUI(); Sx.render();
+      if (!silent) U.toast('15 joints auto-detect hue. Ab har joint ko check/andar se drag karo.');
+    }
+
+    if (q('jntAuto')) q('jntAuto').onclick = function () { autoNow(); };
+    if (q('jntManual')) q('jntManual').onclick = function () {
+      var Sx = S(); if (!Sx) return;
+      U.toast('Manual: ring ke beech se joint drag karo, ya joint chun kar arrows dabao.');
+      Sx.setJointSel(Sx.jointSel || 'head');
+      Sx.syncJointUI();
+    };
+    if (q('jntLabels')) q('jntLabels').onclick = function () {
+      var Sx = S(); if (!Sx) return;
+      Sx.setLabels(!Sx.labelsOn); Sx.syncJointUI(); Sx.render();
+    };
+    if (q('jntReset')) q('jntReset').onclick = function () {
+      try { localStorage.removeItem(LSKEY); localStorage.removeItem(LSOK); } catch (e) {}
+      var Sx = S(); if (!Sx) return;
+      Sx.setJointsReady({});
+      autoNow(true);
+      U.toast('Joints reset — phir se auto-detect');
+    };
+    if (q('jntDone')) q('jntDone').onclick = function () {
+      var Sx = S(); if (!Sx) return;
+      var miss = Sx.JOINTS.filter(function (j) { return !Sx.getJointsReady()[j.id]; }).map(function (j) { return j.label; });
+      if (miss.length) {
+        U.toast('Ye joints baaki hain (' + miss.length + '): ' + miss.slice(0, 4).join(', ') + (miss.length > 4 ? '…' : ''));
+        Sx.setJointSel((Sx.JOINTS.filter(function (j) { return !Sx.getJointsReady()[j.id]; })[0] || {}).id);
+        Sx.syncJointUI(); Sx.render();
+        return;
+      }
+      Sx.setJointsConfirmed(true);
+      saveJoints(); Sx.syncJointUI();
+      U.toast('Sab 15 joints set ✓ — ab Walk/Run chalega');
+      setMeta('pose: idle');
+    };
+    /* nudge arrows */
+    var nd = q('jntNudge');
+    if (nd) nd.addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-nx]');
+      if (!b) return;
+      var Sx = S(); if (!Sx || !Sx.jointSel) return;
+      var dx = parseFloat(b.dataset.nx), dy = parseFloat(b.dataset.ny);
+      var j = Sx.getJoints()[Sx.jointSel];
+      if (!j) return;
+      if (dx === 0 && dy === 0) { /* center dabaya = bas select karo */ Sx.syncJointUI(); return; }
+      Sx.setJoint(Sx.jointSel, j.x + dx, j.y + dy);
+      Sx.getJointsReady()[Sx.jointSel] = true;
+      Sx.setJointsReady(Sx.getJointsReady());
+      Sx.syncJointUI(); Sx.render();
+      /* arrows se set karna bhi confirm hai */
+      saveJoints();
+    });
+    /* joint drag hone par ready ho jaye — Studio ke andar se callback */
+    window.__JOINTS_ON_SET = function (id) { saveJoints(); };
+    /* naya upload / page 4 par aane par auto-detect */
+    window.__JOINTS_REFRESH = function () {
+      var Sx = S(); if (!Sx) return;
+      if (loadJoints()) { Sx.render(); return; }
+      autoNow(true);
+    };
+  })();
+  function setMeta(label) { try { var st = document.getElementById('stateMeta'); if (st) st.textContent = label; } catch (e) {} }
+
+  /* v11: koi demo auto-load nahi — pehle user apna PNG chunta hai */
   })();
 
   window.RIG = {
@@ -4992,6 +5513,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
   function step(ts) {
     if (!Anim.on) return;
+    /* R113 · safety: joints confirm nahi hain to walk kabhi na chale */
+    if ((Anim.kind === 'walk' || Anim.kind === 'run') && !jointsGateOk()) {
+      Anim.on = false;
+      try { cancelAnimationFrame(Anim.raf); } catch (e) {}
+      jointsBlockedMsg();
+      return;
+    }
     const dt = Anim.last ? Math.min(0.05, (ts - Anim.last) / 1000) : 0.016;
     Anim.last = ts;
     Anim.phase += dt * Anim.speed * Math.PI * 2;      /* 1 cycle = 2π */
@@ -5086,7 +5614,38 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     Anim.raf = requestAnimationFrame(step);
   }
 
+  /* R113 · JOINTS GATE — jab tak 15 joints confirm na hon, Walk/Run band.
+     Engine level par bhi check (koi bhi rasta ho, walk shuru nahi hogi). */
+  function jointsGateOk() {
+    try {
+      var S = RIG.Studio;
+      if (!S || !S.JOINTS) return false;
+      return (S.readyCount === S.JOINTS.length) && S.jointsConfirmed === true;
+    } catch (e) { return false; }
+  }
+  function jointsBlockedMsg() {
+    var n = 0, tot = 15;
+    try { n = RIG.Studio.readyCount; tot = RIG.Studio.JOINTS.length; } catch (e) {}
+    try { RIG.Studio.syncJointUI(); } catch (e) {}
+    try {
+      document.querySelectorAll('#qpRow .qp').forEach(function (b) { b.classList.remove('on'); });
+      var sb = document.getElementById('poseStop'); if (sb) sb.classList.add('on');
+    } catch (e) {}
+    try { U.toast('Walk band hai — pehle 15 joints sahi jagah set karo (' + n + '/' + tot + '). Neeche JOINT RIG panel dekho.'); } catch (e) {}
+    try {
+      var jw = document.querySelector('.jntWrap');
+      if (jw && jw.scrollIntoView) jw.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    } catch (e) {}
+    try { var st = document.getElementById('stateMeta'); if (st) st.textContent = 'pose: idle'; } catch (e) {}
+  }
+
   function startAnim(kind) {
+    if ((kind === 'walk' || kind === 'run') && !jointsGateOk()) {
+      Anim.on = false;
+      try { cancelAnimationFrame(Anim.raf); } catch (e) {}
+      jointsBlockedMsg();
+      return;
+    }
     Anim.kind = kind || 'walk';
     try { RIG.Layers.setFaceDir(RIG.App && RIG.App.facing ? RIG.App.facing.dir : 1); } catch (e) {}
     Anim.on = true; Anim.last = 0;
@@ -5254,6 +5813,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
     if (p === 'walk' || p === 'run') {
       e.preventDefault();
+      if (!jointsGateOk()) { jointsBlockedMsg(); return; }
       Anim.spread = p === 'walk' ? 0.22 : 0.30;
       Anim.armAmp = p === 'walk' ? ARM_SWING_AMP : ARM_SWING_AMP * 2.2;
       Anim.torso  = p === 'walk' ? 0.03 : 0.09;
