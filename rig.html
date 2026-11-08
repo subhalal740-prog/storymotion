@@ -2374,7 +2374,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       /* v17.4 · DEFAULT LAYER ORDER (fixed, user spec):
          HEAD Z6 > ARM R Z5 > LEG R Z4 > TORSO Z3 > ARM L Z2 > LEG L Z1
          (dahina paer hamesha dhad ke upar aur sir ke neeche) */
-      const Z0 = { legL: 1, shinL: 1.5, armL: 2, foreL: 2.2, torso: 3, legR: 4, shinR: 4.5, armR: 5, foreR: 5.2, head: 6 };
+      const Z0 = { legL: 1, shinL: 1.5, footL: 1.7, armL: 2, foreL: 2.2, torso: 3, legR: 4, shinR: 4.5, footR: 4.7, armR: 5, foreR: 5.2, head: 6 };
       /* ---------- JOINT OVERLAP MARGIN (v15.3) ----------
          Har piece ko padosi piece ke andar R px tak badhaya jata hai. Yani
          arm ke canvas me shoulder ka thoda torso, torso ke canvas me shoulder
@@ -2600,7 +2600,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       onChange();
     }
     /* v17.4 · strict base order — sirf ye ids, sirf ye z (reset / integrity ke liye) */
-    const Z_BASE = { legL: 1, shinL: 1.5, armL: 2, foreL: 2.2, torso: 3, legR: 4, shinR: 4.5, armR: 5, foreR: 5.2, head: 6 };
+    const Z_BASE = { legL: 1, shinL: 1.5, footL: 1.7, armL: 2, foreL: 2.2, torso: 3, legR: 4, shinR: 4.5, footR: 4.7, armR: 5, foreR: 5.2, head: 6 };
 
     function normalize() { items.forEach((it, i) => { it.z = i + 1; }); }
 
@@ -2628,6 +2628,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
        pair galat lagta hai. Default 1 = normal. */
     let faceDir = 1;
     const MIRROR_ID = { legL: 'legR', legR: 'legL', shinL: 'shinR', shinR: 'shinL',
+                        footL: 'footR', footR: 'footL',
                         armL: 'armR', armR: 'armL' };
     function setFaceDir(d) { faceDir = (d < 0) ? -1 : 1; }
     function order() {
@@ -2681,11 +2682,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
      Snapshot-based state controller. Har change JSON snapshot banata hai ->
      undo / redo / reset / localStorage save / export.                        */
   const Pose = (function () {
-    const RING_IDS = ['head', 'torso', 'armL', 'armR', 'legL', 'legR', 'foreL', 'foreR'];   /* R114: forearm apna joint */
+    const RING_IDS = ['head', 'torso', 'armL', 'armR', 'legL', 'legR', 'foreL', 'foreR', 'footL', 'footR'];   /* R114/R115: forearm + foot apna joint */
     /* v19.0 · KNEE — shin ka apna angle (thigh ke relative). Ring nahi, UI me
        sirf legs ke ring se control hota hai (walk khud bend karta hai). */
     const KNEE_IDS = ['shinL', 'shinR'];
-    const PARENT = { shinL: 'legL', shinR: 'legR', foreL: 'armL', foreR: 'armR' };
+    const PARENT = { shinL: 'legL', shinR: 'legR', footL: 'shinL', footR: 'shinR', foreL: 'armL', foreR: 'armR' };
     let knee = {};
     KNEE_IDS.forEach((k) => { knee[k] = 0; });
     let rotation = {};
@@ -2844,31 +2845,55 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     /* ---------- v19.0 · PARENT CHAIN (knee joint) ----------
        shin ka pivot thigh ke hip-pivot ke around ghumta hai, aur uska apna angle
        = thigh angle + knee bend. Isse ghutna asli jagah par mudta hai.        */
-    const PARENT = { shinL: 'legL', shinR: 'legR' };           /* rotation accumulate (knee) */
+    /* R115b · leg chain: thigh -> shin -> FOOT (foot ka parent shin hai, warna
+       foot ka pivot shin ke saath nahi ghumta aur paer alag ho jata hai) */
+    const PARENT = { shinL: 'legL', shinR: 'legR', footL: 'shinL', footR: 'shinR' };
     /* R114 · forearm: pivot parent ke saath chalta hai, par rotation APNA (absolute)
        — warna parent ka angle double ho jata hai aur haath alag ho jata hai. */
     const PIVOT_PARENT = { foreL: 'armL', foreR: 'armR' };
     const parOf = (id) => PARENT[id] || PIVOT_PARENT[id];
     function partRot(p) {
+      /* R115b · walk = fitted joints se. Live value mile to WAHI (absolute) use karo,
+         warna parent ka angle double ho jata hai (thigh + knee dono ek hi pair). */
+      const LV = legLive();
+      if (LV && LV.rot && LV.rot[p.id] !== undefined) return LV.rot[p.id];
       const par = PARENT[p.id];
       if (!par) return Pose.get(p.id) || 0;
-      return (Pose.get(par) || 0) + (Pose.getKnee ? Pose.getKnee(p.id) : 0);
+      const parItem = Layers.byId(par);
+      const base = parItem ? partRot(parItem) : (Pose.get(par) || 0);
+      const extra = ((Pose.getKnee ? Pose.getKnee(p.id) : 0) || 0) + (Pose.get(p.id) || 0);
+      return base + extra;
     }
     function partOff(p) {
+      const LV0 = legLive();
+      if (LV0 && LV0.off && LV0.off[p.id]) return LV0.off[p.id];
       const o = (Pose.getOffset ? Pose.getOffset(p.id) : { dx: 0, dy: 0 }) || { dx: 0, dy: 0 };
       const par = parOf(p.id);
       if (!par) return { dx: o.dx || 0, dy: o.dy || 0 };
-      const po = (Pose.getOffset ? Pose.getOffset(par) : { dx: 0, dy: 0 }) || { dx: 0, dy: 0 };
+      const parItem = Layers.byId(par);
+      const po = parItem ? partOff(parItem) : ((Pose.getOffset ? Pose.getOffset(par) : { dx: 0, dy: 0 }) || { dx: 0, dy: 0 });
       return { dx: (o.dx || 0) + (po.dx || 0), dy: (o.dy || 0) + (po.dy || 0) };
     }
     function partPivot(p) {
+      const LV = legLive();
+      if (LV && LV.piv && LV.piv[p.id] && p.pivot) {
+        /* leg chain: parent ki live effective pivot + apne offset ka rotation */
+        const pp = LV.piv[parOf(p.id)];
+        if (pp) {
+          const a = (LV.rot && LV.rot[parOf(p.id)]) || 0, ca = Math.cos(a), sa = Math.sin(a);
+          const dx = p.pivot.x - (LV.rawPiv[parOf(p.id)] || pp).x, dy = p.pivot.y - (LV.rawPiv[parOf(p.id)] || pp).y;
+          return { x: pp.x + dx * ca - dy * sa, y: pp.y + dx * sa + dy * ca };
+        }
+      }
       const par = parOf(p.id);
       if (!par || !p.pivot) return p.pivot;
       const pp = Layers.byId(par);
       if (!pp || !pp.pivot) return p.pivot;
-      const a = Pose.get(par) || 0, ca = Math.cos(a), sa = Math.sin(a);
+      /* parent ka ASLI pivot (chain ke saath) le lo, phir apne offset ko ghumao */
+      const ppv = partPivot(pp);
+      const a = partRot(pp), ca = Math.cos(a), sa = Math.sin(a);
       const dx = p.pivot.x - pp.pivot.x, dy = p.pivot.y - pp.pivot.y;
-      return { x: pp.pivot.x + dx * ca - dy * sa, y: pp.pivot.y + dx * sa + dy * ca };
+      return { x: ppv.x + dx * ca - dy * sa, y: ppv.y + dx * sa + dy * ca };
     }
 
     const STAGE_MUL = 1.45;                    /* travel room (left + right) */
@@ -2878,6 +2903,36 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
     function render() {
       if (!ctx || !bbox) return;
+    /* R115 · ankle gap check: shin ka asli end aur foot ka pivot kitna door hai */
+    window.__DBG_GAP = function(){
+      const LV = legLive();
+      const out = {};
+      ['L','R'].forEach(function(sd){
+        const sh = Layers.byId('shin'+sd), ft = Layers.byId('foot'+sd);
+        if (!sh || !ft) { out[sd] = null; return; }
+        const spv = partPivot(sh), a = partRot(sh);
+        const dx = ft.pivot.x - sh.pivot.x, dy = ft.pivot.y - sh.pivot.y;
+        const shinEnd = { x: spv.x + dx*Math.cos(a) - dy*Math.sin(a), y: spv.y + dx*Math.sin(a) + dy*Math.cos(a) };
+        const fpv = partPivot(ft);
+        const sog = partOff(sh), fog = partOff(ft);
+        out[sd] = { shinEnd: {x:+shinEnd.x.toFixed(1), y:+shinEnd.y.toFixed(1)},
+                    footPivot: {x:+(fpv.x+(fog.dx-sog.dx)).toFixed(1), y:+(fpv.y+(fog.dy-sog.dy)).toFixed(1)},
+                    gap: +Math.hypot(shinEnd.x-(fpv.x+(fog.dx-sog.dx)), shinEnd.y-(fpv.y+(fog.dy-sog.dy))).toFixed(2),
+                    rotFoot: +(partRot(ft)).toFixed(3) };
+      });
+      return out;
+    };
+    window.__DBG_PARTS = function(){
+      return Layers.order().filter(x=>/^(leg|shin|foot)/.test(x.id)).map(x=>{
+        const pp = partPivot(x); const of2 = partOff(x);
+        return { id:x.id, rot:+partRot(x).toFixed(3), pose:+(Pose.get(x.id)||0).toFixed(3),
+          knee:+(Pose.getKnee?Pose.getKnee(x.id):0).toFixed(3),
+          raw:{x:x.pivot.x,y:x.pivot.y}, eff:{x:Math.round(pp.x),y:Math.round(pp.y)},
+          ox:(x.ox!==undefined?x.ox:x.x), oy:(x.oy!==undefined?x.oy:x.y),
+          z:x.z, w:x.w, h:x.h, cw:x.canvas.width, ch:x.canvas.height, off2:of2,
+          drawn:{x:+((pp.x+of2.dx)).toFixed(1), y:+((pp.y+of2.dy)).toFixed(1)} };
+      });
+    };
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, cv.width, cv.height);
       ctx.imageSmoothingEnabled = aaOn;
@@ -3038,6 +3093,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         if (jDrag) {
           const id = jDrag.id; jDrag = null;
           jointsReady[id] = true;         /* manual set = confirmed */
+          /* R115 · leg joint drag -> asli pivot turant update */
+          try { if (window.__SYNC_LEG_PIVOTS) window.__SYNC_LEG_PIVOTS(id); } catch (er) {}
+          try { if (window.__ON_JOINT_MOVED) window.__ON_JOINT_MOVED(id); } catch (er) {}
           try { Pose.push('joint ' + id); } catch (er) {}
           syncJointUI(); render();
           return;
@@ -3375,6 +3433,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function setAA(v) { aaOn = v; render(); }
     function info() { return { scale: +(baseScale * zoom).toFixed(4), baseScale: +baseScale.toFixed(4), zoom, w: Math.round(cv.width / DPR), h: Math.round(cv.height / DPR), dpr: DPR, aa: aaOn, smooth: ctx.imageSmoothingQuality }; }
 
+    /* R115 · walk ke asli fitted values (step se aate hain) — render inhi ka use kare */
+    function legLive() { return (typeof window.__R115_LIVE === 'function') ? window.__R115_LIVE() : null; }
+
     return { bind, attach, layout, setScene, setZoom, setRings, setAA, render, info,
              /* R113 · joints API */
              JOINTS, autoAllJoints, setJoints, setJoint, getJoints, setJointsReady, getJointsReady,
@@ -3642,6 +3703,49 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     return out;
   }
 
+  /* ==================================================================
+     R115 · JOINT -> ASLI PIVOT SYNC
+     Hip / Knee / Ankle joint jahan hai, wahi uss piece ka asli pivot ban jaye.
+     Isse "joint drag" = "leg pivot move" — walk bhi wahi pivot use karti hai.
+     (Head/Neck/Spine/arm ko iss task me chheda nahi ja raha.)
+     ================================================================== */
+  window.__SYNC_LEG_PIVOTS = function (which) {
+    try {
+      const S = Studio, cut = App.cut;
+      if (!S || !cut || !cut.pieces) return 'no-cut';
+      const j = S.getJoints();
+      if (!j) return 'no-joints';
+      const MAP = { hipL: 'legL', hipR: 'legR', knL: 'shinL', knR: 'shinR', anL: 'footL', anR: 'footR' };
+      let n = 0;
+      const list = (which && MAP[which]) ? [which] : Object.keys(MAP);
+      list.forEach(function (jid) {
+        const pid = MAP[jid];
+        const piece = cut.pieces.filter(function (q) { return q && q.id === pid; })[0];
+        if (!piece || !j[jid]) return;
+        piece.pivot = { x: j[jid].x, y: j[jid].y };
+        n++;
+      });
+      /* layers bhi update (render Layers se padhta hai) */
+      try { Layers.load(cut.pieces); Layers.setOnChange(function () { renderLayers(); Studio.render(); }); } catch (e) {}
+      try { Studio.render(); } catch (e) {}
+      return 'ok:' + n;
+    } catch (e) { return 'err:' + (e && e.message); }
+  };
+
+  /* JOINTS DONE par: pehle split, phir joints -> pivots */
+  window.__APPLY_LEG_RIG = function () {
+    try {
+      const sp = (window.__SPLIT_ARMS_NOW ? window.__SPLIT_ARMS_NOW() : 'no-hook');
+      const sy = (window.__SYNC_LEG_PIVOTS ? window.__SYNC_LEG_PIVOTS() : 'no-hook');
+      try {
+        WALK15.legSynced = true;
+        WALK15.legSyncInfo = { split: sp, sync: sy };
+        console.log('[R115] leg rig:', sp, sy, window.WALK15.footN || null);
+      } catch (e) {}
+      return { split: sp, sync: sy };
+    } catch (e) { return { err: String(e && e.message) }; }
+  };
+
   /* R114d · JOINTS -> ARM SPLIT hook (RIG ke scope me, kyunki splitArms yahin hai).
      Sirf tab chalta hai jab 15 joints ready hon. Ek hi baar (idempotent). */
   window.__SPLIT_ARMS_NOW = function () {
@@ -3651,8 +3755,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       if (!S || S.readyCount < S.JOINTS.length) return 'not-ready';
       const cut = App.cut;
       if (!cut || !cut.pieces) return 'no-cut';
-      const base = (window.__RIG_BASE_PIECES || cut.pieces).filter(function (q) { return q && !q.isFore; });
-      const pieces = splitArms(base.map(function (q) { return q; }));
+      const base = (window.__RIG_BASE_PIECES || cut.pieces).filter(function (q) { return q && !q.isFore && !q.isFoot; });
+      let pieces = splitArms(base.map(function (q) { return q; }));
+      pieces = splitFeet(pieces);
       if (WALK15.splitMode !== 'joints') return 'split-failed';
       cut.pieces = pieces;
       Layers.load(pieces);
@@ -3666,6 +3771,198 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   };
   /* base pieces yaad rakho (split se pehle) */
   window.__RIG_BASE_PIECES = window.__RIG_BASE_PIECES || null;
+
+  /* ==================================================================
+     R115 · FOOT SPLIT — ankle joint se neeche wale pixels alag piece
+     (tabhi ankle joint foot ko asli me ghumaa sakta hai)
+     ================================================================== */
+
+  /* ==================================================================
+     R115 · JOINT -> ASLI PIVOT SYNC
+     Hip / Knee / Ankle joint jahan hai, wahi uss piece ka asli pivot ban jaye.
+     Isse "joint drag" = "leg pivot move" — walk bhi wahi pivot use karti hai.
+     (Head/Neck/Spine/arm ko iss task me chheda nahi ja raha.)
+     ================================================================== */
+  window.__SYNC_LEG_PIVOTS = function (which) {
+    try {
+      const S = Studio, cut = App.cut;
+      if (!S || !cut || !cut.pieces) return 'no-cut';
+      const j = S.getJoints();
+      if (!j) return 'no-joints';
+      const MAP = { hipL: 'legL', hipR: 'legR', knL: 'shinL', knR: 'shinR', anL: 'footL', anR: 'footR' };
+      let n = 0;
+      const list = (which && MAP[which]) ? [which] : Object.keys(MAP);
+      list.forEach(function (jid) {
+        const pid = MAP[jid];
+        const piece = cut.pieces.filter(function (q) { return q && q.id === pid; })[0];
+        if (!piece || !j[jid]) return;
+        piece.pivot = { x: j[jid].x, y: j[jid].y };
+        n++;
+      });
+      /* layers bhi update (render Layers se padhta hai) */
+      try { Layers.load(cut.pieces); Layers.setOnChange(function () { renderLayers(); Studio.render(); }); } catch (e) {}
+      try { Studio.render(); } catch (e) {}
+      return 'ok:' + n;
+    } catch (e) { return 'err:' + (e && e.message); }
+  };
+
+  /* JOINTS DONE par: pehle split, phir joints -> pivots */
+  window.__APPLY_LEG_RIG = function () {
+    try {
+      const sp = (window.__SPLIT_ARMS_NOW ? window.__SPLIT_ARMS_NOW() : 'no-hook');
+      const sy = (window.__SYNC_LEG_PIVOTS ? window.__SYNC_LEG_PIVOTS() : 'no-hook');
+      try {
+        WALK15.legSynced = true;
+        WALK15.legSyncInfo = { split: sp, sync: sy };
+        console.log('[R115] leg rig:', sp, sy, window.WALK15.footN || null);
+      } catch (e) {}
+      return { split: sp, sync: sy };
+    } catch (e) { return { err: String(e && e.message) }; }
+  };
+
+  /* R114d · JOINTS -> ARM SPLIT hook (RIG ke scope me, kyunki splitArms yahin hai).
+     Sirf tab chalta hai jab 15 joints ready hon. Ek hi baar (idempotent). */
+  window.__SPLIT_ARMS_NOW = function () {
+    try {
+      if (WALK15.splitMode === 'joints') return 'already';
+      const S = Studio;
+      if (!S || S.readyCount < S.JOINTS.length) return 'not-ready';
+      const cut = App.cut;
+      if (!cut || !cut.pieces) return 'no-cut';
+      const base = (window.__RIG_BASE_PIECES || cut.pieces).filter(function (q) { return q && !q.isFore && !q.isFoot; });
+      let pieces = splitArms(base.map(function (q) { return q; }));
+      pieces = splitFeet(pieces);
+      if (WALK15.splitMode !== 'joints') return 'split-failed';
+      cut.pieces = pieces;
+      Layers.load(pieces);
+      Layers.setOnChange(function () { renderLayers(); Studio.render(); });
+      Pose.init();
+      Studio.setScene(cut.bbox, 1);
+      Studio.syncJointUI();
+      Studio.render();
+      return 'ok';
+    } catch (e) { return 'error:' + (e && e.message); }
+  };
+  /* base pieces yaad rakho (split se pehle) */
+  window.__RIG_BASE_PIECES = window.__RIG_BASE_PIECES || null;
+
+  /* ==================================================================
+     R115 · FOOT SPLIT — ankle joint se neeche wale pixels alag piece
+     (tabhi ankle joint foot ko asli me ghumaa sakta hai)
+     ================================================================== */
+  function splitFeet(pieces) {
+    try { window.WALK15 = window.WALK15 || {}; } catch (e) {}
+    const W = window.WALK15;
+    try { W.footMode = null; } catch (e) {}
+    const hasShin = pieces.some((p) => p && (p.id === 'shinL' || p.id === 'shinR'));
+    if (!hasShin) return pieces;
+    if (pieces.some((p) => p && (p.id === 'footL' || p.id === 'footR'))) return pieces;  /* idempotent */
+    const JT = (function () { try { return RIG.Studio && RIG.Studio.getJoints ? RIG.Studio.getJoints() : null; } catch (e) { return null; } })();
+    if (!JT || !JT.anL || !JT.anR) return pieces;      /* ankles set nahi -> purana rig */
+    const out = [];
+    for (const p of pieces) {
+      if (!p || !(p.id === 'shinL' || p.id === 'shinR')) { if (p) out.push(p); continue; }
+      try {
+        const isL = (p.id === 'shinL');
+        const AN = isL ? JT.anL : JT.anR;
+        const KN = isL ? JT.knL : JT.knR;
+        const cv = p.canvas;
+        if (!cv || !p.pivot) { out.push(p); continue; }
+        const cw = cv.width, ch = cv.height;
+        const c = cv.getContext('2d', { willReadFrequently: true });
+        const d = c.getImageData(0, 0, cw, ch).data;
+        const ox = (p.ox !== undefined) ? p.ox : p.x, oy = (p.oy !== undefined) ? p.oy : p.y;
+        /* ankle line: knee -> ankle ka 92% (ankle se thoda upar, paer ka jod) */
+        const ax = AN.x - KN.x, ay = AN.y - KN.y;
+        const al = Math.hypot(ax, ay) || 1;
+        const ux = ax / al, uy = ay / al;
+        const fr = 0.88;              /* cut = ankle se thoda UPAR, taaki panja poora aaye */
+        const lx = KN.x + ax * fr, ly = KN.y + ay * fr;          /* image space */
+        const upCv = document.createElement('canvas'); upCv.width = cw; upCv.height = ch;
+        const foCv = document.createElement('canvas'); foCv.width = cw; foCv.height = ch;
+        const uc = upCv.getContext('2d'), fc = foCv.getContext('2d');
+        const upImg = uc.createImageData(cw, ch), foImg = fc.createImageData(cw, ch);
+        const ud = upImg.data, fd = foImg.data;
+        let upN = 0, foN = 0;
+        for (let y = 0, i = 0; y < ch; y++) for (let x = 0; x < cw; x++, i += 4) {
+          if (d[i + 3] === 0) continue;
+          const ix = x + ox, iy = y + oy;
+          const t = (ix - lx) * ux + (iy - ly) * uy;              /* line ke aage = foot */
+          /* halke (safed dhoti / anti-alias edge) pixel foot me na jayein, warna
+             ankle par safed-grey patti dikhti hai. Wo shin ke paas hi rehte hain. */
+          const pale = (d[i] > 200 && d[i + 1] > 190 && d[i + 2] > 185);
+          const toFoot = (t > 0) && !pale;
+          const dst = toFoot ? fd : ud;
+          dst[i] = d[i]; dst[i + 1] = d[i + 1]; dst[i + 2] = d[i + 2]; dst[i + 3] = d[i + 3];
+          if (toFoot) foN++; else upN++;
+        }
+        /* R115b · COLLAR: foot ko shin ke andar 8px tak badhao (shin ke body pixels
+           me hi, bahar nahi). Foot neeche wali layer ke upar hota hai, isliye ye
+           collar ankle ki seam ko dhak leta hai — ghumane par paer nahi tootta. */
+        const GR2 = 8;
+        const shinMask = new Uint8Array(cw * ch);
+        for (let i = 0, j = 0; j < cw * ch; i += 4, j++) shinMask[j] = (d[i + 3] > 0) ? 1 : 0;
+        for (let g = 0; g < GR2; g++) {
+          const nm = new Uint8Array(shinMask);
+          for (let y = 1; y < ch - 1; y++) for (let x = 1; x < cw - 1; x++) {
+            const j = y * cw + x;
+            if (fd[j * 4 + 3] !== 0 || !shinMask[j]) continue;      /* sirf khali + shin body */
+            /* sirf SKIN pixel copy karo — safed dhoti / grey outline foot me na ghuse
+               (warna ankle par halka safed sliver ban jata hai) */
+            const R0 = d[j * 4], G0 = d[j * 4 + 1], B0 = d[j * 4 + 2];
+            if (!(R0 > 95 && R0 - B0 > 22 && R0 - G0 > 8)) continue;
+            const nb = [j - 1, j + 1, j - cw, j + cw];
+            let q0 = -1;
+            for (const q of nb) if (fd[q * 4 + 3] !== 0) { q0 = q; break; }
+            if (q0 < 0) continue;
+            fd[j * 4] = fd[q0 * 4]; fd[j * 4 + 1] = fd[q0 * 4 + 1]; fd[j * 4 + 2] = fd[q0 * 4 + 2]; fd[j * 4 + 3] = 255;
+            nm[j] = 1; foN++;
+          }
+          shinMask.set(nm);
+        }
+        /* R115c · ANKLE COLLAR (shin par): shin ko ankle se 8px NEECHE badhao aur wahan
+           foot ke ASLI pixels copy karo. Rest par ye bilkul invisible hai (same pixels),
+           aur jab foot ghumta hai to shin ka collar skin hi dikhata hai -> seam/gap nahi.
+           Foot shin ke NEECHE draw hota hai, isliye collar foot ke upar rehta hai. */
+        const coll = new Uint8Array(cw * ch);        /* collar mask */
+        for (let g = 0; g < 8; g++) {
+          const add = [];
+          for (let y = 1; y < ch - 1; y++) for (let x = 1; x < cw - 1; x++) {
+            const j = y * cw + x;
+            if (ud[j * 4 + 3] !== 0 || fd[j * 4 + 3] === 0) continue;    /* khali shin + foot body */
+            const nb = [j - 1, j + 1, j - cw, j + cw];
+            let touch = false;
+            for (const q of nb) if (ud[q * 4 + 3] !== 0 || coll[q]) { touch = true; break; }
+            if (touch) add.push(j);
+          }
+          if (!add.length) break;
+          for (const j of add) {
+            const R0 = fd[j * 4], G0 = fd[j * 4 + 1], B0 = fd[j * 4 + 2];
+            if (!(R0 > 95 && R0 - B0 > 22)) continue;     /* halke rim pixel collar me na aayein */
+            ud[j * 4] = R0; ud[j * 4 + 1] = G0; ud[j * 4 + 2] = B0; ud[j * 4 + 3] = 255;
+            coll[j] = 1;
+          }
+        }
+        uc.putImageData(upImg, 0, 0);
+        fc.putImageData(foImg, 0, 0);
+        if (foN < 25 || upN < 25) { out.push(p); continue; }
+        const shin2 = Object.assign({}, p, { canvas: upCv });     /* pivot wahi (knee) */
+        const foot = Object.assign({}, p, {
+          id: isL ? 'footL' : 'footR',
+          label: isL ? 'FOOT L' : 'FOOT R',
+          z: (p.z || 1.5) - 0.2,                  /* shin ke NEECHE: shin ka collar upar rahe */
+          canvas: foCv,
+          pivot: { x: lx, y: ly },                                  /* ANKLE joint */
+          isFoot: true
+        });
+        out.push(shin2); out.push(foot);
+        W.footMode = 'joints';
+        W.footN = W.footN || {};
+        W.footN[foot.id] = { ankle: { x: Math.round(AN.x), y: Math.round(AN.y) }, upN: upN, foN: foN };
+      } catch (e) { out.push(p); }
+    }
+    return out;
+  }
 
   /* ----------------------------------------------------------------- 07 · APP */
   const App = {
@@ -5702,7 +5999,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       Sx.setJointsConfirmed(true);
       saveJoints(); Sx.syncJointUI();
       /* R114b · ab joints se arm split + walk engine */
-      try { if (window.__RESPLIT_ARMS) window.__RESPLIT_ARMS(); } catch (e) {}
+      try {
+        if (window.__APPLY_LEG_RIG) window.__APPLY_LEG_RIG();
+        else if (window.__RESPLIT_ARMS) window.__RESPLIT_ARMS();
+      } catch (e) {}
       U.toast('Sab 15 joints set ✓ — ab Walk/Run chalega');
       setMeta('pose: idle');
     };
@@ -5887,6 +6187,36 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     Anim.travel = 0;
     Anim.__prevFoot = 0;
 
+    /* ================= R115 · LEG JOINTS = ENGINE =================
+       Thigh swing, knee bend aur ankle roll ab FITTED joints ki geometry se
+       calculate hote hain (hip - knee - ankle ki doori). Purane hardcoded
+       angles (A, KNEE_AMP) fallback ban gaye — geometry mile to wahi chalti hai.
+       ============================================================ */
+    let LG15 = null;
+    try {
+      if (WALK15.splitMode === 'joints' && WALK15.legSynced) {
+        const jj = RIG.Studio.getJoints();
+        const L = {};
+        let ok = true;
+        ['L', 'R'].forEach(function (side) {
+          const hip = jj['hip' + side], kn = jj['kn' + side], an = jj['an' + side];
+          if (!hip || !kn || !an) { ok = false; return; }
+          const t1 = Math.hypot(kn.x - hip.x, kn.y - hip.y);
+          const t2 = Math.hypot(an.x - kn.x, an.y - kn.y);
+          if (!(t1 > 8) || !(t2 > 8)) { ok = false; return; }
+          const th0 = Math.atan2(an.y - hip.y, an.x - hip.x);     /* rest direction */
+          L[side] = { t1: t1, t2: t2, th0: th0, hip: hip, kn: kn, an: an };
+        });
+        if (ok) LG15 = L;
+      }
+    } catch (e) { LG15 = null; }
+
+    /* geometry se swing amplitude: paer ki lambai ke hisaab se (max ±26°) */
+    let A15 = A, KNEE15 = KNEE_AMP;
+    if (LG15) {
+      const legLen = (LG15.L.t1 + LG15.L.t2) || 200;
+      A15 = Math.max(0.10, Math.min(0.46, (Anim.spread * 1.35) * (BH * 0.42) / legLen));
+    }
     /* ---- ARMS: Arm Posture button ke hisaab se rest angle ----
        T-Pose  -> arms ko pehle neeche laao (-ARM_DOWN_LOCK), phir usi ke around swing
        Arms Down -> rest 0° (photo character pehle se latka hua hai)             */
@@ -5898,8 +6228,19 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
        Standard gait legL/legR ke liye bana hai; agar character left dekh raha hai to
        poora gait mirror (side swap + sign ulta) hota hai, isliye flip ki zaroorat nahi. */
     const FD = (RIG.App && RIG.App.facing && RIG.App.facing.dir < 0) ? -1 : 1;
+    /* fitted joints se thigh angle: rest direction se swing (down = +π/2) */
+    if (LG15) {
+      const toRot = (side, ang) => {
+        const g = LG15[side];
+        if (!g) return 0;
+        const target = Math.PI / 2 + ang;        /* haath/pair neeche = π/2 */
+        return target - g.th0;                   /* piece apni rest direction se itna ghumega */
+      };
+      sL.angJ = toRot('L', sL.ang * (A15 / Math.max(0.06, A)));
+      sR.angJ = toRot('R', sR.ang * (A15 / Math.max(0.06, A)));
+    }
     const P = {
-      legL: sL.ang, legR: sR.ang,                       /* stance + swing (asli gait) */
+      legL: LG15 ? sL.angJ : sL.ang, legR: LG15 ? sR.angJ : sR.ang,   /* stance + swing (asli gait) */
       armL: -rest + swingL,
       armR:  rest + swingR,
       torso: Anim.torso * (0.6 + 0.4 * Math.cos(Anim.phase * 2)),
@@ -5965,6 +6306,31 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       } catch (e) { AR15 = null; }
     }
     const KN = { shinL: KNEE_SIGN * sL.knee, shinR: KNEE_SIGN * sR.knee };
+    if (LG15) {
+      /* ghutna: shin ki lambai ke hisaab se bend (chhota paer = kam bend) */
+      const kScale = Math.max(0.55, Math.min(1.35, ((LG15.L.t2 || 120) / 130)));
+      KN.shinL = KNEE_SIGN * sL.knee * kScale;
+      KN.shinR = KNEE_SIGN * sR.knee * kScale;
+    }
+    /* ================= R115b · ANKLE ROLL (insaan jaisa) =================
+       Foot piece ka rotation ABSOLUTE hai (shin ke baad chain me aata hai), isliye:
+         • STANCE (paon zameen par): foot ka angle = 0 -> panja FLAT rehta hai
+           (shin ketna hi jhuke, panja zameen par tikta hai — asli walk me aisa hi)
+         • SWING (paon hawa me): foot shin ke saath 60% ghumta hai + halka toe
+           roll, taaki panja latakta hua lage, khada nahi.
+       Pose me hum DELTA daalte hain (target - shinAbs), kyunki chain khud
+       shin ka angle jodti hai. Delta clamp +-0.75 rad.
+       ================================================================== */
+    const footDelta = (s, knee, legAbs) => {
+      const shinAbs = legAbs + (knee || 0);
+      const target = s.planted ? 0 : (0.35 * shinAbs + (s.lift || 0) * 0.10);
+      return Math.max(-0.35, Math.min(0.35, target - shinAbs));
+    };
+    const FT = { footL: 0, footR: 0 };
+    if (LG15) {
+      FT.footL = footDelta(sL, KN.shinL, P.legL);
+      FT.footR = footDelta(sR, KN.shinR, P.legR);
+    }
     let oyL = dyL, oyR = dyR;
     if (FD < 0) {                                       /* mirror: side swap + sign ulta */
       const swapNeg = (o, a, b) => { const t = o[a]; o[a] = -o[b]; o[b] = -t; };
@@ -5976,6 +6342,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     }
     try {
       if (RIG.Pose.setKnee) RIG.Pose.setKnee(KN);
+      /* ankle roll — foot pieces (fitted joints se) */
+      if (LG15) { try { RIG.Pose.setPair(FD < 0 ? { footL: -FT.footR, footR: -FT.footL }
+                                                     : { footL: FT.footL, footR: FT.footR }); } catch (e0) {} }
       if (AR15) {
         /* 15-joint arms: shoulder + forearm angles (mirror system ko bypass) */
         try { RIG.Pose.setMirror(false); } catch (e0) {}
@@ -5997,7 +6366,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       const sway = AR15 ? (BH * Anim.swayAmp * 0.01) * Math.sin(Anim.phase) : 0;
       if (RIG.Pose.setRoot) RIG.Pose.setRoot(Anim.travel + sway, -rise);
       RIG.Studio.render();
-    } catch (e) { Anim.on = false; return; }
+    } catch (e) { try { window.__ANIM_ERR = (e && e.message) || String(e); } catch (e9) {} Anim.on = false; return; }
     Anim.raf = requestAnimationFrame(step);
   }
 
