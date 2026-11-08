@@ -2757,6 +2757,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
        Pair jab saamne aata hai to thoda bada, peeche jata hai to thoda chhota. */
     let pscale = {};
     RING_IDS.forEach((k) => { pscale[k] = 1; });
+    /* R123 · ARM DEPTH — haath aage hai ya peeche (1 = aage/body ke upar, -1 = peeche/body ke neeche).
+       Ye sirf DRAW ORDER badalta hai, pose/history ko chhua nahi jata. */
+    let pdepth = { armL: -1, armR: 1 };
     let hist = [], idx = -1, limit = 80;
     let onChange = () => {};
 
@@ -2833,6 +2836,14 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function setPair(map) { Object.keys(map).forEach((k) => { rotation[k] = map[k] || 0; }); }
     /* knee: shin ka angle thigh ke relative (rad). Parent chain render me lagti hai. */
     function setKnee(map) { Object.keys(map).forEach((k) => { knee[k] = +map[k] || 0; }); }
+    function setDepth(map) {
+      if (!map) return;
+      Object.keys(map).forEach(function (k) {
+        const v = map[k];
+        if (v === 1 || v === -1) pdepth[k] = v;
+      });
+    }
+    function getDepth() { return pdepth; }
     function setScale(id, v) { pscale[id] = (typeof v === 'number' && isFinite(v)) ? v : 1; }
     function getScale(id) { return (typeof pscale[id] === 'number') ? pscale[id] : 1; }
     function setScaleMap(map) { Object.keys(map).forEach((k) => { pscale[k] = (typeof map[k] === 'number' && isFinite(map[k])) ? map[k] : 1; }); }
@@ -2865,7 +2876,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     }
     return { RING_IDS, KNEE_IDS, PARENT, init, push, undo, redo, reset, setAngle, setPair, setMirror, isMirror, get, getRotation,
              setKnee, getKnee, kneePair, capture,
-             setScale, getScale, setScaleMap,
+             setScale, getScale, setScaleMap, setDepth, getDepth,
              setRoot, getRoot, setOffset, getOffset, clearRoot,
              history, setOnChange, save, load, exportJSON, importJSON };
   })();
@@ -2967,6 +2978,23 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function padX() { return (bbox.w * STAGE_MUL - bbox.w) / 2; }   /* character start = center */
     function toScreen(x, y) { return { x: (x - bbox.x + padX()) * scale, y: (y - bbox.y) * scale }; }
 
+    /* R123 · arm pieces (arm + uska forearm) ko torso ke aage/peeche khiskao.
+       Baaki sab pieces ka order bilkul waisa hi rehta hai. */
+    function reorderArms(list, DZ) {
+      if (!list || !list.length) return list;
+      const isArmChain = (id) => (id === 'armL' || id === 'foreL' || id === 'armR' || id === 'foreR');
+      const pick = (ids) => list.filter((p) => ids.indexOf(p.id) >= 0);
+      const behind = [], front = [];
+      if (DZ.armL === -1) behind.push('armL', 'foreL'); else front.push('armL', 'foreL');
+      if (DZ.armR === -1) behind.push('armR', 'foreR'); else front.push('armR', 'foreR');
+      const bPieces = pick(behind), fPieces = pick(front);
+      if (!bPieces.length && !fPieces.length) return list;
+      const rest = list.filter((p) => !isArmChain(p.id));
+      const tIdx = rest.findIndex((p) => p.id === 'torso');
+      const cut = (tIdx >= 0) ? tIdx : rest.length;
+      return rest.slice(0, cut).concat(bPieces, rest.slice(cut), fPieces);
+    }
+
     function render() {
       if (!ctx || !bbox) return;
     /* R115 · ankle gap check: shin ka asli end aur foot ka pivot kitna door hai */
@@ -3004,7 +3032,15 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       ctx.imageSmoothingEnabled = aaOn;
       ctx.imageSmoothingQuality = 'high';
 
-      const list = Layers.order();
+      /* R123 · DYNAMIC ARM Z-INDEX
+         Haath jab saamne aata hai to torso ke UPAR, jab peeche jata hai to torso ke
+         NEECHE draw hota hai (background se upar to hai hi, kyunki background canvas hi nahi).
+         Sirf draw order badalta hai — piece ka z, pose ya history nahi. */
+      let list = Layers.order();
+      try {
+        const DZ = (Pose.getDepth ? Pose.getDepth() : null);
+        if (DZ) list = reorderArms(list, DZ);
+      } catch (e) {}
       const R = (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
       const rx = R.x * scale, ry = R.y * scale;      /* poora character ek saath aage/peeche */
       for (const p of list) {
@@ -4050,6 +4086,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
              setJointsVisible(v) { jointsVisible = !!v; render(); },
              get jointsVisible() { return jointsVisible; },
              get readyCount() { return JOINTS.filter((j) => jointsReady[j.id]).length; },
+             /* R123 · debug: render order + depth (test ke liye) */
+             debugOrder: function () {
+               try { return reorderArms(Layers.order(), Pose.getDepth()).map(function (p) { return p.id; }); }
+               catch (e) { return null; }
+             },
              jointChecks: function () { jointChecksCache = jointChecks(); return jointChecksCache; },
              recheck: function () { const c = jointChecks(); jointChecksCache = c;
                JOINTS.forEach(function (j) { if (joints[j.id] && c[j.id] && c[j.id].ok) jointsReady[j.id] = true; });
@@ -7071,6 +7112,43 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       SC.armL = persp(sR.ang) * 0.5 + 0.5;
       SC.armR = persp(sL.ang) * 0.5 + 0.5;
     }
+    /* ================= R123 · HAATH AAGE / PEECHE (layer order) =================
+       Har haath ULTE pair ke saath chalta hai (natural gait):
+         • pair saamne (s.ang > 0)  ->  haath PEECHE  ->  z-index torso se NEECHE
+         • pair peeche (s.ang < 0)  ->  haath SAAMNE  ->  z-index torso ke UPAR
+       Hysteresis (0.12 band) lagaya hai taaki phase badalte waqt arm pal bhar me
+       flip-flop na kare (jhatka na dikhe).
+       ============================================================================ */
+    const DEPTH = { armL: 1, armR: 1 };
+    if (FRONTVIEW) {
+      const flip = (armAng, prev) => {
+        const n = armAng / Math.max(0.06, A);            /* -1..1 */
+        if (prev > 0 && n < -0.12) return -1;            /* saaf peeche gaya */
+        if (prev < 0 && n > 0.12) return 1;              /* saaf saamne aaya */
+        return prev;
+      };
+      const prevD = (RIG.Pose.getDepth ? RIG.Pose.getDepth() : { armL: 1, armR: 1 });
+      const angL = (Anim.armMode === 'fixed') ? 0 : (sR.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55);
+      const angR = (Anim.armMode === 'fixed') ? 0 : (sL.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55);
+      DEPTH.armL = flip(-angL, prevD.armL || 1);
+      DEPTH.armR = flip(-angR, prevD.armR || 1);
+      /* R123b · jab haath PEECHE jata hai to shirt usko poora dhak leti hai.
+         Asli walk me bhi peeche wala haath shareer se thoda BAHAR rehta hai.
+         Isliye peeche jaane par haath ko halka bahar khiskao (3% body width) +
+         thoda chhota (door hai). Isse haath "gayab" nahi hota. */
+      const BW2 = (RIG.App && RIG.App.cut) ? RIG.App.cut.bbox.w : 600;
+      const out = Math.max(4, BW2 * 0.030);
+      const oL = (DEPTH.armL === -1) ? -out : 0;
+      const oR = (DEPTH.armR === -1) ? out : 0;
+      try {
+        if (RIG.Pose.setOffset) {
+          RIG.Pose.setOffset('armL', oL, 0);
+          RIG.Pose.setOffset('armR', oR, 0);
+        }
+      } catch (e) {}
+      if (DEPTH.armL === -1) { SC.armL *= 0.955; }
+      if (DEPTH.armR === -1) { SC.armR *= 0.955; }
+    }
     let oyL = dyL, oyR = dyR;
     if (FD < 0) {                                       /* mirror: side swap + sign ulta */
       const swapNeg = (o, a, b) => { const t = o[a]; o[a] = -o[b]; o[b] = -t; };
@@ -7096,12 +7174,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         RIG.Pose.setPair(P);
       }
       if (RIG.Pose.setScaleMap) RIG.Pose.setScaleMap(SC);     /* R121 · perspective */
+      if (RIG.Pose.setDepth) RIG.Pose.setDepth(DEPTH);        /* R123 · arm aage/peeche */
       /* step offsets + poore character ki position */
       if (RIG.Pose.setOffset) {
         RIG.Pose.setOffset('legL', 0, oyL);
         RIG.Pose.setOffset('legR', 0, oyR);
-        RIG.Pose.setOffset('armL', 0, 0);
-        RIG.Pose.setOffset('armR', 0, 0);
+        /* R123b · arm offsets yahan reset NAHI hote (depth ke hisaab se set hote hain) */
       }
       /* body balance — pelvis side sway (har step par halka jhukav) */
       const sway = AR15 ? (BH * Anim.swayAmp * 0.01) * Math.sin(Anim.phase) : 0;
@@ -7164,10 +7242,14 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       const lock0 = (ARM_POSTURE === 'down') ? 0 : ARM_DOWN_LOCK;
       RIG.Pose.setMirror(false);
       if (RIG.Pose.setScaleMap) RIG.Pose.setScaleMap({ legL: 1, legR: 1, shinL: 1, shinR: 1, footL: 1, footR: 1, armL: 1, armR: 1, foreL: 1, foreR: 1 });
+      if (RIG.Pose.setDepth) RIG.Pose.setDepth({ armL: -1, armR: 1 });   /* R123 · default layer order */
       RIG.Pose.setPair({ legL: 0, legR: 0, shinL: 0, shinR: 0, footL: 0, footR: 0,
                          armL: -lock0, armR: lock0, foreL: 0, foreR: 0, torso: 0, head: 0 });
       RIG.Pose.setMirror(true);
-      if (RIG.Pose.setOffset) { RIG.Pose.setOffset('legL', 0, 0); RIG.Pose.setOffset('legR', 0, 0); }
+      if (RIG.Pose.setOffset) {
+        RIG.Pose.setOffset('legL', 0, 0); RIG.Pose.setOffset('legR', 0, 0);
+        RIG.Pose.setOffset('armL', 0, 0); RIG.Pose.setOffset('armR', 0, 0);   /* R123b · arm shift bhi saaf */
+      }
       if (RIG.Pose.setRoot) RIG.Pose.setRoot(0, 0);
     } catch (e) {}
     if (!silent) { try { RIG.Studio.render(); } catch (e) {} }
