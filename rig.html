@@ -158,6 +158,10 @@
     border:1px solid rgba(255,255,255,.10);-webkit-tap-highlight-color:transparent}
   .jnt.ok{color:#9dffcf;background:rgba(0,230,118,.10);border-color:rgba(0,230,118,.35)}
   .jnt.mis{color:#ffb3b3;background:rgba(255,80,80,.10);border-color:rgba(255,80,80,.35)}
+  .jnt.bad{color:#ffc98a;background:rgba(255,176,32,.10);border-color:rgba(255,176,32,.42)}
+  .jnt .jm{font-style:normal;font-weight:900;font-size:8.5px;margin-left:3px;opacity:.95}
+  .jnt.ok .jm{color:#3dffa0} .jnt.bad .jm{color:#ffb020;font-size:10px}
+  .jntStatus.warn{background:rgba(255,176,32,.12);color:#ffc247;border-color:rgba(255,176,32,.32)}
   .jnt.sel{box-shadow:0 0 0 2px rgba(120,180,255,.85),0 0 14px rgba(120,180,255,.4)}
   .jntRow{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
   .jntBtn{flex:1;min-width:88px;font:900 9.5px/1 inherit;font-family:inherit;letter-spacing:.55px;text-transform:uppercase;
@@ -1212,6 +1216,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           </div>
           <div class="jntRow">
             <button type="button" class="jntBtn" id="jntDone">Joints done</button>
+            <button type="button" class="jntBtn ghost" id="jntUndo" title="Joint undo (Ctrl+Z se alag)" disabled>↶ Undo</button>
+            <button type="button" class="jntBtn ghost" id="jntRedo" title="Joint redo" disabled>↷ Redo</button>
             <button type="button" class="jntBtn ghost" id="jntReset">Reset joints</button>
           </div>
           <div class="jntNote" id="jntNote">Har joint ko body ke landmark par set karo — phir Walk khulega. Ring ke beech kheencho (drag) ya joint chun kar arrows dabao.</div>
@@ -3091,6 +3097,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         if (jid) {
           jointSel = jid;
           jDrag = { id: jid };
+          try { if (window.__JOINTS_ON_SET) window.__JOINTS_ON_SET(jid, 'start'); } catch (e) {}
           syncJointUI();
           cv.setPointerCapture(e.pointerId);
           e.preventDefault();
@@ -3327,16 +3334,477 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       return out;
     }
 
-    function autoAllJoints() {
-      const d = detectJoints();
+    /* ==================================================================
+       R118 · DETECTION v2 — sach (Phase 1 audit ka fix)
+       Purane bugs:
+         1) ek family (piece-canvas px + oX0) aur dusri (image px) — dono
+            mix ho rahi thin -> x me ~9px shift aur shoulders/torso galat.
+         2) hips = torso BBOX se (torso aadhi thigh leta hai) -> 38px neeche.
+         3) knee/ankle = hip se % distance -> 35/24px neeche, transparent.
+         4) wrists = silhouette ka sabse door pixel -> ungli ki tip (64px galat).
+       Ab har landmark PIECE MASK se, image space me, ek hi convention:
+            piece.oX0/oY0 = us piece ke canvas px(0,0) ka image coordinate
+            (oX0 na ho to piece.x - 2 — wahi jisse pieces bante hain)
+       Naye joints: knee = shin mask ka TOP (asli knee), ankle = shin mask ka
+       bottom line. Isse foot-split (jo shin ko ankle par kaatta hai) bhi theek.
+       ================================================================== */
+    function pieceOrigin(p) {
+      if (!p) return null;
+      const ox = (p.oX0 !== undefined) ? p.oX0 : ((p.ox !== undefined) ? p.ox : p.x - 2);
+      const oy = (p.oY0 !== undefined) ? p.oY0 : ((p.oy !== undefined) ? p.oy : p.y - 2);
+      return { ox: ox, oy: oy };
+    }
+    /* piece mask ki row -> runs:[{x0,x1}] (image space, chhote holes bhare hue) */
+    function maskRows(p) {
+      try {
+        const cv = p.canvas; if (!cv) return null;
+        const W = cv.width, H = cv.height;
+        const d = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, W, H).data;
+        const o = pieceOrigin(p);
+        const rows = new Array(H);
+        const MAXG = Math.max(3, Math.round(W * 0.045));
+        for (let y = 0; y < H; y++) {
+          const runs = []; let s = -1, skin = 0, tot = 0;
+          for (let x = 0; x <= W; x++) {
+            const i = (y * W + x) * 4;
+            const on = (x < W) && d[i + 3] > 40;
+            if (on) {
+              tot++;
+              /* skin test (kapde/sleeper se farak) — R118: elbow/wrist skin se */
+              if (d[i] > 95 && d[i] - d[i + 2] > 22 && d[i] - d[i + 1] > 8) skin++;
+            }
+            if (on && s < 0) s = x;
+            else if (!on && s >= 0) { runs.push({ x0: s + o.ox, x1: x - 1 + o.ox }); s = -1; }
+          }
+          /* chhote gaps bharo (ungliyon ke beech ka 1-2px, antialias) */
+          for (let i = 1; i < runs.length; i++) {
+            const g = runs[i].x0 - runs[i - 1].x1 - 1;
+            if (g > 0 && g <= MAXG) { runs[i - 1].x1 = runs[i].x1; runs.splice(i, 1); i--; }
+          }
+          rows[y] = { y: y + o.oy, runs: runs, skin: skin, tot: tot, skinFrac: tot ? skin / tot : 0 };
+        }
+        return { rows: rows, W: W, H: H, ox: o.ox, oy: o.oy };
+      } catch (e) { return null; }
+    }
+    function runsSpan(runs) {
+      if (!runs || !runs.length) return null;
+      let x0 = runs[0].x0, x1 = runs[0].x1;
+      for (let i = 1; i < runs.length; i++) { if (runs[i].x0 < x0) x0 = runs[i].x0; if (runs[i].x1 > x1) x1 = runs[i].x1; }
+      return { x0: x0, x1: x1, cx: (x0 + x1) / 2, w: x1 - x0 + 1 };
+    }
+    /* mask ke rows me se ek "y" par span (na mile to null) */
+    function spanAtY(M, y) {
+      if (!M) return null;
+      let r = M.rows[Math.round(y - M.oy)];
+      if (!r) return null;
+      return runsSpan(r.runs);
+    }
+    /* mask ka poora bbox (image space) */
+    function maskBox(M) {
+      if (!M) return null;
+      let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+      for (let i = 0; i < M.rows.length; i++) {
+        const r = M.rows[i]; const sp = runsSpan(r.runs);
+        if (!sp) continue;
+        if (sp.x0 < x0) x0 = sp.x0; if (sp.x1 > x1) x1 = sp.x1;
+        if (r.y < y0) y0 = r.y; if (r.y > y1) y1 = r.y;
+      }
+      return (x1 < 0) ? null : { x0: x0, y0: y0, x1: x1, y1: y1, cx: (x0 + x1) / 2, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+    }
+    /* ~p% tareeke se pehla / aakhri row (antialias 1px ko ignore) */
+    function firstRow(M, pct) {
+      pct = pct || 0.004;
+      if (!M) return null;
+      for (let i = 0; i < M.rows.length; i++) { const sp = runsSpan(M.rows[i].runs); if (sp && sp.w >= Math.max(3, M.W * pct)) return { y: M.rows[i].y, span: sp }; }
+      return null;
+    }
+    function lastRow(M, pct) {
+      pct = pct || 0.004;
+      if (!M) return null;
+      for (let i = M.rows.length - 1; i >= 0; i--) { const sp = runsSpan(M.rows[i].runs); if (sp && sp.w >= Math.max(3, M.W * pct)) return { y: M.rows[i].y, span: sp }; }
+      return null;
+    }
+    /* main cluster (sabse mota run) — hat/ungli ke alag tukde ignore */
+    function mainRun(runs) {
+      if (!runs || !runs.length) return null;
+      let best = runs[0];
+      for (let i = 1; i < runs.length; i++) if ((runs[i].x1 - runs[i].x0) > (best.x1 - best.x0)) best = runs[i];
+      return best;
+    }
+    /* mask me sabse patla row (wrist = arm ka sabse patla hissa) + row ki centre */
+    function narrowestRow(M, yFrom, yTo, minW, maxW, skinMin) {
+      if (!M) return null;
+      let best = null;
+      for (let i = 0; i < M.rows.length; i++) {
+        const r = M.rows[i];
+        if (r.y < yFrom || r.y > yTo) continue;
+        if (skinMin && r.skinFrac < skinMin) continue;
+        const mr = mainRun(r.runs); if (!mr) continue;
+        const w = mr.x1 - mr.x0 + 1;
+        if (w < minW) continue;
+        if (maxW && w > maxW) continue;
+        if (!best || w < best.w) best = { y: r.y, w: w, x0: mr.x0, x1: mr.x1, cx: (mr.x0 + mr.x1) / 2 };
+      }
+      return best;
+    }
+    /* mask me sabse mota row (elbow / knuckle) */
+    function widestRow(M, yFrom, yTo, mainOnly, skinMin) {
+      if (!M) return null;
+      let best = null;
+      for (let i = 0; i < M.rows.length; i++) {
+        const r = M.rows[i];
+        if (r.y < yFrom || r.y > yTo) continue;
+        if (skinMin && r.skinFrac < skinMin) continue;
+        let w, x0, x1;
+        if (mainOnly) { const mr = mainRun(r.runs); if (!mr) continue; w = mr.x1 - mr.x0 + 1; x0 = mr.x0; x1 = mr.x1; }
+        else { const sp = runsSpan(r.runs); if (!sp) continue; w = sp.w; x0 = sp.x0; x1 = sp.x1; }
+        if (!best || w > best.w) best = { y: r.y, w: w, x0: x0, x1: x1, cx: (x0 + x1) / 2 };
+      }
+      return best;
+    }
+    /* shoe flare: shin mask ke neeche se upar — jahan width achanak badh jaye (joota) */
+    function ankleRow(M) {
+      if (!M) return null;
+      const b = maskBox(M); if (!b) return null;
+      const yStart = Math.round(b.y0 + b.h * 0.55);
+      const rows = [];
+      for (let i = 0; i < M.rows.length; i++) {
+        const r = M.rows[i];
+        if (r.y < yStart) continue;
+        const mr = mainRun(r.runs); if (!mr) continue;
+        rows.push({ y: r.y, w: mr.x1 - mr.x0 + 1, cx: (mr.x0 + mr.x1) / 2 });
+      }
+      if (!rows.length) return null;
+      let m = 1e9;
+      rows.forEach(function (r) { if (r.w < m) m = r.w; });
+      /* UPAR se pehla wide row = joote ka top (ankle wahin hai).
+         (Neeche se dhoondhne par shoe ka sole pakda jata tha — wo bug tha.) */
+      const thr = m + Math.max(5, Math.round(M.W * 0.02));
+      let flare = null;
+      for (let i = 0; i < rows.length; i++) { if (rows[i].w >= thr) { flare = rows[i]; break; } }
+      if (!flare) return { y: b.y1 - Math.round(b.h * 0.22), cx: b.cx, flare: false };
+      /* flare ke thoda UPAR (pair ka jod shoe ke andar nahi hota) */
+      return { y: flare.y - Math.max(3, Math.round(M.W * 0.012)), cx: flare.cx, flare: true };
+    }
+
+    function detectJointsV2() {
+      const S = sil();
+      const Tp = partById('torso'), Hp = partById('head');
+      if (!S && !Tp) return null;
+      const M = {};
+      const need = ['torso', 'head', 'armL', 'armR', 'legL', 'legR', 'shinL', 'shinR'];
+      need.forEach(function (id) { const p = partById(id); if (p) M[id] = maskRows(p); });
+      /* legs L/R: image me kaun baayein hai — label usi se (mirror image me bhi theek) */
+      const boxLegL = maskBox(M.legL), boxLegR = maskBox(M.legR);
+      const leftIsL = (boxLegL && boxLegR) ? (boxLegL.cx <= boxLegR.cx) : true;
+      const thighOf = function (side) { return (side === 'L') === leftIsL ? M.legL : M.legR; };
+      const shinOf = function (side) { return (side === 'L') === leftIsL ? M.shinL : M.shinR; };
+      const armOf = function (side) { return (side === 'L') === leftIsL ? M.armL : M.armR; };
+      const boxT = maskBox(M.torso), boxH = maskBox(M.head);
+      const out = {};
+
+      /* ---------- HEAD ---------- */
+      if (boxH) out.head = { x: boxH.cx, y: (boxH.y0 + boxH.y1) / 2 };
+      else { const b = Tp ? ownOfP(Tp) : null; out.head = { x: b ? (b.x0 + b.x1) / 2 : S.W / 2, y: b ? b.y0 - 40 : 40 }; }
+
+      /* ---------- NECK: head ke bottom se neeche, neck column hi leta hoon ----------
+         torso mask ke top rows (shirt ka collar) ke centre — head ke bottom ke paas. */
+      let neckSet = false;
+      if (boxH && S) {
+        /* head ke neeche se 40px tak: sabse patli row = gardan */
+        const hb = boxH;
+        let best = null;
+        for (let y = Math.round(hb.y1 - 2); y <= Math.round(hb.y1 + Math.max(30, hb.h * 0.5)); y++) {
+          if (y < 0 || y >= S.H) continue;
+          let x0 = -1, x1 = -1;
+          for (let x = 0; x < S.W; x++) { if (alphaAt(S, x, y) > 40) { if (x0 < 0) x0 = x; x1 = x; } }
+          if (x0 < 0) continue;
+          const w = x1 - x0 + 1;
+          if (!best || w < best.w) best = { y: y, w: w, cx: (x0 + x1) / 2 };
+        }
+        if (best && best.w <= Math.max(30, hb.w * 0.62)) { out.neck = { x: best.cx, y: best.y }; neckSet = true; }
+      }
+      const tTop = firstRow(M.torso, 0.004);
+      if (!neckSet && tTop && boxH) out.neck = { x: (tTop.span.cx + boxH.cx) / 2, y: Math.max(boxH.y1 - 4, tTop.y - 2) };
+      else if (!neckSet && tTop) out.neck = { x: tTop.span.cx, y: tTop.y };
+      else if (!neckSet) out.neck = { x: out.head.x, y: out.head.y + 40 };
+
+      /* ---------- SPINE: torso mask ka asli vertical beech ---------- */
+      if (boxT) out.spine = { x: (boxT.cx + out.head.x) / 2, y: (boxT.y0 + boxT.y1) / 2 };
+      else out.spine = { x: out.head.x, y: out.neck.y + 60 };
+
+      /* ---------- HIPS: thigh pieces ke TOP se (sabse pakka landmark), warna spine/neck line ---------- */
+      ['L', 'R'].forEach(function (side) {
+        const mb = maskBox(thighOf(side));
+        const x = mb ? mb.cx : out.spine.x + (side === 'L' ? -1 : 1) * 18;
+        const y = mb ? mb.y0 + 3 : out.spine.y + 40;
+        out['hip' + side] = { x: x, y: y };
+      });
+
+      /* ---------- ARMS ---------- */
+      ['L', 'R'].forEach(function (side) {
+        const armM = armOf(side), shM = shinOf(side);
+        const aBox = maskBox(armM);
+        if (!aBox) return;
+        const armLength = aBox.h;
+        /* shoulder = arm ke TOP rows ka beech; par x ko torso ke kinare se clamp
+           (arm ke top par sleeve hoti hai jo bahar nikal jati hai) */
+        /* SHOULDER = arm piece ka top (sleeve ka kandha), par bilkul pehla 2px tip
+           nahi — width ke 12% se badi pehli row. x = us row ke main run ka centre,
+           torso ke andar clamp (kandha body par hota hai). */
+        const top = firstRow(armM, 0.12) || firstRow(armM, 0.02);
+        let shX = top ? top.span.cx : aBox.cx;
+        let shY = top ? top.y + armLength * 0.02 : aBox.y0;
+        if (boxT) shX = Math.max(boxT.x0 + boxT.w * 0.12, Math.min(boxT.x1 - boxT.w * 0.12, shX));
+        out['sh' + side] = { x: shX, y: shY };
+
+        /* ELBOW = skin rows me sabse mota (biceps/forearm ka jod) */
+        const eFrom = shY + armLength * 0.10;
+        const eTo = shY + armLength * 0.62;
+        let eb = widestRow(armM, eFrom, eTo, true, 0.5);
+        if (!eb) eb = widestRow(armM, eFrom, eTo, true, 0);
+        out['el' + side] = eb ? { x: eb.cx, y: eb.y }
+                              : { x: aBox.cx, y: shY + armLength * 0.42 };
+        /* WRIST = elbow ke neeche skin ka sabse patla row (haath se pehle) */
+        const wFrom = out['el' + side].y + armLength * 0.06;
+        const wTo = aBox.y1 - armLength * 0.06;
+        let wb = narrowestRow(armM, wFrom, wTo, 3, null, 0.5);
+        if (!wb) wb = narrowestRow(armM, wFrom, wTo, 3, null, 0);
+        out['wr' + side] = wb ? { x: wb.cx, y: wb.y }
+                              : { x: aBox.cx, y: aBox.y0 + armLength * 0.78 };
+      });
+
+      /* ---------- LEGS: knee = shin mask ka top, ankle = shin mask ka bottom ---------- */
+      ['L', 'R'].forEach(function (side) {
+        const th = thighOf(side), sh = shinOf(side);
+        const tB = maskBox(th), sB = maskBox(sh);
+        if (sB) {
+          const kTop = firstRow(sh, 0.10) || firstRow(sh, 0.02);
+          out['kn' + side] = { x: kTop ? kTop.span.cx : sB.cx, y: (kTop ? kTop.y : sB.y0) + 1 };
+          /* ankle: joote ke flare ke thoda upar (pair ka jod), warna shin ke bottom par */
+          const ar = ankleRow(sh);
+          out['an' + side] = ar ? { x: ar.cx, y: ar.y } : { x: sB.cx, y: sB.y1 - 6 };
+        } else if (tB) {
+          /* shin piece nahi mila (auto-cut alag ho) — thigh ke bottom se */
+          out['kn' + side] = { x: tB.cx, y: tB.y1 - 2 };
+          out['an' + side] = { x: tB.cx, y: tB.y1 + tB.h * 0.55 };
+        }
+      });
+
+      /* ---------- SAFETY: joints image ke bahar na jayein ---------- */
+      const A = (window.RIG && RIG.App) || {};
+      const Wd = (S && S.W) || A.W || 1, Hd = (S && S.H) || A.H || 1;
+      Object.keys(out).forEach(function (k) {
+        out[k].x = Math.max(0, Math.min(Wd - 1, out[k].x));
+        out[k].y = Math.max(0, Math.min(Hd - 1, out[k].y));
+      });
+      return out;
+    }
+
+    /* ---------- R118 · SELF-CHECK: har joint sach me sahi jagah hai? ----------
+       Har joint ko uske ANG par naapa jata hai (pair ka mask / torso):
+         · joint us ang ke mask ke box ke andar hai?
+         · limb ka centre wahan joint ke ±tolerance me hai?
+       Fail hone par joint BINA tick (warning) rehta hai — green nahi.          */
+    function jointChecks() {
+      const S = sil();
+      const M = {};
+      ['torso', 'head', 'armL', 'armR', 'legL', 'legR', 'shinL', 'shinR'].forEach(function (id) {
+        const p = partById(id); if (p) M[id] = maskRows(p);
+      });
+      const boxLegL = maskBox(M.legL), boxLegR = maskBox(M.legR);
+      const leftIsL = (boxLegL && boxLegR) ? (boxLegL.cx <= boxLegR.cx) : true;
+      const thighOf = function (s) { return (s === 'L') === leftIsL ? M.legL : M.legR; };
+      const shinOf = function (s) { return (s === 'L') === leftIsL ? M.shinL : M.shinR; };
+      const armOf = function (s) { return (s === 'L') === leftIsL ? M.armL : M.armR; };
+      const boxT = maskBox(M.torso);
+      const alphaOf = function (x, y) {
+        if (!S) return 255;
+        x |= 0; y |= 0; if (x < 0 || y < 0 || x >= S.W || y >= S.H) return 0;
+        return S.d[(y * S.W + x) * 4 + 3];
+      };
+      const res = {};
+      /* SABSE PAKKA TEST: joint us mask ke us HI row ke span ke andar hona chahiye */
+      function inMaskAt(maskM, j, marg) {
+        if (!maskM) return { ok: false, why: 'part nahi mila' };
+        const r = Math.round(j.y - maskM.oy);
+        const row = maskM.rows[r];
+        if (!row || !row.runs.length) return { ok: false, why: 'us row par ang nahi hai' };
+        const mr = mainRun(row.runs);
+        const m = (marg !== undefined) ? marg : Math.max(4, Math.round((mr.x1 - mr.x0 + 1) * 0.22));
+        const d = Math.abs(j.x - (mr.x0 + mr.x1) / 2);
+        if (d > m) return { ok: false, why: 'limb centre se ' + Math.round(d) + 'px door' };
+        return { ok: true };
+      }
+      function fail(id, code, extra) {
+        res[id] = Object.assign({ ok: false, code: code, msg: code }, extra || {});
+      }
+      /* ek joint ko uske ang par naapo:
+         mx/my = box ka margin, tolK = limb width ke hisaab se centre tolerance,
+         dyOK = box ke andar allowed bbox (upar/neeche px)                     */
+      function check(id, maskM, o) {
+        o = o || {};
+        const j = joints[id];
+        if (!j) return fail(id, 'set nahi hua');
+        if (!maskM) return fail(id, 'part nahi mila (auto-cut)');
+        const b = maskBox(maskM);
+        if (!b) return fail(id, 'part khali hai');
+        const mx = (o.mx !== undefined) ? o.mx : b.w * 0.14;
+        const my = (o.my !== undefined) ? o.my : b.h * 0.08;
+        const inX = j.x >= b.x0 - mx && j.x <= b.x1 + mx;
+        const inY = j.y >= b.y0 - my && j.y <= b.y1 + my;
+        let row = null, mr = null, cErr = 0, rw = 0;
+        if (o.centre !== false) {
+          const r = Math.round(j.y - maskM.oy);
+          row = maskM.rows[r];
+          if (row) { mr = mainRun(row.runs); }
+          if (mr) { rw = mr.x1 - mr.x0 + 1; cErr = Math.abs(j.x - (mr.x0 + mr.x1) / 2); }
+        }
+        const tol = Math.max(4, Math.round((rw || b.w || 40) * (o.tolK || 0.28)));
+        const a = alphaOf(j.x, j.y);
+        const onBody = a > 40;
+        const bad = [];
+        if (!inX || !inY) bad.push('ang ke bahar');
+        else if (!onBody) bad.push('transparent par');
+        if (o.centre !== false && mr && cErr > tol) bad.push('limb centre se ' + Math.round(cErr) + 'px door');
+        if (o.needSkin && row && row.skinFrac < 0.5) bad.push('kapde par (skin nahi)');
+        if (o.yNear && mr) {               /* joint ko us row ke paas hona chahiye */
+          const d = Math.abs(j.y - o.yNear);
+          if (d > o.yTol) bad.push('asli jod se ' + Math.round(d) + 'px door');
+        }
+        res[id] = { ok: bad.length === 0, code: bad.length ? bad[0] : 'OK', msg: bad.join(' · '),
+                    centreErr: Math.round(cErr), rowW: rw, tol: tol, onBody: onBody,
+                    box: [Math.round(b.x0), Math.round(b.y0), Math.round(b.x1), Math.round(b.y1)] };
+        return res[id];
+      }
+      /* HEAD: head mask ke andar + body par */
+      (function () {
+        const j = joints.head;
+        if (!j) return fail('head', 'set nahi hua');
+        if (!M.head) return fail('head', 'head part nahi mila');
+        const b = maskBox(M.head);
+        const inBox = j.x >= b.x0 - 10 && j.x <= b.x1 + 10 && j.y >= b.y0 + b.h * 0.12 && j.y <= b.y1 - b.h * 0.05;
+        const inMask = inMaskAt(M.head, j, Math.max(10, b.w * 0.28));
+        const onBody = alphaOf(j.x, j.y) > 40;
+        const bad = [];
+        if (!inBox) bad.push('head ke andar nahi');
+        if (!inMask.ok) bad.push(inMask.why);
+        if (!onBody) bad.push('transparent par');
+        res.head = { ok: bad.length === 0, code: bad.length ? bad[0] : 'OK', msg: bad.join(' · '), onBody: onBody };
+      })();
+      /* NECK: neck column (head ke neeche patla hissa) — torso ke top ke paas */
+      if (boxT) {
+        const tTop = firstRow(M.torso, 0.004);
+        const j = joints.neck;
+        if (!j) fail('neck', 'set nahi hua');
+        else {
+          const bH = maskBox(M.head);
+          const yRef = tTop ? tTop.y : boxT.y0;
+          const nearEdge = Math.abs(j.y - yRef) <= Math.max(16, boxT.h * 0.06);
+          const xOk = bH ? Math.abs(j.x - bH.cx) <= Math.max(10, bH.w * 0.22) : true;
+          const onBody = alphaOf(j.x, j.y) > 40;
+          const bad = [];
+          if (!nearEdge) bad.push('torso top se ' + Math.round(Math.abs(j.y - yRef)) + 'px door');
+          if (!xOk) bad.push('gardan ke column se ' + Math.round(Math.abs(j.x - (bH ? bH.cx : j.x))) + 'px door');
+          if (!onBody) bad.push('transparent par');
+          res.neck = { ok: bad.length === 0, code: bad.length ? bad[0] : 'OK', msg: bad.join(' · '), onBody: onBody };
+        }
+      } else fail('neck', 'torso part nahi mila');
+      /* SPINE: torso mask ke beech me, body par */
+      (function () {
+        const j = joints.spine;
+        if (!j) return fail('spine', 'set nahi hua');
+        if (!M.torso) return fail('spine', 'torso part nahi mila');
+        const b = maskBox(M.torso);
+        /* spine body ki centre line par hona chahiye, gardan aur hip ke beech */
+        const hipB = (function () { const l = maskBox(M.legL), r = maskBox(M.legR); return (l && r) ? Math.min(l.y0, r.y0) : b.y1; })();
+        const yLo = b.y0 + (hipB - b.y0) * 0.18, yHi = b.y0 + (hipB - b.y0) * 0.72;
+        const inBox = j.y >= yLo && j.y <= yHi && Math.abs(j.x - b.cx) <= Math.max(10, b.w * 0.14);
+        const inMask = inMaskAt(M.torso, j, Math.max(10, b.w * 0.30));
+        const onBody = alphaOf(j.x, j.y) > 40;
+        const bad = [];
+        if (!inBox) bad.push('torso ke andar nahi');
+        if (!inMask.ok) bad.push(inMask.why);
+        if (!onBody) bad.push('transparent par');
+        res.spine = { ok: bad.length === 0, code: bad.length ? bad[0] : 'OK', msg: bad.join(' · '), onBody: onBody };
+      })();
+      ['L', 'R'].forEach(function (side) {
+        const armM = armOf(side), shM = shinOf(side), thM = thighOf(side);
+        /* SHOULDER: skin ke top (seam) ke paas + torso ke andar */
+        const armB = maskBox(armM);
+        let seamY = null, seamX = null;
+        if (armM && boxT) {
+          const tLast = lastRow(M.torso, 0.02);
+          const soleLine = tLast ? tLast.y : -1e9;
+          for (let i = 0; i < armM.rows.length; i++) {
+            const r = armM.rows[i];
+            if (r.y <= soleLine + 2) continue;
+            if (r.skinFrac >= 0.55) { const mr0 = mainRun(r.runs); if (mr0) { seamY = r.y; seamX = (mr0.x0 + mr0.x1) / 2; } break; }
+          }
+        }
+        const jS = joints['sh' + side];
+        if (!jS) fail('sh' + side, 'set nahi hua');
+        else if (!armM) fail('sh' + side, 'arm part nahi mila');
+        else {
+          const inMask = inMaskAt(armM, jS, Math.max(7, (armB ? armB.w : 40) * 0.22));
+          const inTop = armB ? (jS.y >= armB.y0 - 4 && jS.y <= armB.y0 + armB.h * 0.18) : true;
+          const inTorso = boxT ? (jS.x >= boxT.x0 + boxT.w * 0.05 && jS.x <= boxT.x1 - boxT.w * 0.05) : true;
+          const bad = [];
+          if (!inTop) bad.push('arm ke top par nahi');
+          if (!inMask.ok) bad.push(inMask.why);
+          if (!inTorso) bad.push('torso ke bahar');
+          if (alphaOf(jS.x, jS.y) <= 40) bad.push('transparent par');
+          res['sh' + side] = { ok: bad.length === 0, code: bad.length ? bad[0] : 'OK', msg: bad.join(' · '), onBody: alphaOf(jS.x, jS.y) > 40 };
+        }
+        /* ELBOW / WRIST: arm mask ke andar + limb centre + skin par */
+        check('el' + side, armM, { centre: true, tolK: 0.30, needSkin: true });
+        check('wr' + side, armM, { centre: true, tolK: 0.35, needSkin: true });
+        /* HIP: thigh mask ke top ke paas */
+        const thB = maskBox(thM);
+        if (!thB) fail('hip' + side, 'thigh part nahi mila');
+        else check('hip' + side, thM, { centre: true, tolK: 0.30, my: Math.max(10, thB.h * 0.10), yNear: thB.y0 + 3, yTol: 10 });
+        /* KNEE: shin mask ke top ke paas */
+        const shB = maskBox(shM);
+        if (!shB) fail('kn' + side, 'shin part nahi mila');
+        else check('kn' + side, shM, { centre: true, tolK: 0.30, my: 12, yNear: shB.y0 + 2, yTol: 8 });
+        /* ANKLE: shin mask me, flare ke paas, body par */
+        if (!shB) fail('an' + side, 'shin part nahi mila');
+        else {
+          const ar = ankleRow(shM);
+          check('an' + side, shM, { centre: true, tolK: 0.40, my: 4, yNear: ar ? ar.y : shB.y1 - 6, yTol: 10 });
+        }
+      });
+      return res;
+    }
+    window.__R118_CHECKS = jointChecks;
+    window.__R118_DETECT = detectJointsV2;
+
+    function autoAllJoints(silent) {
+      /* R118 · pehle naya detector, na mile/khali ho to purana (working) fallback */
+      let d = null;
+      try { d = detectJointsV2(); } catch (e) { d = null; }
+      if (!d || Object.keys(d).length < 15) {
+        try { d = detectJoints(); } catch (e) { d = null; }   /* purana code — safe fallback */
+      }
       if (!d) return null;
-      joints = {}; jointsReady = {};
-      JOINTS.forEach((j) => { if (d[j.id]) { joints[j.id] = d[j.id]; jointsReady[j.id] = true; } });
+      joints = {};
+      JOINTS.forEach((j) => { if (d[j.id]) joints[j.id] = d[j.id]; });
       jointSel = 'head';
+      /* R118 · SACH: auto-detect sirf SUGGESTION hai — sahi nikle joint ko hi ✓,
+         galat/adhoora joint bina tick (warning) rehta hai. Pehle sab 15 ready
+         dikh rahe the (galat bhi) — wahi bug ab band. */
+      jointChecksCache = null;
+      const chk = jointChecks();
+      jointChecksCache = chk;
+      jointsReady = {};
+      JOINTS.forEach(function (j) {
+        if (joints[j.id] && chk[j.id] && chk[j.id].ok) jointsReady[j.id] = true;
+      });
       syncJointUI();
       render();
       return joints;
     }
+    let jointChecksCache = null;
 
     function jScreen(j) {
       const RR = (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
@@ -3375,15 +3843,30 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         const D = DPR;
         ctx.save();
         ctx.translate(pv.x, pv.y);
-        ctx.shadowColor = ok ? 'rgba(0,230,118,.9)' : 'rgba(255,176,32,.9)';
-        ctx.shadowBlur = (sel ? 14 + 12 * pulse : 6 + 7 * pulse) * D;
-        ctx.beginPath(); ctx.arc(0, 0, (9 + (sel ? 3 : 1.6) * pulse) * D, 0, Math.PI * 2);
-        ctx.strokeStyle = ok ? 'rgba(0,230,118,.85)' : 'rgba(255,176,32,.85)';
-        ctx.lineWidth = (sel ? 2.4 : 1.6) * D; ctx.stroke();
-        ctx.shadowBlur = 0;
-        ctx.beginPath(); ctx.arc(0, 0, 6.5 * D, 0, Math.PI * 2);
-        ctx.fillStyle = ok ? 'rgba(0,230,118,.85)' : 'rgba(255,176,32,.85)'; ctx.fill();
-        if (sel) { ctx.beginPath(); ctx.arc(0, 0, 12.5 * D, 0, Math.PI * 2); ctx.strokeStyle = 'rgba(120,180,255,1)'; ctx.lineWidth = 2 * D; ctx.stroke(); }
+        /* R118 · CHHOTA BINDU — bada ring ang ko dhak raha tha. Ab:
+           dot = 2.6px bindu + halka outline; ring sirf SELECTED joint par. */
+        /* R118b · Sirf 5px ka bindu dikhta hai. Peeche 26px ka TOUCH circle hai
+           jo bilkul transparent hai (opacity 0) — sirf ungli/click pakadta hai,
+           dikhta nahi. Isse character saaf rehta hai par tap karna aasan. */
+        const dotR = (sel ? 3.0 : 2.5) * D;        /* 5px / 6px visible dot */
+        /* invisible hit circle (opacity 0 — sirf hit-test ke liye documented) */
+        ctx.save();
+        ctx.globalAlpha = 0;
+        ctx.beginPath(); ctx.arc(0, 0, JOINT_HIT_R * D, 0, Math.PI * 2);
+        ctx.fillStyle = '#000'; ctx.fill();
+        ctx.restore();
+        ctx.beginPath(); ctx.arc(0, 0, dotR + 1.0 * D, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(6,8,12,.8)'; ctx.fill();            /* patla outline: kisi bhi rang par dikhe */
+        ctx.beginPath(); ctx.arc(0, 0, dotR, 0, Math.PI * 2);
+        ctx.fillStyle = ok ? 'rgba(0,230,118,.98)' : 'rgba(255,84,84,.98)'; ctx.fill();
+        if (!ok) {   /* WARN: chhota amber ring (bada nahi) */
+          ctx.beginPath(); ctx.arc(0, 0, dotR + 2.6 * D, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(255,176,32,.85)'; ctx.lineWidth = 1.1 * D; ctx.stroke();
+        }
+        if (sel) {   /* selected = bada control (ring sirf selected par) */
+          ctx.beginPath(); ctx.arc(0, 0, 10 * D, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(120,180,255,.95)'; ctx.lineWidth = 1.6 * D; ctx.stroke();
+        }
         ctx.restore();
         if (labelsOn) {
           ctx.save();
@@ -3394,19 +3877,23 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           const fs = 8 * D;
           ctx.font = '900 ' + fs + 'px ui-monospace, monospace';
           const tw = ctx.measureText(txt).width;
-          const ly = pv.y - 15 * D;
+          const ly = pv.y - 12 * D;
           const lx = Math.max(tw / 2 + 4, Math.min(cv.width / D - tw / 2 - 4, pv.x));
           ctx.fillStyle = 'rgba(8,10,14,.72)';
           ctx.fillRect(lx - tw / 2 - 3 * D, ly - 8.5 * D, tw + 6 * D, 12 * D);
-          ctx.fillStyle = ok ? '#9dffcf' : '#ffd27a';
+          ctx.fillStyle = ok ? '#9dffcf' : '#ffb2b2';
           ctx.fillText(txt, lx, ly + 1.5 * D);
           ctx.restore();
         }
       });
     }
 
+    /* R118b · TRANSPARENT TOUCH CIRCLE — bindu chhota (5px) par ungli ka target
+       26 CSS px. Ye circle dikhta nahi (draw me globalAlpha 0), sirf yahan
+       distance se pakadta hai. Do joints paas hon to jo sabse kareeb ho wahi. */
+    const JOINT_HIT_R = 26;          /* CSS px — finger-friendly, invisible */
     function hitJoint(x, y) {
-      let best = null, bd = 20 * DPR;
+      let best = null, bd = JOINT_HIT_R * DPR;
       JOINTS.forEach((j) => {
         const jp = joints[j.id]; if (!jp) return;
         const pv = jScreen(jp);
@@ -3422,8 +3909,25 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       syncJointUI(); render();
     }
     function setJoint(id, x, y) {
+      /* R118 · undo safety: drag ke bahar se joint badle (nudge/test/script) to
+         purani state snapshot me jaye — warna undo ke paas kuch nahi hota. */
+      try {
+        if (!jDrag && !window.__APPLYING_SNAP && joints[id] &&
+            (Math.abs(joints[id].x - x) > 0.01 || Math.abs(joints[id].y - y) > 0.01) &&
+            window.__JSTACK_PUSH) window.__JSTACK_PUSH('move ' + id);
+      } catch (e) {}
       if (!joints[id]) joints[id] = { x: 0, y: 0 };
       joints[id].x = x; joints[id].y = y;
+      /* R118 · manual move ke baad us joint ka sach dobara naapo — sahi jagah
+         par rakha to ✓, warna WARN rehta hai (jhooth nahi). */
+      try {
+        const chk = jointChecks();
+        jointChecksCache = chk;
+        JOINTS.forEach(function (j) {
+          if (chk[j.id] && chk[j.id].ok) jointsReady[j.id] = true;
+          else delete jointsReady[j.id];
+        });
+      } catch (e) {}
       render();
     }
     function getJoints() { return JSON.parse(JSON.stringify(joints)); }
@@ -3439,16 +3943,26 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         const pct = Math.round(n / JOINTS.length * 100);
         const g = document.getElementById('jntGrid');
         if (g) {
+          const chk = jointChecksCache || {};
           g.innerHTML = JOINTS.map((j) => {
-            const cls = 'jnt' + (jointsReady[j.id] ? ' ok' : (joints[j.id] ? '' : ' mis')) + (jointSel === j.id ? ' sel' : '');
-            return '<button type="button" class="' + cls + '" data-j="' + j.id + '">' + j.label + '</button>';
+            const ok = !!jointsReady[j.id];
+            const cls = 'jnt' + (ok ? ' ok' : (joints[j.id] ? ' bad' : ' mis')) + (jointSel === j.id ? ' sel' : '');
+            const mark = ok ? '✓' : '!';
+            const why = ok ? 'PASS' : ((chk[j.id] && chk[j.id].msg) ? chk[j.id].msg : 'check nahi hua');
+            return '<button type="button" class="' + cls + '" data-j="' + j.id + '" title="' + j.label + ' — ' + why + '">'
+                 + j.label + '<i class="jm">' + mark + '</i></button>';
           }).join('');
           g.querySelectorAll('.jnt').forEach((b) => {
             b.onclick = function () { setJointSel(b.dataset.j); };
           });
         }
+        const nBad = JOINTS.filter((j) => joints[j.id] && !jointsReady[j.id]).length;
         const st = document.getElementById('jntStatus');
-        if (st) { st.textContent = n + ' / ' + JOINTS.length; st.classList.toggle('ok', n === JOINTS.length); }
+        if (st) {
+          st.textContent = n + ' PASS' + (nBad ? ' · ' + nBad + ' WARN' : '') + ' / ' + JOINTS.length;
+          st.classList.toggle('ok', n === JOINTS.length);
+          st.classList.toggle('warn', n !== JOINTS.length);
+        }
         const c = document.getElementById('jntCount'); if (c) c.textContent = n + ' / ' + JOINTS.length;
         const f = document.getElementById('jntBarFill'); if (f) f.style.width = pct + '%';
         const pc = document.getElementById('jntPct'); if (pc) pc.textContent = pct + '%';
@@ -3460,8 +3974,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         if (note) {
           note.hidden = allOk;
           note.textContent = (n === JOINTS.length)
-            ? 'Sab 15 joints set hain — "Joints done" dabao, phir Walk/Run khulega.'
-            : 'Walk/Run band hai — pehle 15 joints sahi jagah set karo (' + n + '/' + JOINTS.length + ').';
+            ? 'Sab 15 joints PASS hain — "Joints done" dabao, phir Walk/Run khulega.'
+            : 'Walk/Run band hai — ' + (JOINTS.length - n) + ' joint WARN hain (! lal). Har joint ko drag/nudge karke sahi jagah rakho — ✓ apne aap lagega.';
         }
         const lb = document.getElementById('jntLabels'); if (lb) lb.textContent = 'Labels: ' + (labelsOn ? 'ON' : 'OFF');
         const am = document.getElementById('jntAuto'), mm = document.getElementById('jntManual');
@@ -3487,7 +4001,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
              get jointsConfirmed() { return jointsConfirmed; },
              setJointsVisible(v) { jointsVisible = !!v; render(); },
              get jointsVisible() { return jointsVisible; },
-             get readyCount() { return JOINTS.filter((j) => jointsReady[j.id]).length; } };
+             get readyCount() { return JOINTS.filter((j) => jointsReady[j.id]).length; },
+             jointChecks: function () { jointChecksCache = jointChecks(); return jointChecksCache; },
+             recheck: function () { const c = jointChecks(); jointChecksCache = c;
+               JOINTS.forEach(function (j) { if (joints[j.id] && c[j.id] && c[j.id].ok) jointsReady[j.id] = true; });
+               return c; } };
   })();
 
   /* ==================================================================
@@ -6005,17 +6523,66 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
     function autoNow(silent) {
       var Sx = S(); if (!Sx || !window.RIG.App.cut) return;
+      jPush('auto-detect');
       Sx.autoAllJoints();
-      /* auto = sirf suggestion; user ko har joint confirm karna hai
-         (par neck/spine/hips pehle se theek nikalte hain, to unhe ready mark karo) */
+      /* R118 · auto = sirf SUGGESTION. Sirf wahi joint ✓ milta hai jo self-check
+         me sach me apne ang par sahi baitha hai; baaki WARN (!) rehte hain. */
       saveJoints(); Sx.syncJointUI(); Sx.render();
-      if (!silent) U.toast('15 joints auto-detect hue. Ab har joint ko check/andar se drag karo.');
+      /* baseline = AB wali state (jo bhi ho, silent ya nahi) */
+      if (q('jntUndo')) {
+        JSTACK.list = [{ snap: jSnap(), tag: 'auto-detect' }];
+        JSTACK.idx = 0; syncUndoUI();
+      }
+      if (!silent) {
+        var n = Sx.readyCount, tot = Sx.JOINTS.length;
+        U.toast('Auto-detect: ' + n + '/' + tot + ' joint PASS, ' + (tot - n) + ' WARN — ! wale drag karke sahi karo.');
+      }
     }
+    /* R118 · JOINT UNDO — auto-detect / drag / nudge / reset se pehle purani
+       positions stack me. Purane Pose-undo ko chheda nahi (wo alag kaam karta hai). */
+    var JSTACK = { list: [], idx: -1 };
+    function jSnap() {
+      try { var Sx = S(); if (!Sx) return null;
+        return { j: JSON.parse(JSON.stringify(Sx.getJoints())), r: JSON.parse(JSON.stringify(Sx.getJointsReady())) };
+      } catch (e) { return null; }
+    }
+    function jPush(tag) {
+      var sn = jSnap(); if (!sn) return;
+      JSTACK.list = JSTACK.list.slice(0, JSTACK.idx + 1);
+      JSTACK.list.push({ snap: sn, tag: tag || 'joints' });
+      if (JSTACK.list.length > 40) JSTACK.list.shift();
+      JSTACK.idx = JSTACK.list.length - 1;
+      syncUndoUI();
+    }
+    function jApply(sn) { var Sx = S(); if (!Sx || !sn) return;
+      window.__APPLYING_SNAP = true;
+      try { Sx.setJoints(sn.j); Sx.setJointsReady(sn.r); saveJoints(); Sx.syncJointUI(); Sx.render(); }
+      finally { window.__APPLYING_SNAP = false; } }
+    function jUndo() {
+      if (JSTACK.idx <= 0) return false;
+      JSTACK.idx--; jApply(JSTACK.list[JSTACK.idx].snap); syncUndoUI();
+      U.toast('Undo · ' + ((JSTACK.list[JSTACK.idx + 1] || {}).tag || '')); return true;
+    }
+    function jRedo() {
+      if (JSTACK.idx >= JSTACK.list.length - 1) return false;
+      JSTACK.idx++; jApply(JSTACK.list[JSTACK.idx].snap); syncUndoUI();
+      U.toast('Redo · ' + (JSTACK.list[JSTACK.idx].tag || '')); return true;
+    }
+    function syncUndoUI() {
+      var u = q('jntUndo'), r = q('jntRedo');
+      if (u) u.disabled = JSTACK.idx <= 0;
+      if (r) r.disabled = JSTACK.idx >= JSTACK.list.length - 1;
+    }
+    window.__JSTACK_PUSH = function (tag) { jPush(tag); };
+    window.__JSTACK = JSTACK;
+    if (q('jntUndo')) q('jntUndo').onclick = function () { if (!jUndo()) U.toast('Undo ke liye kuch nahi.'); };
+    if (q('jntRedo')) q('jntRedo').onclick = function () { if (!jRedo()) U.toast('Redo ke liye kuch nahi.'); };
 
     if (q('jntAuto')) q('jntAuto').onclick = function () { autoNow(); };
     if (q('jntManual')) q('jntManual').onclick = function () {
       var Sx = S(); if (!Sx) return;
-      U.toast('Manual: ring ke beech se joint drag karo, ya joint chun kar arrows dabao.');
+      jPush('manual mode');
+      U.toast('Manual: bindu se joint drag karo, ya joint chun kar arrows dabao.');
       Sx.setJointSel(Sx.jointSel || 'head');
       Sx.syncJointUI();
     };
@@ -6026,15 +6593,16 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     if (q('jntReset')) q('jntReset').onclick = function () {
       try { localStorage.removeItem(LSKEY); localStorage.removeItem(LSOK); } catch (e) {}
       var Sx = S(); if (!Sx) return;
+      jPush('reset joints');
       Sx.setJointsReady({});
       autoNow(true);
-      U.toast('Joints reset — phir se auto-detect');
+      U.toast('Joints reset — phir se auto-detect (' + Sx.readyCount + '/' + Sx.JOINTS.length + ' PASS)');
     };
     if (q('jntDone')) q('jntDone').onclick = function () {
       var Sx = S(); if (!Sx) return;
       var miss = Sx.JOINTS.filter(function (j) { return !Sx.getJointsReady()[j.id]; }).map(function (j) { return j.label; });
       if (miss.length) {
-        U.toast('Ye joints baaki hain (' + miss.length + '): ' + miss.slice(0, 4).join(', ') + (miss.length > 4 ? '…' : ''));
+        U.toast('Ye joints WARN hain (' + miss.length + ') — sahi jagah rakho: ' + miss.slice(0, 4).join(', ') + (miss.length > 4 ? '…' : ''));
         Sx.setJointSel((Sx.JOINTS.filter(function (j) { return !Sx.getJointsReady()[j.id]; })[0] || {}).id);
         Sx.syncJointUI(); Sx.render();
         return;
@@ -6076,7 +6644,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     };
 
     /* joint drag hone par ready ho jaye — Studio ke andar se callback */
-    window.__JOINTS_ON_SET = function (id) { saveJoints(); };
+    var lastDragPush = 0;
+    window.__JOINTS_ON_SET = function (id, phase) {
+      /* drag ki shuruaat me ek snapshot (har pixel par nahi) */
+      if (phase === 'start') { jPush('drag ' + id); lastDragPush = Date.now(); }
+      saveJoints();
+      try { var Sx = S(); if (Sx) { Sx.syncJointUI(); } } catch (e) {}
+    };
     /* naya upload / page 4 par aane par auto-detect */
     window.__JOINTS_REFRESH = function () {
       var Sx = S(); if (!Sx) return;
