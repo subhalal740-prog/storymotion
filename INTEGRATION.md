@@ -1324,3 +1324,27 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
   | mouse se draw | chalta | chalta |
   | regression | — | nav 5/5 ✓, core-lock 100% ✓, eraser apply ✓, walk mirror ✓, `errs 0` |
 - Evidence: `R100-SCROLL-OK.png` (scroll ke baad page neeche aa gaya, `0 strokes`).
+
+## Round 101 — BG-remover code check + patchli safed patti (bg pocket) + "Scroll safe / Full brush" toggle (live `d553694`, 307754 B)
+- User: "ye background wala code check karo" (screenshot: auto-cut ke baad character ke haath/body ke beech safed bg patti bachi thi).
+- **Code audit (B awr `Bg.process`)** — kya theek hai: border model (quadratic least squares), 3 tolerance (T_HARD/T_LOCAL/T_SOFT), flood + bounded noise slop, PAPER rule (ground shadow/halo creep), feather 2-pass, edge-unmix (colour cast), 4 guard (busy retry, leak restore, keepPct<6 revert → BG OFF, `already-transparent` skip).
+- **2 asli bug mile aur fix hue:**
+  1. **PAPER creep** character ke apne light pixels (skin/halka kapda) ko bg samajh sakta tha → ab rang bhi check hota hai (`dc <= 24` aur `warm <= 10`) — sirf neutral/paper-jaisa hi creep karta hai.
+  2. **`avg` before initialization** — mera hi naya blotch code `avg` ko pehle use kar raha tha (page error, upload fail). Ab `model.at(0.5,0.5)` se local `avg2`. (Test ne pakda.)
+- **Naya (R101) — bad blotch cleanup:** auto-cut ke baad jo pale/bade dhabbe bach jate hain (<=70 bg rang se, poora opaque, 2px gradient spread <= 26) aur bg se chipke hain — sirf **>= 40 px** connected hone par mite hain. Chhote dane (character ke andar) nahi chhedte.
+- **Eraser "Sirf BG" me FLAT BG POCKET rule:** `isP` mask (alpha>=240 + bg se <=45 + run <=34px patla) + core-lock sirf 3px (inDeep) — isse kapde/haath ke beech phansi safed patti (bg se judi nahi hoti, isliye flood se nahi jati) bhi brush se saaf hoti hai. Core (body) ka koi pixel nahi jata.
+- **Scroll vs brush (mobile):** pehle "safe" mode me vertical swipe par brush hi chalta tha (pan-y ki wajah se stroke pause ho jata tha, "0 strokes" mismatch). Ab 3-layer gate: CSS `touch-action` mode ke hisaab se (`pan-y` / `none`) + `pointerdown` par sirf gesture record (`isDrawing=false`) + 10px ke baad decide (vertical → scroll, side → draw) + `pointercancel`/`scroll` par brush band.
+- **Naya UI (bina purana badle):** do chhote buttons — **Scroll safe** (default) aur **Full brush**; note line bhi batati hai. Patli khadi safed patti ke liye: Full brush → ragdo → wapas Scroll safe.
+- **Test report (headless Chromium, mobile touch 390×780 + 360×640, local + LIVE):**
+  | Test | Result |
+  |---|---|
+  | auto-cut quality (7 bgtest vs ground truth) | IoU 99.8 / 99.8 / 97.2 / 99.8 / 99.8 / 99.8 / 99.0 · charKept 98.6 / 98.6 / 98.6 / 98.4 / 98.5 / 98.5 / 93.4 · bgRemoved ~100% (S3 96.8%, S7 99.8%) · pieces 8 har image |
+  | bacha hua bg-rang opaque pixels (auto-cut ke baad) | S1 6.81% → **0.11%**, S2 6.58% → **1.74%**, S6 7.14% → 5.93% (pockets aadhe clean) |
+  | "Sirf BG" + brush seedha haath par (S7) | coreKept **99.94%**, pieces 8→8 |
+  | "Sirf BG" + halo stroke | 1,403 px halo safaya, character safe |
+  | safed patti (26×120 synthetic leftover, arm ke bagal me) | **3,135 px safaya · core 100% bacha** (0/151,639) |
+  | mobile scroll (canvas par vertical ungli) | page **+313 px** scroll, **0 strokes** (pehle: 0 px scroll, 1 line) |
+  | side me ungli / tap / mouse drag | 1 stroke / 1 dab / chalta hai |
+  | Full brush mode | vertical swipe = 2 strokes, scroll 0 (jaan-boojh kar) |
+  | regression | nav 5/5 ✓ · eraser apply ✓ · walk mirror 0.0004 ✓ · errs 0 (local + live) |
+- Evidence: `R101-POCKET-PROOF.png` (safed patti pehle/baad), `R101-LIVE-UI.png` (live UI: Scroll safe / Full brush), `R100-SCROLL-OK.png`.
