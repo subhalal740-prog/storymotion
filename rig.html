@@ -3506,7 +3506,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     /* ---- R99 · core mask: v4 cut (auto-cut) ke andar ke opaque pixels ----
        Ye mask sirf badhta hai (erase se chhota nahi hota), isliye "Sirf BG" brush
        kabhi character ke core ko nahi kaat sakta. */
-    let coreMask = null, coreLocked = false, origCore = null;   /* origCore = AUTO-CUT ka asli mask (kabhi chhota nahi hota) */
+    let coreMask = null, coreLocked = false, origCore = null, deepMask = null;   /* origCore = AUTO-CUT ka asli mask (kabhi chhota nahi hota) */
     const CORE_MIN_ALPHA = 230;
     function computeCore() {
       coreMask = null;
@@ -3549,6 +3549,30 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           return o;
         };
         coreMask = ero(dil(m));
+        /* halo/parachhain ko lock se hatao — lock sirf CHARACTER BODY par rahe.
+           Halo = transparent bg ke kinare ki 14px patti jiska rang bg ke kareeb hai (<=110). */
+        const B0 = App.bg && App.bg.meta && App.bg.meta.bg ? (String(App.bg.meta.bg).match(/\d+/g) || []).map(Number) : null;
+        if (B0 && B0.length >= 3) {
+          const dt = new Uint8Array(W * H), qq = new Int32Array(W * H);
+          let qh = 0, qt = 0;
+          for (let i = 0; i < W * H; i++) if (d[i * 4 + 3] === 0) { dt[i] = 1; qq[qt++] = i; }
+          while (qh < qt) {
+            const i = qq[qh++];
+            if (dt[i] > 14) continue;
+            const x = i % W, y = (i / W) | 0;
+            const nb = [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1];
+            for (let k2 = 0; k2 < 4; k2++) { const j = nb[k2]; if (j < 0 || dt[j]) continue; dt[j] = dt[i] + 1; qq[qt++] = j; }
+          }
+          for (let i = 0; i < W * H; i++) {
+            if (!coreMask[i]) continue;
+            const nearBg = dt[i] > 0 && dt[i] - 1 <= 14;
+            if (!nearBg) continue;
+            const j = i * 4;
+            if (d[j + 3] >= 230) continue;      /* poora opaque = character core — lock kabhi na khole */
+            const bd = Math.sqrt((d[j] - B0[0]) * (d[j] - B0[0]) + (d[j + 1] - B0[1]) * (d[j + 1] - B0[1]) + (d[j + 2] - B0[2]) * (d[j + 2] - B0[2]));
+            if (bd <= 90) coreMask[i] = 0;      /* semi-transparent rim (alpha < 0.9) — halo, lock nahi */
+          }
+        }
         for (let i = 0; i < W * H; i++) { n += coreMask[i]; }
       }
       if (!n) {
@@ -3576,7 +3600,36 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         for (let i = 0; i < origCore.length; i++) if (coreMask[i]) origCore[i] = 1;
       }
       coreMask = origCore;
+      try { buildDeep(); } catch (e) { deepMask = null; }
     }
+    /* core ko 3px andar tak chhota karo — sirf rim/halo rules isme nahi jate,
+       taaki character ki bahri 3px fringe (halo/parachhain) saaf ho sake. */
+    function buildDeep() {
+      deepMask = null;
+      if (!coreMask) return;
+      const W = App.W, H = App.H, o = new Uint8Array(W * H);
+      for (let y = 3; y < H - 3; y++) for (let x = 3; x < W - 3; x++) {
+        const i = y * W + x;
+        if (!coreMask[i]) continue;
+        let ok = 1;
+        for (let dy = -3; dy <= 3 && ok; dy++) for (let dx = -3; dx <= 3; dx++) if (!coreMask[i + dy * W + dx]) { ok = 0; break; }
+        if (ok) o[i] = 1;
+      }
+      deepMask = o;
+    }
+    function inDeep(i) {
+      if (!deepMask) return inCore(i);
+      const W = App.W, x = i % W, y = (i / W) | 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        const yy = y + dy; if (yy < 0 || yy >= App.H) continue;
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx; if (xx < 0 || xx >= W) continue;
+          if (deepMask[yy * W + xx]) return true;
+        }
+      }
+      return false;
+    }
+
     /* core mask me aa raha hai? (boundary ke liye 2px tolerant) */
     function inCore(i) {
       if (!coreMask) return false;
@@ -3796,7 +3849,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           for (let i = 0; i < W * H; i++) {
             if (!seed[i] || !out.data[i * 4 + 3]) continue;
             const a = out.data[i * 4 + 3];
-            if (inCore(i)) { coreSkipped++; skipped++; continue; }             /* CORE LOCK */
+            /* CORE LOCK (absolute): auto-cut ke character core ka koi bhi pixel brush se nahi jata —
+               chahe brush poora haath ragad do. Halo/parachhain core ke BAHAR hi saaf hota hai. */
+            if (inCore(i)) { coreSkipped++; skipped++; continue; }
             const d0 = dist2(i * 4);
             const x = i % W, y = (i / W) | 0;
             const gx = Math.abs(lum[y * W + Math.min(W - 1, x + 1)] - lum[y * W + Math.max(0, x - 1)]);
@@ -3806,16 +3861,20 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             const nearBg = dt[i] > 0 && dEdge <= 12;
             const rim = nearBg && (a < 230 || d0 <= 60);                        /* 1: anti-alias rim */
             const thinLine = nearBg && dEdge <= 6 && d0 <= 110;                 /* 2: kinare ki patli halo lakeer */
-            const patch = conn[i] && d0 <= 100 && edge <= 55 &&
-                          ((hRun[i] > 0 && hRun[i] <= 20) || (vRun[i] > 0 && vRun[i] <= 20));   /* 3: chhota dhabba */
-            if (rim || thinLine || patch) { out.data[i * 4 + 3] = 0; n++; }
+            const patch = conn[i] && d0 <= 150 && edge <= 60 &&
+                          ((hRun[i] > 0 && hRun[i] <= 24) || (vRun[i] > 0 && vRun[i] <= 24));   /* 3: chhota dhabba */
+            /* 4: kinare ki smooth parachhain (grey shadow) — rang halka, kinar narm */
+            const soft = nearBg && d0 <= 180 && edge <= 45 &&
+                         (Math.max(out.data[i * 4], out.data[i * 4 + 1], out.data[i * 4 + 2]) -
+                          Math.min(out.data[i * 4], out.data[i * 4 + 1], out.data[i * 4 + 2])) <= chB + 26;
+            if (rim || thinLine || patch || soft) { out.data[i * 4 + 3] = 0; n++; }
             else skipped++;
           }
           window.__ckLastCoreSkipped = coreSkipped;
         }
         if (!n) {
           U.toast(skipped
-            ? 'Yahan background jaisa kuch nahi mila — character safe raha (' + skipped + ' px chhode). Poora mitana ho to “Kuch bhi” dabao.'
+            ? 'Yahan sirf character hai — kuch nahi hataya (safe). Background ke andar ka dhabba hai to “Kuch bhi” dabao.'
             : 'Kuch naya erase nahi hua.');
           return null;
         }
@@ -3835,6 +3894,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           return null;
         }
         lastApply = prev;
+        strokes = []; active = null;      /* jo lag gaya wo bake ho gaya — canvas saaf se shuru */
         fit();
         const coreSkip = window.__ckLastCoreSkipped || 0;
         const skipTxt = (skipped ? ' · ' + skipped.toLocaleString('en-IN') + ' px character ke bache' : '') +
