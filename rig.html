@@ -3404,6 +3404,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const bgTag = bgRes.removed
       ? 'BG removed (' + bgRes.meta.mode + ') ' + bgRes.meta.hex + ' · ' + bgRes.meta.clearedPct + '% clear · '
       : '';
+    try { window.__rigNewImage = true; } catch (e) {}   /* Eraser ko batao: ye AUTO-CUT ka mask hai (boundary lock ka base) */
     setLight(kind, res.msg + (res.light === 'WARNING' ? ' (cut allowed)' : ' · ' + cut.pieces.length + ' pieces cut in ' + cut.meta.ms + ' ms'),
              bgTag + W + '×' + H + (scaleNote || '') + ' · ' + cut.pieces.length + ' pieces · ' + cut.meta.coverage + '% coverage');
     try { v4AfterCut(res); } catch (e) {}
@@ -3502,15 +3503,105 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       }
     }
     const cv = () => U.$('eraseCv');
+    /* ---- R99 · core mask: v4 cut (auto-cut) ke andar ke opaque pixels ----
+       Ye mask sirf badhta hai (erase se chhota nahi hota), isliye "Sirf BG" brush
+       kabhi character ke core ko nahi kaat sakta. */
+    let coreMask = null, coreLocked = false, origCore = null;   /* origCore = AUTO-CUT ka asli mask (kabhi chhota nahi hota) */
+    const CORE_MIN_ALPHA = 230;
+    function computeCore() {
+      coreMask = null;
+      const W = App.W, H = App.H, d = App.imgData && App.imgData.data;
+      if (!W || !H || !d) return;
+      const m = new Uint8Array(W * H);
+      let n = 0;
+      const pieces = App.cut && App.cut.pieces ? App.cut.pieces.filter((p) => p.id !== 'bg') : [];
+      if (pieces.length && pieces[0].canvas) {
+        for (const pc of pieces) {
+          const cvs = pc.canvas;
+          const px = cvs.getContext('2d').getImageData(0, 0, cvs.width, cvs.height).data;
+          const ox = pc.x | 0, oy = pc.y | 0, pw = cvs.width, ph = cvs.height;
+          for (let y = 0; y < ph; y++) {
+            const gy = oy + y; if (gy < 0 || gy >= H) continue;
+            for (let x = 0; x < pw; x++) {
+              const gx = ox + x; if (gx < 0 || gx >= W) continue;
+              if (px[(y * pw + x) * 4 + 3] >= CORE_MIN_ALPHA) m[gy * W + gx] = 1;
+            }
+          }
+        }
+        /* patla hole bhar do (2 pass dilate + erode) — antialias gaps se bachne ke liye */
+        const dil = (src) => {
+          const o = new Uint8Array(W * H);
+          for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            if (!src[y * W + x]) continue;
+            for (let dy = -1; dy <= 1; dy++) { const yy = y + dy; if (yy < 0 || yy >= H) continue;
+              for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx < 0 || xx >= W) continue; o[yy * W + xx] = 1; } }
+          }
+          return o;
+        };
+        const ero = (src) => {
+          const o = new Uint8Array(W * H);
+          for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            let ok = 1;
+            for (let dy = -1; dy <= 1 && ok; dy++) { const yy = y + dy; if (yy < 0 || yy >= H) { ok = 0; break; }
+              for (let dx = -1; dx <= 1; dx++) { const xx = x + dx; if (xx < 0 || xx >= W) { ok = 0; break; } if (!src[yy * W + xx]) { ok = 0; break; } } }
+            if (ok) o[y * W + x] = 1;
+          }
+          return o;
+        };
+        coreMask = ero(dil(m));
+        for (let i = 0; i < W * H; i++) { n += coreMask[i]; }
+      }
+      if (!n) {
+        /* fallback: opaque + low gradient (character ka andar ka hissa) */
+        const lum = new Float32Array(W * H);
+        for (let i = 0, j = 0; i < W * H; i++, j += 4) lum[i] = 0.299 * d[j] + 0.587 * d[j + 1] + 0.114 * d[j + 2];
+        for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+          const i = y * W + x;
+          if (d[i * 4 + 3] < 200) continue;
+          const gx = Math.abs(lum[i + 1] - lum[i - 1]);
+          const gy = Math.abs(lum[i + W] - lum[i - W]);
+          if (gx + gy <= 45) { m[i] = 1; n++; }
+        }
+        coreMask = m;
+      }
+      coreLocked = n > 0;
+      /* ---- BOUNDARY LOCK: pehla (auto-cut) mask hi asli boundary hai.
+         Har re-cut ke baad sirf JODTE hain, ghatate nahi — isliye baar-baar erase karne par
+         bhi character ka core kabhi nahi katta. ---- */
+      if (!coreMask) return;
+      if (window.__rigNewImage || !origCore) {
+        origCore = coreMask.slice ? coreMask.slice() : new Uint8Array(coreMask);
+        try { window.__rigNewImage = false; } catch (e) {}
+      } else {
+        for (let i = 0; i < origCore.length; i++) if (coreMask[i]) origCore[i] = 1;
+      }
+      coreMask = origCore;
+    }
+    /* core mask me aa raha hai? (boundary ke liye 2px tolerant) */
+    function inCore(i) {
+      if (!coreMask) return false;
+      const W = App.W, x = i % W, y = (i / W) | 0;
+      for (let dy = -2; dy <= 2; dy++) {
+        const yy = y + dy; if (yy < 0 || yy >= App.H) continue;
+        for (let dx = -2; dx <= 2; dx++) {
+          const xx = x + dx; if (xx < 0 || xx >= W) continue;
+          if (coreMask[yy * W + xx]) return true;
+        }
+      }
+      return false;
+    }
+
     function fit() {
       const c = cv(); if (!c || !App.imgData || !App.W || !App.H) return false;   /* guard: reject hua to K, H nahi hote */
       const W = App.W, H = App.H;
       const maxW = Math.min(340, ((c.parentElement && c.parentElement.clientWidth) || 340) - 24);
-      const k = Math.min(1, maxW / W);
+      const maxH = 460;
+      const k = Math.min(1, maxW / W, maxH / H);            /* poora character dikhe — neeche-cut na ho */
       c.width = Math.max(1, Math.round(W * k));
       c.height = Math.max(1, Math.round(H * k));
       c.style.width = c.width + 'px'; c.style.height = c.height + 'px';
       c._k = k;
+      try { computeCore(); } catch (e) { coreMask = null; coreLocked = false; }
       srcCv = document.createElement('canvas'); srcCv.width = W; srcCv.height = H;
       srcCtx = srcCv.getContext('2d');
       srcCtx.putImageData(App.imgData, 0, 0);
@@ -3624,18 +3715,21 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             }
           }
         }
-        /* ---- CHROME KEY (safe) ----
-           Mitao sirf wahi pixel jo stroke ke neeche hai AUR:
-             A) transparent BG ke bilkul kinare ka halo/antialias rim hai (bg se 80 tak, 8px patti), YA
-             B) bg-jaisa rang rakhta hai, transparent BG se juda hua hai (flood), aur patla hai (mota character-kapda nahi).
-           Isi liye brush character par bhi chal jaye to uske andar kuch nahi jata. ---- */
+        /* ---- CHROME KEY v2 (core lock) ----
+           "Sirf BG" me sirf TEEN tarah ka pixel jata hai (aur wahi bhi agar core mask me na ho):
+             1) HALO/RIM  : transparent bg ke kinare se 12px ke andar, aur halka (alpha < 230),
+                            ya bg rang ke bahut kareeb (<= 60) — anti-alias rim.
+             2) HALO EDGE : background ke kinare wala opaque pixel jo bahut patla hai (<= 6px)
+                            aur bg se halka hi alag hai (<= 110) — parachhain/halo ki patli lakeer.
+             3) PATCH     : bg se juda, bg-jaisa rang, patla (<= 20px) aur tez outline nahi.
+           Core mask (auto-cut ke andar ke opaque pixels) par lock — wahan brush kabhi nahi lagta. */
         if (keepIfChar) {
           const B = keepIfChar.B;
           const dist2 = (j) => Math.sqrt((out.data[j] - B[0]) * (out.data[j] - B[0]) +
                                          (out.data[j + 1] - B[1]) * (out.data[j + 1] - B[1]) +
                                          (out.data[j + 2] - B[2]) * (out.data[j + 2] - B[2]));
           const chB = Math.max(B[0], B[1], B[2]) - Math.min(B[0], B[1], B[2]);
-          /* transparent bg se BFS doori (max 64 tak) */
+          /* transparent bg se BFS doori (max 64) */
           const dt = new Uint8Array(W * H);
           const q = new Int32Array(W * H);
           let qh = 0, qt = 0;
@@ -3651,7 +3745,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
               dt[j] = dt[i] + 1; q[qt++] = j;
             }
           }
-          /* bg-jaisa colour mask */
+          /* bg-jaisa colour (sirf bahar ke halo ke liye) */
           const like = new Uint8Array(W * H);
           for (let i = 0, j = 0; i < W * H; i++, j += 4) {
             if (!out.data[j + 3]) continue;
@@ -3662,8 +3756,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           }
           /* like-mask flood transparent bg se */
           const conn = new Uint8Array(W * H);
-          let qh2 = 0, qt2 = 0;
           const q2 = new Int32Array(W * H);
+          let qh2 = 0, qt2 = 0;
           for (let i = 0; i < W * H; i++) if (dt[i] === 1) { conn[i] = 1; q2[qt2++] = i; }
           while (qh2 < qt2) {
             const i = q2[qh2++];
@@ -3675,43 +3769,49 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
               conn[j] = 1; q2[qt2++] = j;
             }
           }
-          /* patlapan: horizontal + vertical run length */
-          const thin = new Uint8Array(W * H);
-          const MAXT = 26;
+          /* patlapan (horizontal + vertical run) */
+          const hRun = new Int16Array(W * H), vRun = new Int16Array(W * H);
           for (let y = 0; y < H; y++) {
             let x = 0;
             while (x < W) {
-              if (!conn[y * W + x]) { x++; continue; }
-              let x2 = x; while (x2 < W && conn[y * W + x2]) x2++;
-              if (x2 - x <= MAXT) for (let k = x; k < x2; k++) thin[y * W + k] |= 1;
+              if (!like[y * W + x]) { x++; continue; }
+              let x2 = x; while (x2 < W && like[y * W + x2]) x2++;
+              for (let k = x; k < x2; k++) hRun[y * W + k] = x2 - x;
               x = x2;
             }
           }
           for (let x = 0; x < W; x++) {
             let y = 0;
             while (y < H) {
-              if (!conn[y * W + x]) { y++; continue; }
-              let y2 = y; while (y2 < H && conn[y2 * W + x]) y2++;
-              if (y2 - y <= MAXT) for (let k = y; k < y2; k++) thin[k * W + x] |= 2;
+              if (!like[y * W + x]) { y++; continue; }
+              let y2 = y; while (y2 < H && like[y2 * W + x]) y2++;
+              for (let k = y; k < y2; k++) vRun[k * W + x] = y2 - y;
               y = y2;
             }
           }
-          /* luminance gradient — character ka outline tez kinar hai, halo nahi */
+          /* luminance gradient */
           const lum = new Float32Array(W * H);
           for (let i = 0, j = 0; i < W * H; i++, j += 4) lum[i] = 0.299 * out.data[j] + 0.587 * out.data[j + 1] + 0.114 * out.data[j + 2];
-          const GMAX = 55;
+          let coreSkipped = 0;
           for (let i = 0; i < W * H; i++) {
             if (!seed[i] || !out.data[i * 4 + 3]) continue;
+            const a = out.data[i * 4 + 3];
+            if (inCore(i)) { coreSkipped++; skipped++; continue; }             /* CORE LOCK */
+            const d0 = dist2(i * 4);
             const x = i % W, y = (i / W) | 0;
             const gx = Math.abs(lum[y * W + Math.min(W - 1, x + 1)] - lum[y * W + Math.max(0, x - 1)]);
             const gy = Math.abs(lum[Math.min(H - 1, y + 1) * W + x] - lum[Math.max(0, y - 1) * W + x]);
-            const strongEdge = (gx + gy) > GMAX;                     /* character ka apna outline */
-            const d0 = dist2(i * 4);
-            const rim = dt[i] > 0 && dt[i] - 1 <= 10 && d0 <= 100;   /* A: bg ke kinare ka halo (outline ke bagal me bhi) */
-            const flat = conn[i] && thin[i] && d0 <= 100 && !strongEdge;  /* B: patla bg-jaisa dhabba */
-            if (rim || flat) { out.data[i * 4 + 3] = 0; n++; }
+            const edge = gx + gy;
+            const dEdge = dt[i] > 0 ? dt[i] - 1 : 999;
+            const nearBg = dt[i] > 0 && dEdge <= 12;
+            const rim = nearBg && (a < 230 || d0 <= 60);                        /* 1: anti-alias rim */
+            const thinLine = nearBg && dEdge <= 6 && d0 <= 110;                 /* 2: kinare ki patli halo lakeer */
+            const patch = conn[i] && d0 <= 100 && edge <= 55 &&
+                          ((hRun[i] > 0 && hRun[i] <= 20) || (vRun[i] > 0 && vRun[i] <= 20));   /* 3: chhota dhabba */
+            if (rim || thinLine || patch) { out.data[i * 4 + 3] = 0; n++; }
             else skipped++;
           }
+          window.__ckLastCoreSkipped = coreSkipped;
         }
         if (!n) {
           U.toast(skipped
@@ -3736,7 +3836,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         }
         lastApply = prev;
         fit();
-        const skipTxt = skipped ? ' · ' + skipped.toLocaleString('en-IN') + ' px character ke bache' : '';
+        const coreSkip = window.__ckLastCoreSkipped || 0;
+        const skipTxt = (skipped ? ' · ' + skipped.toLocaleString('en-IN') + ' px character ke bache' : '') +
+                        (coreSkip && mode === 'bg' ? ' (core lock)' : '');
         if (U.$('eraseStat')) U.$('eraseStat').textContent = n.toLocaleString('en-IN') + ' px erased' + (skipped ? ' · ' + skipped.toLocaleString('en-IN') + ' px safe' : '') + ' · ' + cut.pieces.length + ' pieces';
         U.toast('Erase apply · ' + n + ' px hataye' + skipTxt + ' · re-cut (' + cut.pieces.length + ' pieces)');
         return cut;
