@@ -2385,10 +2385,17 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           issues.push({ id, msg: p.label + ' layer khali aa gayi (' + p.px + 'px) — haath body me mil gaye' });
         }
       });
-      ['legL', 'legR'].forEach((id) => {
-        const p = by[id]; if (!p) return;
-        if (p.h < bb.h * 0.18 || p.px < bodyArea * 0.008) {
-          issues.push({ id, msg: p.label + ' sirf ' + p.h + 'px height — adhoori cut (pair poora nahi)' });
+      /* v19.3 · knee ke baad pair do hisson (thigh + shin) me hota hai — isliye
+         height/pixels DONO ko jod kar dekhte hain. Warna har sahi character par
+         jhoota "BAD CUT" aa jata tha (thigh akela chhota lagta tha). */
+      [['legL', 'shinL'], ['legR', 'shinR']].forEach((pair) => {
+        const p = by[pair[0]], sh = by[pair[1]];
+        if (!p && !sh) return;
+        const hTot = (p ? p.h : 0) + (sh ? sh.h : 0);
+        const pxTot = (p ? p.px : 0) + (sh ? sh.px : 0);
+        const label = (p && p.label) || (sh && sh.label) || 'LEG';
+        if (hTot < bb.h * 0.18 || pxTot < bodyArea * 0.008) {
+          issues.push({ id: pair[0], msg: label + ' sirf ' + hTot + 'px height — adhoori cut (pair poora nahi)' });
         }
       });
       const needsMerge = issues.some((i) => i.id === 'armL' || i.id === 'armR');
