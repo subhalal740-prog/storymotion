@@ -1257,6 +1257,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       <button class="bigBtn alt" id="btnSaveRig">Save Rig Data · JSON + Pivots</button>
       <button class="bigBtn alt" id="btnSaveSnap2">Save Snapshot (localStorage)</button>
       <button class="bigBtn alt" id="btnLoadSnap2">Load Snapshot</button>
+      <button class="bigBtn" id="btnToAnim" style="background:linear-gradient(135deg,#7c5cff,#ff6ba8);border-color:transparent">Send to Animations &rarr;</button>
       <div id="saveHelp" style="margin-top:10px;font-size:12px;line-height:1.55;opacity:.9;border-top:1px dashed rgba(255,255,255,.12);padding-top:10px">
         <b style="opacity:.95">Kaunsa save kab — 2 line me:</b>
         <div style="margin-top:6px">1) <b>Save Character PNG</b> — jo character aapne banaya (poore jod ke, ek image). Gallery / WhatsApp me dikhane ya kahin use karne ke liye. <b>Rig ka data isme nahi hota.</b></div>
@@ -4637,6 +4638,37 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       })
     };
   }
+  /* ---------- R104 · Send to Animations (putlo ka page) ----------
+     Wahi channel jo character cards use karte hain: PNG data-URI ko
+     localStorage['hilao.charImg'] me daal ke animations.html kholte hain,
+     to wahan putla isi character ka ban jata hai. Kuch server par nahi jata. */
+  function sendToAnimations() {
+    if (!App.cut) { U.toast('Pehle character cut karo'); return; }
+    try {
+      const cv = compositeCanvas();
+      /* card ke liye chhoti image kaafi hai — localStorage bharne se bachao */
+      const MAXH = 420;
+      const k = Math.min(1, MAXH / cv.height);
+      const out = document.createElement('canvas');
+      out.width = Math.max(1, Math.round(cv.width * k));
+      out.height = Math.max(1, Math.round(cv.height * k));
+      const oc = out.getContext('2d');
+      oc.imageSmoothingEnabled = true; oc.imageSmoothingQuality = 'high';
+      oc.drawImage(cv, 0, 0, out.width, out.height);
+      const src = out.toDataURL('image/png');
+      const nm = 'my-character';
+      try { localStorage.setItem('hilao.charImg', src); } catch (e) {
+        U.toast('Storage bhar gaya — pehle purana character hatao');
+        return;
+      }
+      try { localStorage.setItem('hilao.charName', nm); } catch (e) {}
+      U.toast('Character Animations page par bheja');
+      setTimeout(function () {
+        location.href = 'animations.html?name=' + encodeURIComponent(nm) + '&v=' + Date.now();
+      }, 260);
+    } catch (e) { U.toast('Send fail: ' + (e && e.message ? e.message : 'unknown')); }
+  }
+
   function savePng() {
     if (!App.cut) { U.toast('Pehle character cut karo'); return; }
     compositeCanvas().toBlob(function (b) {
@@ -4799,6 +4831,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     document.querySelectorAll('.pvBtns .btn').forEach((b) => {
       b.addEventListener('click', () => pvPose(b.dataset.pv));
     });
+    if (q('btnToAnim')) q('btnToAnim').addEventListener('click', sendToAnimations);
     if (q('btnSavePng')) q('btnSavePng').addEventListener('click', savePng);
     if (q('btnSaveRig')) q('btnSaveRig').addEventListener('click', saveRig);
     if (q('btnSaveSnap2')) q('btnSaveSnap2').addEventListener('click', () => {
