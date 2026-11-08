@@ -841,6 +841,12 @@
       renderNow(); drawSkeleton();
       setStatus(sk.warn.length ? 'ok' : 'ok', sk.warn.length ? 'Ready — skeleton edit karo' : 'Ready · animation chal rahi hai', 100);
       toast('Rig taiyaar — preview chal raha hai');
+      try {
+        if (new URLSearchParams(location.search).get('live') === '1') {
+          window.__actionStudio.startLiveTiles();
+          startLiveTiles();
+        }
+      } catch (e) {}
     } catch (e) {
       setStatus('err', 'Fail: ' + e.message, null);
       logLine('error', e.message, 'err');
@@ -1193,6 +1199,69 @@
     } catch (e) {}
   })();
 
+  /* ------------------------------------------------------------------
+     R106 · LIVE THUMBNAILS (putlo wale page jaisa)
+     ?live=1 par ek chhota grid banta hai: Idle / Walk / Run / Dancing / Waving
+     — har tile me WAHI putla chalta hua (5fps par re-render, koi video file nahi).
+     Weight: ek hi rig, kai tiles → phone par halka.
+     ------------------------------------------------------------------ */
+  function startLiveTiles() {
+    const ACTS = ['idle', 'walk', 'run', 'dancing', 'waving'];
+    if (!S.rig) return;
+    let wrap = document.getElementById('liveTiles');
+    if (!wrap) {
+      wrap = document.createElement('div');
+      wrap.id = 'liveTiles';
+      wrap.style.cssText = 'display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 12px 4px';
+      const stage = document.getElementById('stage');
+      if (stage && stage.parentNode) stage.parentNode.insertBefore(wrap, stage);
+      else document.body.appendChild(wrap);
+    }
+    wrap.innerHTML = '';
+    const tiles = ACTS.map(function (id) {
+      const cv = document.createElement('canvas');
+      cv.width = 180; cv.height = 240;
+      cv.style.cssText = 'width:100%;height:auto;border-radius:12px;background:#101114;border:1px solid rgba(255,255,255,.08);display:block';
+      const box = document.createElement('div');
+      box.style.cssText = 'text-align:center;font:800 10px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#aab2bb;letter-spacing:.5px';
+      const nm = (ACTIONS.find(function (a) { return a.id === id; }) || { name: id }).name.toUpperCase();
+      box.innerHTML = '<div></div><div>' + nm + '</div>';
+      box.firstChild.appendChild(cv);
+      wrap.appendChild(box);
+      return { id: id, cv: cv, ctx: cv.getContext('2d') };
+    });
+
+    /* ek pose ko chhote canvas par draw karo (studio ke drawPose jaisa hi) */
+    function drawSmall(tile, tNorm) {
+      const ctx = tile.ctx, W = tile.cv.width, H = tile.cv.height;
+      const pose = groundLock(poseAt(tile.id, tNorm));
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      /* drawPose CW×CH (540×720) par likhta hai — temp canvas se chhota karke paste */
+      const tmp = tile.tmp || (tile.tmp = document.createElement('canvas'));
+      tmp.width = CW; tmp.height = CH;
+      const tctx = tmp.getContext('2d');
+      drawPose(tctx, pose);
+      ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(tmp, 0, 0, W, H);
+    }
+
+    let last = 0;
+    (function tick(now) {
+      if (!startLiveTiles.alive) return;
+      if (now - last > 200) {                  /* 5 fps — halka rehta hai */
+        last = now;
+        for (let i = 0; i < tiles.length; i++) {
+          const dur = (ACTIONS.find(function (a) { return a.id === tiles[i].id; }) || { dur: 1 }).dur;
+          drawSmall(tiles[i], (now / 1000 / dur) % 1);
+        }
+      }
+      requestAnimationFrame(tick);
+    })(performance.now());
+    startLiveTiles.alive = true;
+    window.addEventListener('pagehide', function () { startLiveTiles.alive = false; });
+  }
+
   /* debug hook */
-  window.__actionStudio = { S, processFile, poseAt, renderNow, exportFrames, saveCurrent, buildRig, analyze };
+  window.__actionStudio = { S, processFile, poseAt, renderNow, exportFrames, saveCurrent, buildRig, analyze, startLiveTiles };
 })();
