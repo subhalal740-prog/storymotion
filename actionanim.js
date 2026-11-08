@@ -1227,7 +1227,7 @@
     wrap.innerHTML = '';
     const tiles = ACTS.map(function (id) {
       const cv = document.createElement('canvas');
-      cv.width = 180; cv.height = 240;
+      cv.width = 132; cv.height = 176;
       cv.style.cssText = 'width:100%;height:auto;border-radius:12px;background:#101114;border:1px solid rgba(255,255,255,.08);display:block';
       const box = document.createElement('div');
       box.style.cssText = 'text-align:center;font:800 10px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#aab2bb;letter-spacing:.5px';
@@ -1238,25 +1238,25 @@
       return { id: id, cv: cv, ctx: cv.getContext('2d') };
     });
 
-    /* ek pose ko chhote canvas par draw karo (studio ke drawPose jaisa hi) */
+    /* ek pose ko chhote canvas par draw karo.
+       NOTE: koi temp canvas nahi (pehle har frame par 540×720 canvas reallocate hota tha
+       → phone par memory churn). Ab seedha scale-transform ke saath drawPose. */
     function drawSmall(tile, tNorm) {
       const ctx = tile.ctx, W = tile.cv.width, H = tile.cv.height;
       const pose = groundLock(poseAt(tile.id, tNorm));
+      const sc = Math.min(W / CW, H / CH);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, W, H);
-      /* drawPose CW×CH (540×720) par likhta hai — temp canvas se chhota karke paste */
-      const tmp = tile.tmp || (tile.tmp = document.createElement('canvas'));
-      tmp.width = CW; tmp.height = CH;
-      const tctx = tmp.getContext('2d');
-      drawPose(tctx, pose);
       ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(tmp, 0, 0, W, H);
+      ctx.setTransform(sc, 0, 0, sc, (W - CW * sc) / 2, (H - CH * sc) / 2);
+      drawPose(ctx, pose);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
     }
 
     let last = 0;
     (function tick(now) {
       if (!startLiveTiles.alive) return;
-      if (!document.hidden && now - last > 200) {   /* 5 fps · tab hidden ho to band */
+      if (!document.hidden && now - last > 250) {   /* 4 fps · tab hidden ho to band */
         last = now;
         for (let i = 0; i < tiles.length; i++) {
           const dur = (ACTIONS.find(function (a) { return a.id === tiles[i].id; }) || { dur: 1 }).dur;
