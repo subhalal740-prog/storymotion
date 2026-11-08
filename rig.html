@@ -1078,6 +1078,28 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         <div class="kv"><span>cut time</span><b id="msMeta">—</b></div>
       </div>
 
+      <div class="card" id="eraseCard" style="grid-column:1/-1">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="width:1em;height:1em;vertical-align:-0.15em;margin-right:0.3em;flex:none"><path d="M4 20h16"/><path d="M8.5 17.5 4 13a2 2 0 0 1 0-2.8l7-7a2 2 0 0 1 2.8 0l5 5a2 2 0 0 1 0 2.8l-6.5 6.5z"/></svg> Eraser <span style="font-weight:400;opacity:.6;font-size:.85em">(bacha hua background)</span></h3>
+          <div class="pill" id="erasePill" style="color:#cfe1ff;background:rgba(120,170,255,.08);border-color:rgba(120,170,255,.22)">BG OFF</div>
+        </div>
+        <p id="eraseHint" style="margin:10px 0 0;font-size:12px;opacity:.72;line-height:1.45">Auto-cut ke baad jo background bacha ho, us par ungli se ragdo — seedha transparent ho jayega. Phir “Apply &amp; re-cut” dabao.</p>
+        <div class="checker" style="margin-top:10px;padding:10px;display:grid;place-items:center">
+          <canvas id="eraseCv" style="display:block;max-width:100%;height:auto;touch-action:none;cursor:crosshair"></canvas>
+        </div>
+        <div style="margin-top:12px">
+          <label class="sw" style="gap:10px;display:flex;align-items:center;width:100%">Brush
+            <input type="range" id="eraseSize" min="8" max="90" value="30" style="flex:1;min-width:0">
+          </label>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1.5fr;gap:8px;margin-top:10px">
+            <button class="btn tiny ghost" id="eraseUndo">Undo</button>
+            <button class="btn tiny ghost" id="eraseReset">Reset</button>
+            <button class="btn tiny" id="eraseApply">Apply &amp; re-cut</button>
+          </div>
+        </div>
+        <div class="kv" style="margin-top:10px"><span>erased</span><b id="eraseStat">—</b></div>
+      </div>
+
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
           <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="width:1em;height:1em;vertical-align:middlepx;margin-left:-0.25em;margin-right:0.25em;margin-top:-0.25em;margin-bottom:-0.25em;flex:none"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg> Layer Manager</h3>
@@ -2839,10 +2861,15 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       applyRigLock(App.badParts);
       return;
     }
+    const want = PAGE_EL[n];
+    const seen = {};
     Object.keys(PAGE_EL).forEach((k) => {
-      const i = +k;
-      const el = U.$(PAGE_EL[i]);
-      if (el) el.classList.toggle('hidden', i !== n);
+      const i = +k, id = PAGE_EL[i];
+      if (!seen[id]) {                    /* ek hi section par do step map ho sakte hain (1 aur 2 → pg1) */
+        seen[id] = 1;
+        const el = U.$(id);
+        if (el) el.classList.toggle('hidden', id !== want);
+      }
       const b = document.querySelector('.step[data-page="' + i + '"]');
       if (!b) return;
       b.classList.toggle('on', i === n);
@@ -2859,7 +2886,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
      setTimeout(0): PAGE_EL (const) baad me define hota hai, isliye turant call
      karne par TDZ ReferenceError aata tha.                                */
   function addBackButtons() {
-    const BACK_TO = { 2: 1, 3: 2, 4: 3, 5: 4 };
+    const BACK_TO = { 3: 1, 4: 3, 5: 4 };   /* pg1 = page 1+2 dono, isliye uska back nahi */
     Object.keys(BACK_TO).forEach(function (pg) {
       const el = document.getElementById(PAGE_EL[pg]);
       if (!el || el.querySelector('.pgBack')) return;
@@ -3358,6 +3385,202 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     }
   }
 
+  /* ================= v19.4 · ERASER + RE-CUT =================
+     Auto-cut ke baad jo background bacha (busy/photo/warm edges) wo user
+     ungli se mita sakta hai. Erase seedha App.imgData ke alpha par lagta hai,
+     phir wahi cut pipeline dobara chalti hai (Gate → Cut → Layers → Studio). */
+  function recutFromImgData() {
+    const data = App.imgData, W = App.W, H = App.H;
+    if (!data || !W || !H) return null;
+    const res = Gate.run(data, W, H);
+    const kind = res.light === 'READY' ? 'ready' : res.light === 'WARNING' ? 'warning' : 'rejected';
+    setLight(kind, res.msg, W + '×' + H);
+    if (!res.ok) { Memory.purgeAll('gate failed (erase)'); hud(); return null; }
+
+    let cut = Cut.run(data, W, H);
+    if (!cut) { setLight('failed', 'Cut fail ho gaya.'); return null; }
+    let cq = Cut.quality(cut);
+    let mergedArms = false;
+    if (cq.needsMerge) {
+      const m = Cut.run(data, W, H, { mergeArms: true });
+      if (m) {
+        const mq = Cut.quality(m);
+        const armGone = !mq.issues.some((i) => i.id === 'armL' || i.id === 'armR');
+        if (armGone) { cut = m; cq = mq; mergedArms = true; }
+      }
+    }
+    cut.meta = cut.meta || {};
+    cut.meta.mergedArms = mergedArms;
+    App.cutIssues = cq.issues;
+    App.cut = cut;
+    try {
+      App.facing = Facing.detect(cut.pieces);
+      App.facing.manual = false;
+      window.__RIG_FACING = App.facing;
+      applyFacingUI();
+    } catch (e) {}
+    Layers.load(cut.pieces);
+    Layers.setOnChange(() => { renderLayers(); Studio.render(); });
+    renderCut();
+    Studio.setScene(cut.bbox, 1);
+    Pose.init();
+    renderHistory();
+    enableSteps(); hud();
+    setLight(kind, res.msg + (res.light === 'WARNING' ? ' (cut allowed)' : ' · ' + cut.pieces.length + ' pieces cut'),
+             W + '×' + H + ' · ' + cut.pieces.length + ' pieces · ' + cut.meta.coverage + '% coverage');
+    try { v4AfterCut(res); } catch (e) {}
+    return cut;
+  }
+
+  const Eraser = (function () {
+    let srcCv = null, srcCtx = null, strokes = [], active = null, lastRedraw = 0, lastApply = null;
+    const cv = () => U.$('eraseCv');
+    function fit() {
+      const c = cv(); if (!c || !App.imgData) return false;
+      const W = App.W, H = App.H;
+      const maxW = Math.min(340, ((c.parentElement && c.parentElement.clientWidth) || 340) - 24);
+      const k = Math.min(1, maxW / W);
+      c.width = Math.max(1, Math.round(W * k));
+      c.height = Math.max(1, Math.round(H * k));
+      c.style.width = c.width + 'px'; c.style.height = c.height + 'px';
+      c._k = k;
+      srcCv = document.createElement('canvas'); srcCv.width = W; srcCv.height = H;
+      srcCtx = srcCv.getContext('2d');
+      srcCtx.putImageData(App.imgData, 0, 0);
+      strokes = []; active = null;
+      draw();
+      if (U.$('eraseStat')) U.$('eraseStat').textContent = '0 stroke';
+      const pill = U.$('erasePill');
+      if (pill) {
+        const b = App.bg && App.bg.meta;
+        if (b && App.bg.removed) {
+          pill.textContent = 'BG ON · ' + b.hex;
+          pill.style.color = '#bff0cf'; pill.style.background = 'rgba(90,220,150,.10)'; pill.style.borderColor = 'rgba(90,220,150,.30)';
+        } else {
+          pill.textContent = b ? 'BG OFF · ' + b.hex : 'BG OFF';
+          pill.style.color = '#ffd9a8'; pill.style.background = 'rgba(255,190,110,.10)'; pill.style.borderColor = 'rgba(255,190,110,.28)';
+        }
+      }
+      return true;
+    }
+    function draw() {
+      const c = cv(); if (!c || !srcCv) return;
+      const g = c.getContext('2d');
+      g.clearRect(0, 0, c.width, c.height);
+      g.drawImage(srcCv, 0, 0, c.width, c.height);
+      const k = c._k || 1;
+      g.globalCompositeOperation = 'destination-out';
+      g.lineCap = 'round'; g.lineJoin = 'round';
+      for (const st of strokes) {
+        g.lineWidth = Math.max(2, st.r * 2 * k);
+        if (st.pts.length === 1) {
+          g.beginPath(); g.arc(st.pts[0].x * k, st.pts[0].y * k, Math.max(1, st.r * k), 0, Math.PI * 2); g.fill();
+        } else {
+          g.beginPath(); g.moveTo(st.pts[0].x * k, st.pts[0].y * k);
+          for (let i = 1; i < st.pts.length; i++) g.lineTo(st.pts[i].x * k, st.pts[i].y * k);
+          g.stroke();
+        }
+      }
+      g.globalCompositeOperation = 'source-over';
+    }
+    function pos(e) {
+      const c = cv(), r = c.getBoundingClientRect(), k = c._k || 1;
+      return { x: (e.clientX - r.left) / k, y: (e.clientY - r.top) / k };
+    }
+    function rImg() { const v = +(U.$('eraseSize') && U.$('eraseSize').value) || 30; return v / 2 / ((cv() && cv()._k) || 1); }
+    function stat() {
+      if (U.$('eraseStat')) U.$('eraseStat').textContent = strokes.length + (strokes.length === 1 ? ' stroke' : ' strokes');
+    }
+    function bind() {
+      const c = cv(); if (!c) return;
+      c.addEventListener('pointerdown', (e) => {
+        if (!App.imgData) { U.toast('Pehle image upload karo.'); return; }
+        e.preventDefault(); c.setPointerCapture(e.pointerId);
+        active = { r: rImg(), pts: [pos(e)] };
+        strokes.push(active); draw(); stat();
+      });
+      c.addEventListener('pointermove', (e) => {
+        if (!active) return;
+        e.preventDefault();
+        active.pts.push(pos(e));
+        const now = performance.now();
+        if (now - lastRedraw > 16) { lastRedraw = now; draw(); }
+      });
+      const end = (e) => { if (!active) return; active = null; draw(); stat(); };
+      c.addEventListener('pointerup', end); c.addEventListener('pointercancel', end); c.addEventListener('pointerleave', end);
+      U.$('eraseUndo') && (U.$('eraseUndo').onclick = () => {
+        if (strokes.length) { strokes.pop(); draw(); stat(); return; }
+        if (!lastApply) { U.toast('Undo ke liye kuch nahi.'); return; }
+        App.imgData = lastApply; lastApply = null;
+        const c = recutFromImgData();
+        fit(); stat();
+        U.toast(c ? 'Undo · pichhla erase wapas, cut dobara ban gaya' : 'Undo · erase wapas, par cut nahi bana');
+      });
+      U.$('eraseReset') && (U.$('eraseReset').onclick = () => { fit(); lastApply = null; stat(); U.toast('Erase reset.'); });
+      U.$('eraseApply') && (U.$('eraseApply').onclick = () => applyStrokes());
+    }
+    function applyStrokes() {
+        if (!App.imgData) { U.toast('Pehle image upload karo.'); return null; }
+        if (!strokes.length) { U.toast('Kuch erase nahi kiya.'); return null; }
+        const W = App.W, H = App.H;
+        const out = new ImageData(new Uint8ClampedArray(App.imgData.data), W, H);
+        let n = 0;
+        for (const st of strokes) {
+          const r = Math.max(1, st.r), r2 = r * r;
+          const pts = st.pts;
+          for (let i = 0; i < pts.length; i++) {
+            const p = pts[i];
+            const p2 = pts[i + 1];
+            const segs = p2 ? Math.max(1, Math.ceil(Math.hypot(p2.x - p.x, p2.y - p.y) / Math.max(1, r * 0.6))) : 1;
+            for (let sgi = 0; sgi <= (p2 ? segs : 0); sgi++) {
+              const t = p2 ? sgi / segs : 0;
+              const cx2 = p.x + ((p2 ? p2.x : p.x) - p.x) * t;
+              const cy2 = p.y + ((p2 ? p2.y : p.y) - p.y) * t;
+              const x0 = Math.max(0, Math.floor(cx2 - r)), x1 = Math.min(W - 1, Math.ceil(cx2 + r));
+              const y0 = Math.max(0, Math.floor(cy2 - r)), y1 = Math.min(H - 1, Math.ceil(cy2 + r));
+              for (let y = y0; y <= y1; y++) {
+                const dy = y - cy2;
+                for (let x = x0; x <= x1; x++) {
+                  const dx = x - cx2;
+                  if (dx * dx + dy * dy > r2) continue;
+                  const ai = (y * W + x) * 4 + 3;
+                  if (out.data[ai]) { out.data[ai] = 0; n++; }
+                }
+              }
+            }
+          }
+        }
+        if (!n) { U.toast('Kuch naya erase nahi hua.'); return null; }
+        const prev = App.imgData;
+        let aBefore = 0, aAfter = 0;
+        for (let i = 3; i < prev.data.length; i += 4) if (prev.data[i]) aBefore++;
+        for (let i = 3; i < out.data.length; i += 4) if (out.data[i]) aAfter++;
+        App.imgData = out;
+        let cut = recutFromImgData();
+        /* safety: character kabhi khatam na ho — bahut zyada erase hua to wapas */
+        const killed = !cut || (aBefore > 0 && aAfter < aBefore * 0.55);
+        if (killed) {
+          App.imgData = prev;
+          recutFromImgData();
+          fit(); stat();
+          U.toast('⚠ Bahut zyada erase ho gaya tha (character kat raha tha) — wapas revert kar diya. Thoda kam erase karo.');
+          return null;
+        }
+        lastApply = prev;
+        fit();
+        if (U.$('eraseStat')) U.$('eraseStat').textContent = n.toLocaleString('en-IN') + ' px erased · ' + cut.pieces.length + ' pieces';
+        U.toast('Erase apply · ' + n + ' px hataye · re-cut ho gaya (' + cut.pieces.length + ' pieces)');
+        return cut;
+    }
+    return { refresh() { if (!fit()) return; bind(); }, fits: fit, bind: bind, draw: draw,
+             apply: applyStrokes,
+             addStroke(r, pts) { strokes.push({ r: r, pts: pts }); draw(); stat(); },
+             count() { return strokes.length; } };
+  })();
+
+  /* eraser card ko cut ke baad apne aap bhar do (test ke liye handle bhi) */
+  try { window.__Eraser = Eraser; } catch (e) {}
+
   /* ===== strict alert sirf CHECKPOST page par ===== */
   (function headToggle() {
     const pg1 = document.getElementById('pg1');
@@ -3511,7 +3734,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
      07 · V4 MOBILE SHELL — 5 steps: Upload → Auto-Cut → Position → Rig → Save
      (sab functions real data par chalte hain, koi dummy button nahi)
      ===================================================================== */
-  const PAGE_EL = { 1: 'pg1', 2: 'pg2', 3: 'pgPos', 4: 'pg3', 5: 'pgSave' };
+  /* v19.4 · pg2 section maujood nahi tha (auto-cut ke baad screen khaali ho jati thi).
+     Step 2 ka content pg1 ke cards me hi hai, isliye dono ek hi section par map hain. */
+  const PAGE_EL = { 1: 'pg1', 2: 'pg1', 3: 'pgPos', 4: 'pg3', 5: 'pgSave' };
   try { addBackButtons(); } catch (e) {}   /* v15.9 BACK buttons */
   const PART_LIST = [
     { id: 'head', name: 'Head' }, { id: 'torso', name: 'Torso' },
@@ -3969,6 +4194,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   }
 
   function v4AfterCut(res) {
+    try { Eraser.refresh(); } catch (e) {}
     V4.sel = null;
     const ac1 = document.getElementById('acCard1');
     if (ac1) ac1.classList.toggle('show', !!App.cut);
