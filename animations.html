@@ -1021,7 +1021,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     var tex = charImg || charTex;   /* selected character pehle, IDB ka purana tex baad me */
     /* R109 · user: "ye humko nahi chahiye, only 1 — Walk safed putla bilkul AutoDraft jaisa".
        Isliye card me hamesha ek SAFED PUTLA walk chalta hai (character ka photo nahi). */
-    var art = '<canvas class="spriteCv" width="160" height="220" role="img" aria-label="walk animation"></canvas>';
+    var art = '<canvas class="spriteCv" width="320" height="440" role="img" aria-label="walk animation"></canvas>';
     putlaWrap.innerHTML =
       '<button class="putlaCard" id="putlaTap" type="button" style="position:relative" aria-label="walk animation">' +
         '<span class="putlaLiveBadge">WALK</span>' +
@@ -1046,67 +1046,126 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     if (wwRAF) { cancelAnimationFrame(wwRAF); wwRAF = null; }
     var ctx = cv.getContext('2d');
     var W = cv.width, H = cv.height;
-    var cx = W / 2, feetY = H - 16, headY = 34;
-    var torsoTop = headY + 34, hipY = torsoTop + 62;
-    var WHITE = '#f4f6f9', D2R = Math.PI / 180;
+    var D2R = Math.PI / 180;
 
-    function seg(x1, y1, x2, y2, w) {
-      ctx.lineWidth = w; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-    }
-    function draw(t) {
-      var a = t * 2 * Math.PI;
-      var sw = Math.sin(a), sw2 = Math.sin(a + Math.PI);
-      ctx.clearRect(0, 0, W, H);
-      ctx.strokeStyle = WHITE; ctx.fillStyle = WHITE;
+    /* AutoDraft jaisa SAFED MANNEQUIN — volume + halki shading, koi outline nahi */
+    var C_HI = '#ffffff', C_MID = '#eaeff5', C_LO = '#c3ceda', C_LO2 = '#aebac8';
 
-      /* pair (thigh + shin) — knee bend */
-      var legs = [
-        { hip: cx - 10, sw: sw, bend: Math.max(0, -Math.sin(a + 1.0)) },
-        { hip: cx + 10, sw: sw2, bend: Math.max(0, -Math.sin(a + 1.0 + Math.PI)) }
-      ];
-      legs.forEach(function (L) {
-        var hipP = { x: L.hip, y: hipY };
-        var thA = L.sw * 12 * D2R, knA = L.bend * 22 * D2R;
-        var knee = { x: hipP.x + Math.sin(thA) * 44, y: hipP.y + Math.cos(thA) * 44 };
-        var shA = thA - knA;
-        var foot = { x: knee.x + Math.sin(shA) * 44, y: knee.y + Math.cos(shA) * 44 };
-        seg(hipP.x, hipP.y, knee.x, knee.y, 15);
-        seg(knee.x, knee.y, foot.x, foot.y, 13);
-        seg(foot.x - 5, foot.y, foot.x + 8, foot.y, 9);      /* panja */
-      });
-
-      /* torso + kandhe (thoda chauda, AutoDraft jaisa silhouette) */
+    /* ek limb = dumble jaisa capsule, cylindrical shading ke saath */
+    function limb(x1, y1, x2, y2, w1, w2, hi, lo) {
+      var dx = x2 - x1, dy = y2 - y1, len = Math.sqrt(dx * dx + dy * dy) || 0.01;
+      ctx.save();
+      ctx.translate(x1, y1); ctx.rotate(Math.atan2(dy, dx));
+      var r1 = w1 / 2, r2 = w2 / 2, R = Math.max(r1, r2);
+      var g = ctx.createLinearGradient(0, -R, 0, R);
+      g.addColorStop(0, hi); g.addColorStop(0.55, hi); g.addColorStop(1, lo);
+      ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.lineWidth = 26; ctx.lineCap = 'round';
-      ctx.moveTo(cx, torsoTop + 4); ctx.lineTo(cx, hipY);
-      ctx.stroke();
-      seg(cx - 15, torsoTop + 8, cx + 15, torsoTop + 8, 16);   /* shoulder bar */
+      ctx.moveTo(0, -r1);
+      ctx.lineTo(len, -r2);
+      ctx.arc(len, 0, r2, -Math.PI / 2, Math.PI / 2);
+      ctx.lineTo(0, r1);
+      ctx.arc(0, 0, r1, Math.PI / 2, Math.PI * 1.5);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
 
-      /* haath (pair ke ulte) */
-      var arms = [
-        { sh: cx - 15, sw: sw2, dir: -1 },
-        { sh: cx + 15, sw: sw, dir: 1 }
-      ];
-      arms.forEach(function (A) {
-        var shP = { x: A.sh, y: torsoTop + 6 };
-        var uA = A.sw * 14 * D2R;
-        var elbow = { x: shP.x + Math.sin(uA) * 32 + A.dir * 6, y: shP.y + Math.cos(uA) * 32 };
-        var fA = uA + 10 * D2R;
-        var hand = { x: elbow.x + Math.sin(fA) * 30, y: elbow.y + Math.cos(fA) * 30 };
-        seg(shP.x, shP.y, elbow.x, elbow.y, 12);
-        seg(elbow.x, elbow.y, hand.x, hand.y, 10);
-      });
+    function body(t) {
+      var a = t * 2 * Math.PI;                    /* ek walk cycle */
+      var bob = Math.cos(2 * a) * 3.2;            /* do baar upar-neeche */
+      var cx = W / 2;
+      var pelvisY = 268 + bob;
+      var shoulderY = pelvisY - 122;
+      var lean = Math.sin(a) * 1.2;               /* halka jhukav */
 
-      /* sar + gardan */
-      ctx.beginPath(); ctx.arc(cx, headY, 17, 0, 6.2832); ctx.fill();
-      seg(cx, headY + 15, cx, torsoTop + 2, 12);
+      /* ---- pair ---- */
+      function leg(phase, back) {
+        var hipA = Math.sin(phase) * 11.5 * D2R;
+        var swing = Math.max(0, -Math.sin(phase + 0.6));
+        var kneeA = swing * 30 * D2R;
+        var hipX = cx + (back ? 8 : -8);
+        var kneeX = hipX + Math.sin(hipA) * 74;
+        var kneeY = pelvisY + Math.cos(hipA) * 74;
+        var shinA = hipA - kneeA;
+        var ankX = kneeX + Math.sin(shinA) * 72;
+        var ankY = kneeY + Math.cos(shinA) * 72;
+        var hi = back ? C_MID : C_HI, lo = back ? C_LO2 : C_LO;
+        limb(hipX, pelvisY - 4, kneeX, kneeY, 27, 21, hi, lo);
+        limb(kneeX, kneeY, ankX, ankY, 21, 16, hi, lo);
+        /* panja */
+        ctx.save();
+        ctx.translate(ankX, ankY); ctx.rotate(shinA * 0.35);
+        var fg = ctx.createLinearGradient(0, -7, 0, 9);
+        fg.addColorStop(0, hi); fg.addColorStop(1, lo);
+        ctx.fillStyle = fg;
+        ctx.beginPath();
+        ctx.moveTo(-8, -6); ctx.quadraticCurveTo(14, -7, 19, 2);
+        ctx.quadraticCurveTo(20, 8, 12, 8); ctx.lineTo(-8, 8);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+
+      /* ---- haath ---- */
+      function arm(phase, back) {
+        var uA = Math.sin(phase) * 9.5 * D2R;
+        var shX = cx + (back ? 19 : -19) + lean;
+        var shY = shoulderY + 10;
+        var elX = shX + Math.sin(uA) * 62 + (back ? 4 : -4);
+        var elY = shY + Math.cos(uA) * 62;
+        var fA = uA + (8 + Math.max(0, Math.sin(phase + 1.2)) * 9) * D2R;
+        var haX = elX + Math.sin(fA) * 56;
+        var haY = elY + Math.cos(fA) * 56;
+        var hi = back ? C_MID : C_HI, lo = back ? C_LO2 : C_LO;
+        limb(shX, shY, elX, elY, 19, 16, hi, lo);
+        limb(elX, elY, haX, haY, 16, 13, hi, lo);
+        ctx.save();
+        var hg = ctx.createRadialGradient(haX - 2, haY - 2, 1, haX, haY, 8);
+        hg.addColorStop(0, hi); hg.addColorStop(1, lo);
+        ctx.fillStyle = hg;
+        ctx.beginPath(); ctx.ellipse(haX, haY, 7.5, 8.5, 0, 0, 6.2832); ctx.fill();
+        ctx.restore();
+      }
+
+      /* order: peeche wale pehle */
+      arm(a + Math.PI, true);
+      leg(a + Math.PI, true);
+      leg(a, false);
+
+      /* ---- torso (kandhe se kamar tak patla hota hua) ---- */
+      ctx.save();
+      var tg = ctx.createLinearGradient(cx - 30, 0, cx + 30, 0);
+      tg.addColorStop(0, C_HI); tg.addColorStop(0.6, C_MID); tg.addColorStop(1, C_LO);
+      ctx.fillStyle = tg;
+      ctx.beginPath();
+      ctx.moveTo(cx - 27 + lean, shoulderY + 2);
+      ctx.quadraticCurveTo(cx - 33 + lean, shoulderY + 34, cx - 20, pelvisY - 46);
+      ctx.quadraticCurveTo(cx - 22, pelvisY - 12, cx - 17, pelvisY + 6);
+      ctx.quadraticCurveTo(cx, pelvisY + 16, cx + 17, pelvisY + 6);
+      ctx.quadraticCurveTo(cx + 22, pelvisY - 12, cx + 20, pelvisY - 46);
+      ctx.quadraticCurveTo(cx + 33 + lean, shoulderY + 34, cx + 27 + lean, shoulderY + 2);
+      ctx.quadraticCurveTo(cx, shoulderY - 12, cx - 27 + lean, shoulderY + 2);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
+
+      arm(a, false);
+
+      /* ---- gardan + sar ---- */
+      limb(cx - 1 + lean, shoulderY - 4, cx + lean, shoulderY - 26, 17, 15, C_HI, C_LO);
+      var hx = cx + lean * 1.4, hy = shoulderY - 50;
+      var hg2 = ctx.createRadialGradient(hx - 8, hy - 10, 2, hx, hy, 30);
+      hg2.addColorStop(0, C_HI); hg2.addColorStop(0.62, C_MID); hg2.addColorStop(1, C_LO);
+      ctx.fillStyle = hg2;
+      ctx.beginPath(); ctx.ellipse(hx, hy, 21, 26, 0, 0, 6.2832); ctx.fill();
     }
 
     var t0 = performance.now();
     function frame(now) {
       if (!document.body.contains(cv)) { wwRAF = null; return; }
-      draw((now - t0) / 1100);            /* ~0.9 walk cycle per second */
+      ctx.clearRect(0, 0, W, H);
+      ctx.save();
+      ctx.translate(W / 2, H / 2); ctx.scale(0.87, 0.87); ctx.translate(-W / 2, -H / 2 - 6);
+      body((now - t0) / 1250);           /* ~1.25 s me ek walk cycle (AutoDraft jaisa smooth) */
+      ctx.restore();
       wwRAF = requestAnimationFrame(frame);
     }
     wwRAF = requestAnimationFrame(frame);
