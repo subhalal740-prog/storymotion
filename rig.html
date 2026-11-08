@@ -3872,7 +3872,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             const soft = nearBg && d0 <= 180 && edge <= 45 &&
                          (Math.max(out.data[i * 4], out.data[i * 4 + 1], out.data[i * 4 + 2]) -
                           Math.min(out.data[i * 4], out.data[i * 4 + 1], out.data[i * 4 + 2])) <= chB + 26;
-            if (rim || thinLine || patch || soft) { out.data[i * 4 + 3] = 0; n++; }
+            /* 5: BG POCKET — auto-cut ke baad bacha flat background ka dhabba
+                  (jaise kapde aur haath ke beech ki safed patti). Sirf wahi jata hai jo
+                  bg ke rang ke bilkul kareeb hai, poora opaque hai, background se juda hai
+                  aur bilkul flat hai (kapde ki silwat/outline nahi). */
+            const a9 = out.data[i * 4 + 3];
+            const pocket = conn[i] && !inDeep(i) && a9 >= 240 && d0 <= 45 && edge <= 40;
+            if (rim || thinLine || patch || soft || pocket) { out.data[i * 4 + 3] = 0; n++; }
             else skipped++;
           }
           window.__ckLastCoreSkipped = coreSkipped;
