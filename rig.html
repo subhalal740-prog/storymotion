@@ -3057,16 +3057,30 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const f = App.facing || { dir: 1, mode: 'front', auto: true };
     const face = f.mode === 'front' ? 'Front' : (f.dir > 0 ? 'Right' : 'Left');
     el.textContent = face + ' · ' + (f.manual ? 'manual' : 'auto');
-    el.title = 'Tap: chalne ki direction ulti karo';
+    el.title = 'Tap: character ki direction (aur walk ki direction) badlo — kuch reset nahi hota';
   }
+  /* v19.5 · left-facing character me aage/peeche wali layer bhi ulti honi chahiye,
+     warna pair ek doosre ke upar galat tarah se chadhta hai. Isliye L/R labels ki
+     jagah swap kar dete hain (elements ki positions nahi badalti). */
+  const FACING_SWAP = { legL: 'legR', legR: 'legL', shinL: 'shinR', shinR: 'shinL', armL: 'armR', armR: 'armL' };
+  function mirrorLayersForFacing() {
+    const want = !!(App.facing && App.facing.dir < 0);
+    if (App.__facingSwapped === want) return;
+    const ids = Layers.idsInOrder();
+    if (!ids.length) { App.__facingSwapped = want; return; }
+    Layers.setOrder(ids.map((id) => (FACING_SWAP[id] || id)));   /* swap-map involution: dobara tap = wapas */
+    App.__facingSwapped = want;
+  }
+
   function flipFacing() {
     if (!App.facing) App.facing = { dir: 1, mode: 'front', score: 0 };
     App.facing.dir = -App.facing.dir;
     App.facing.manual = true;
     App.facing.mode = App.facing.dir > 0 ? 'right' : 'left';
     window.__RIG_FACING = App.facing;
+    try { mirrorLayersForFacing(); } catch (e) {}
     applyFacingUI();
-    U.toast('Facing: ' + (App.facing.dir > 0 ? 'Right' : 'Left') + ' (manual)');
+    U.toast('Facing: ' + (App.facing.dir > 0 ? 'Right' : 'Left') + ' — chalne ki direction bhi wahi ho gayi (manual)');
   }
 
   function renderLayers() {
@@ -3363,10 +3377,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       App.facing = Facing.detect(cut.pieces);
       App.facing.manual = false;
       window.__RIG_FACING = App.facing;
+      App.__facingSwapped = false;      /* fresh cut = base order */
       applyFacingUI();
     } catch (e) { App.facing = { dir: 1, mode: 'front', score: 0, auto: true }; }
     Layers.load(cut.pieces);
     Layers.setOnChange(() => { renderLayers(); Studio.render(); });
+    try { App.__facingSwapped = false; mirrorLayersForFacing(); } catch (e) {}
     renderCut();
     Studio.setScene(cut.bbox, 1);
     Pose.init();
@@ -3417,10 +3433,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       App.facing = Facing.detect(cut.pieces);
       App.facing.manual = false;
       window.__RIG_FACING = App.facing;
+      App.__facingSwapped = false;      /* fresh cut = base order */
       applyFacingUI();
     } catch (e) {}
     Layers.load(cut.pieces);
     Layers.setOnChange(() => { renderLayers(); Studio.render(); });
+    try { App.__facingSwapped = false; mirrorLayersForFacing(); } catch (e) {}
     renderCut();
     Studio.setScene(cut.bbox, 1);
     Pose.init();
@@ -4441,6 +4459,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const sL = legPhase(u);
     const sR = legPhase(u + 0.5);
 
+    /* v19.5 · FACING MIRROR: character jis taraf muh karta hai, gait usi taraf.
+       Left-facing character me poora swing ulta karte hain — isliye ab "flip" ki
+       zaroorat nahi padti. (dir > 0 = right, default behaviour bilkul same) */
+    const F0 = (typeof App !== 'undefined' && App.facing) ? App.facing : (window.__RIG_FACING || null);
+    const FD = (F0 && F0.dir < 0) ? -1 : 1;
+
     const liftAmp = BH * (isRun ? 0.030 : 0.020);
     /* bob — per step: down par neecha, passing par ooncha */
     const bobAmp = BH * (isRun ? 0.012 : 0.007);
@@ -4457,14 +4481,14 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
        Arms Down -> rest 0° (photo character pehle se latka hua hai)             */
     const rest = (ARM_POSTURE === 'down') ? 0 : ARM_DOWN_LOCK;
     /* arms legs ke OPPOSITE — per side: left arm right leg ke saath, right arm left leg ke saath */
-    const swingL = (Anim.armMode === 'fixed') ? 0 : sR.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55;
-    const swingR = (Anim.armMode === 'fixed') ? 0 : sL.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55;
+    const swingL = (Anim.armMode === 'fixed') ? 0 : FD * sR.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55;
+    const swingR = (Anim.armMode === 'fixed') ? 0 : FD * sL.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55;
     try {
-      if (RIG.Pose.setKnee) RIG.Pose.setKnee({ shinL: KNEE_SIGN * sL.knee, shinR: KNEE_SIGN * sR.knee });
+      if (RIG.Pose.setKnee) RIG.Pose.setKnee({ shinL: FD * KNEE_SIGN * sL.knee, shinR: FD * KNEE_SIGN * sR.knee });
       RIG.Pose.setPair({
-        legL: sL.ang, legR: sR.ang,                     /* stance + swing (asli gait) */
-        armL: -rest + swingL,
-        armR:  rest + swingR,
+        legL: FD * sL.ang, legR: FD * sR.ang,           /* stance + swing (asli gait, facing ke hisaab se) */
+        armL: -FD * rest + swingL,
+        armR:  FD * rest + swingR,
         torso: Anim.torso * (0.6 + 0.4 * Math.cos(Anim.phase * 2)),
         head: 0
       });
