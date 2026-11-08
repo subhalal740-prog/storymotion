@@ -1392,3 +1392,15 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - **Live test (asli character, `start.html` → upload → Send to Walk):** URL `actionanim.html?action=walk&char=auto&name=my-character` ✓ · badge **WALK · LIVE** ✓ · play enabled ✓ · neck y197, shoulders y288.9, A-pose, feet y695 ✓ · **errs 0**.
 - Evidence: `R105-LIVE-WALK-STRIP.png` (live 4 frames), `R105-STUDIO.png`, `R105-WALK-STRIP.png` (before fix), `R104-SAVE-BUTTON.png`.
 - Backups: `rig-backup-105.html`, `actionanim-backup-r105.js`, `actionanim-backup-r105b.js`.
+
+## Round 106 — putlo wale page jaisa **live walk tiles** (video reference: autodraft.in) · live `rig.html` `6f42256` 312041 B · `actionanim.js` `f870234` 59682 B
+- User ne screen recording bheja (autodraft.in/characters) jahan **tiles khud animate hoti hain** (Idle/Walk/Talking/Sitting) — matlab humare page par bhi **putla chalta hua dikhe**, same putle se.
+- **Naya:** `actionanim.html?...&live=1` par studio ke upar **live thumbnails grid** (3+2): **IDLE · WALK · RUN · DANCING · WAVING** — har tile me **wahi putla** chalta hua (canvas par 4fps procedural render, koi video file nahi). Tool ka "Send to Walk Animation" button ab seedha `live=1` wala page kholta hai.
+- **Performance (phone ke liye):**
+  1. Live tiles on hone par bada stage **12fps** par update hota (pehle har rAF — phone garam).
+  2. Har tile apna temp canvas banata tha → ab seedha scale-transform se draw (memory churn khatam).
+  3. Tab hidden ho to tiles ruk jate hain (`document.hidden`).
+  4. Tile content 1.35× par render hoke CSS se chhota dikhta hai → mesh seams patli dikhti hain.
+- **Live test (Village-Kaka type character):** tiles 5 ✓ · **sab 5 animate ho rahi hain** (frame signature badalta hai) ✓ · **30+ second tak stable, page crash nahi** ✓ · errs 0 ✓.
+- Evidence: `R106-LIVE-TILES-LIVE.png` (live grid), `R106-LIVE-TILES.png` (pehla local run), `VIDEO-grid-a.png` / `VIDEO-grid-b.png` (user ke video se nikale frames).
+- Note: tiles me mesh-strip warp ki patli seams dikhti hain (procedural rig ki seema) — Rig page ka walk sabse saaf hai.
