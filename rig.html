@@ -1498,6 +1498,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
                  data, W, H, meta: { transparentPct: +(100 * seeThrough / total).toFixed(1) } };
       }
 
+      /* v19.2 · SNAPSHOT — agar bg-removal character ko hi kha jaye to wapas laut sake */
+      const a0 = new Uint8Array(total);
+      for (let q = 0; q < total; q++) a0[q] = d[q * 4 + 3];
+
       /* 2 — background model */
       const samples = borderSamples(d, W, H);
       if (!samples.length) return { ok: false, msg: 'Image khali hai — background nahi mila.' };
@@ -1663,6 +1667,18 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       let opaque = 0;
       for (let i = 3; i < d.length; i += 4) if (d[i] > A_MIN) opaque++;
       const keepPct = 100 * opaque / total;
+
+      /* v19.2 · DESTROY GUARD — safed bg + safed kapde (white kurta/pyjama) me flood
+         character ko hi kha jata tha. 6% se kam bacha = character gaya → poora revert
+         karke original image use karo aur saaf warning do. */
+      if (keepPct < 6) {
+        for (let q = 0; q < total; q++) d[q * 4 + 3] = a0[q];
+        return { ok: true, removed: false, reason: 'character-lost', data, W, H,
+                 uniform: solidPct, mode,
+                 msg: 'Character bhi safed hai isliye background auto nahi hataya (BG OFF). ' +
+                      'Transparent PNG ya thodi dark background wali image behtar rahegi.',
+                 meta: { mode, keepPct: +keepPct.toFixed(1), guard: 'character-lost' } };
+      }
       if (keepPct < 1) {
         return { ok: false, uniform: solidPct, mode,
                  msg: 'Background ke saath character bhi hat gaya — is image par character nahi mila.' };
@@ -3275,6 +3291,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     if (bgRes.removed) {
       const m = bgRes.meta;
       U.toast('Background removed (' + m.mode + ') · ' + m.clearedPct + '% clear · ' + m.keepPct + '% character');
+    } else if (bgRes.reason === 'character-lost' && bgRes.msg) {
+      U.toast('⚠ ' + bgRes.msg);
+      try { setLight('warning', bgRes.msg, W + '×' + H); } catch (e) {}
     }
     if (scaleNote) U.toast('Image upscale ki gayi' + scaleNote);
 
