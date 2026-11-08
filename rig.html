@@ -2463,7 +2463,21 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     }
     function all() { return items; }
     function byId(id) { return items.find((x) => x.id === id) || null; }
-    function order() { return items.slice(); }
+    /* v19.5 · character ulta (left) dekh raha ho to joda mirror ho:
+       legL/legR aur armL/armR ki draw order badal jati hai, warna "aage wala"
+       pair galat lagta hai. Default 1 = normal. */
+    let faceDir = 1;
+    const MIRROR_ID = { legL: 'legR', legR: 'legL', shinL: 'shinR', shinR: 'shinL',
+                        armL: 'armR', armR: 'armL' };
+    function setFaceDir(d) { faceDir = (d < 0) ? -1 : 1; }
+    function order() {
+      if (faceDir > 0) return items.slice();
+      const idx = {};
+      items.forEach((it, i) => { idx[it.id] = i; });
+      const key = (it) => (MIRROR_ID[it.id] !== undefined && idx[MIRROR_ID[it.id]] !== undefined)
+        ? idx[MIRROR_ID[it.id]] : idx[it.id];
+      return items.slice().sort((a, b) => key(a) - key(b));
+    }
 
     function moveTo(id, index) {
       const from = items.findIndex((x) => x.id === id);
@@ -2499,7 +2513,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function getSelected() { return selected; }
     function removeKind(kind) { items = items.filter((x) => x.kind !== kind); normalize(); onChange(); }
     return { load, all, byId, order, moveTo, front, back, add, resetOrder, idsInOrder, setOrder,
-             setOnChange, select, getSelected, removeKind, step, enforceStrict, Z_BASE };
+             setOnChange, select, getSelected, removeKind, step, enforceStrict, Z_BASE,
+             setFaceDir, getFaceDir: () => faceDir };
   })();
 
   /* ---------------------------------------------------------- 05 · POSE (pillar 4)
@@ -3053,34 +3068,28 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
   /* v17.9 · facing chip — auto detect ka result dikhata hai, tap par manually flip */
   function applyFacingUI() {
+    const f0 = App.facing || { dir: 1, mode: 'front', auto: true };
+    try { Layers.setFaceDir(f0.dir); } catch (e) {}
+    const swBtn = U.$('ppMirror');
+    if (swBtn) {
+      swBtn.classList.toggle('on', f0.dir < 0);
+      const tn = swBtn.lastChild;
+      if (tn && tn.nodeType === 3) tn.nodeValue = (f0.dir < 0 ? 'MIRROR ON' : 'MIRROR OFF');
+    }
     const el = U.$('facingMeta'); if (!el) return;
     const f = App.facing || { dir: 1, mode: 'front', auto: true };
     const face = f.mode === 'front' ? 'Front' : (f.dir > 0 ? 'Right' : 'Left');
     el.textContent = face + ' · ' + (f.manual ? 'manual' : 'auto');
-    el.title = 'Tap: character ki direction (aur walk ki direction) badlo — kuch reset nahi hota';
+    el.title = 'Tap: chalne ki direction ulti karo (walk mirror)';
   }
-  /* v19.5 · left-facing character me aage/peeche wali layer bhi ulti honi chahiye,
-     warna pair ek doosre ke upar galat tarah se chadhta hai. Isliye L/R labels ki
-     jagah swap kar dete hain (elements ki positions nahi badalti). */
-  const FACING_SWAP = { legL: 'legR', legR: 'legL', shinL: 'shinR', shinR: 'shinL', armL: 'armR', armR: 'armL' };
-  function mirrorLayersForFacing() {
-    const want = !!(App.facing && App.facing.dir < 0);
-    if (App.__facingSwapped === want) return;
-    const ids = Layers.idsInOrder();
-    if (!ids.length) { App.__facingSwapped = want; return; }
-    Layers.setOrder(ids.map((id) => (FACING_SWAP[id] || id)));   /* swap-map involution: dobara tap = wapas */
-    App.__facingSwapped = want;
-  }
-
   function flipFacing() {
     if (!App.facing) App.facing = { dir: 1, mode: 'front', score: 0 };
     App.facing.dir = -App.facing.dir;
     App.facing.manual = true;
     App.facing.mode = App.facing.dir > 0 ? 'right' : 'left';
     window.__RIG_FACING = App.facing;
-    try { mirrorLayersForFacing(); } catch (e) {}
     applyFacingUI();
-    U.toast('Facing: ' + (App.facing.dir > 0 ? 'Right' : 'Left') + ' — chalne ki direction bhi wahi ho gayi (manual)');
+    U.toast('Facing: ' + (App.facing.dir > 0 ? 'Right' : 'Left') + ' (manual)');
   }
 
   function renderLayers() {
@@ -3377,12 +3386,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       App.facing = Facing.detect(cut.pieces);
       App.facing.manual = false;
       window.__RIG_FACING = App.facing;
-      App.__facingSwapped = false;      /* fresh cut = base order */
       applyFacingUI();
     } catch (e) { App.facing = { dir: 1, mode: 'front', score: 0, auto: true }; }
     Layers.load(cut.pieces);
     Layers.setOnChange(() => { renderLayers(); Studio.render(); });
-    try { App.__facingSwapped = false; mirrorLayersForFacing(); } catch (e) {}
     renderCut();
     Studio.setScene(cut.bbox, 1);
     Pose.init();
@@ -3433,12 +3440,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       App.facing = Facing.detect(cut.pieces);
       App.facing.manual = false;
       window.__RIG_FACING = App.facing;
-      App.__facingSwapped = false;      /* fresh cut = base order */
       applyFacingUI();
     } catch (e) {}
     Layers.load(cut.pieces);
     Layers.setOnChange(() => { renderLayers(); Studio.render(); });
-    try { App.__facingSwapped = false; mirrorLayersForFacing(); } catch (e) {}
     renderCut();
     Studio.setScene(cut.bbox, 1);
     Pose.init();
@@ -4344,7 +4349,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
   window.RIG = {
     App, Memory, Bg, Facing, Gate, Cut, Layers, Pose, Studio,
-    goPage,
+    goPage, flipFacing,
     stats: () => ({ memory: Memory.stats(), cut: App.cut && App.cut.meta,
                     layers: Layers.idsInOrder(), pose: Pose.getRotation(), history: Pose.history(),
                     studio: Studio.info(), page: App.page })
@@ -4459,12 +4464,6 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const sL = legPhase(u);
     const sR = legPhase(u + 0.5);
 
-    /* v19.5 · FACING MIRROR: character jis taraf muh karta hai, gait usi taraf.
-       Left-facing character me poora swing ulta karte hain — isliye ab "flip" ki
-       zaroorat nahi padti. (dir > 0 = right, default behaviour bilkul same) */
-    const F0 = (typeof App !== 'undefined' && App.facing) ? App.facing : (window.__RIG_FACING || null);
-    const FD = (F0 && F0.dir < 0) ? -1 : 1;
-
     const liftAmp = BH * (isRun ? 0.030 : 0.020);
     /* bob — per step: down par neecha, passing par ooncha */
     const bobAmp = BH * (isRun ? 0.012 : 0.007);
@@ -4481,21 +4480,36 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
        Arms Down -> rest 0° (photo character pehle se latka hua hai)             */
     const rest = (ARM_POSTURE === 'down') ? 0 : ARM_DOWN_LOCK;
     /* arms legs ke OPPOSITE — per side: left arm right leg ke saath, right arm left leg ke saath */
-    const swingL = (Anim.armMode === 'fixed') ? 0 : FD * sR.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55;
-    const swingR = (Anim.armMode === 'fixed') ? 0 : FD * sL.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55;
+    const swingL = (Anim.armMode === 'fixed') ? 0 : sR.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55;
+    const swingR = (Anim.armMode === 'fixed') ? 0 : sL.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55;
+    /* v19.5 · FACING MIRROR — character jis taraf dekh raha hai usi taraf chale.
+       Standard gait legL/legR ke liye bana hai; agar character left dekh raha hai to
+       poora gait mirror (side swap + sign ulta) hota hai, isliye flip ki zaroorat nahi. */
+    const FD = (RIG.App && RIG.App.facing && RIG.App.facing.dir < 0) ? -1 : 1;
+    const P = {
+      legL: sL.ang, legR: sR.ang,                       /* stance + swing (asli gait) */
+      armL: -rest + swingL,
+      armR:  rest + swingR,
+      torso: Anim.torso * (0.6 + 0.4 * Math.cos(Anim.phase * 2)),
+      head: 0
+    };
+    const KN = { shinL: KNEE_SIGN * sL.knee, shinR: KNEE_SIGN * sR.knee };
+    let oyL = dyL, oyR = dyR;
+    if (FD < 0) {                                       /* mirror: side swap + sign ulta */
+      const swapNeg = (o, a, b) => { const t = o[a]; o[a] = -o[b]; o[b] = -t; };
+      swapNeg(P, 'legL', 'legR');
+      swapNeg(P, 'armL', 'armR');
+      swapNeg(KN, 'shinL', 'shinR');
+      P.torso = -P.torso;
+      const ty = oyL; oyL = oyR; oyR = ty;              /* vertical lift swap (sign same) */
+    }
     try {
-      if (RIG.Pose.setKnee) RIG.Pose.setKnee({ shinL: FD * KNEE_SIGN * sL.knee, shinR: FD * KNEE_SIGN * sR.knee });
-      RIG.Pose.setPair({
-        legL: FD * sL.ang, legR: FD * sR.ang,           /* stance + swing (asli gait, facing ke hisaab se) */
-        armL: -FD * rest + swingL,
-        armR:  FD * rest + swingR,
-        torso: Anim.torso * (0.6 + 0.4 * Math.cos(Anim.phase * 2)),
-        head: 0
-      });
+      if (RIG.Pose.setKnee) RIG.Pose.setKnee(KN);
+      RIG.Pose.setPair(P);
       /* step offsets + poore character ki position */
       if (RIG.Pose.setOffset) {
-        RIG.Pose.setOffset('legL', 0, dyL);
-        RIG.Pose.setOffset('legR', 0, dyR);
+        RIG.Pose.setOffset('legL', 0, oyL);
+        RIG.Pose.setOffset('legR', 0, oyR);
         RIG.Pose.setOffset('armL', 0, 0);
         RIG.Pose.setOffset('armR', 0, 0);
       }
@@ -4507,6 +4521,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
   function startAnim(kind) {
     Anim.kind = kind || 'walk';
+    try { RIG.Layers.setFaceDir(RIG.App && RIG.App.facing ? RIG.App.facing.dir : 1); } catch (e) {}
     Anim.on = true; Anim.last = 0;
     Anim.travel = 0; Anim.dir = 1;      /* v17: centre se shuru, phir aage */
     cancelAnimationFrame(Anim.raf);
@@ -4528,6 +4543,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     speedVal: document.getElementById('ppSpeedVal'),
     mirror: document.getElementById('ppMirror')
   };
+  /* v19.5 · walk panel ka MIRROR switch = facing flip (koi reset nahi, keys safe) */
+  if (panel.mirror) panel.mirror.addEventListener('click', () => { try { RIG.flipFacing(); } catch (e) {} try { RIG.Studio.render(); } catch (e) {} });
 
   /* ---------- WALK auto range panel (single slider, zero confusion) ---------- */
   const smWalk = {
