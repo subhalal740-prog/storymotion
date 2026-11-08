@@ -1381,3 +1381,14 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - **Action Studio (walk) test:** `actionanim.html?action=walk` par wahi image upload → prepImage flood-fill 398,705 px bg hataya · normalize 215×619 px · neck y197 · shoulders · A-pose detect · `WALK · LIVE` chal raha (play enabled), errs 0. Evidence: `R104-ACTION-WALK-FRAMES.png` (4 frames).
 - Evidence: `R104-SAVE-BUTTON.png`, `R104-ANIM-PAGE-LIVE.png`, `R104-ANIM-PAGE.png`, `R104-ACTIONANIM.png`.
 - Backup: `rig-backup-103b.html`.
+
+## Round 105 — putlo ke page se seedha WALK animation (Action Studio), putla auto-load (live: `rig.html` `ba4f690` 311935 B · `actionanim.js` `dab6ea4` 55933 B)
+- User: "humare iss page par walk animation, same putla upload kar do" (screenshot: Animations page, Village Kaka selected).
+- **Naya flow (2 tap):** Tool → Save page → **"Send to Walk Animation →"** (naya blue-purple button) → seedha `actionanim.html?action=walk&char=auto` khulta hai aur **putla apne aap load** ho kar walk chalta hai. Purana "Send to Animations page →" button bhi hai (grey).
+- **Action Studio ab putla khud leta hai:** `actionanim.js` me auto-load — `localStorage['hilao.charImg']` (wahi channel jo Animations page/`hilao.html` use karte hain) se image utha kar `processFile()` chala deta hai. Character na ho to studio pehle jaisa khaali khulta hai aur "Upload puppet" kaam karta hai (test: play disabled + empty state ✓, upload ke baad WALK · LIVE ✓).
+- **Do asli bug fix (Studio ke andar):**
+  1. **Shoulder joint galat jagah** — code "sabse zyada width" wala row shoulder maanta tha; arms-down (A-pose) me sabse chauda hissa **kurta** hota hai, isliye shoulder ~44px neeche baith jata tha → walk par kurta beech se phool jata tha. Ab neck ke baad **pehla row jo max width ka 92%** ho = shoulder (y 332.9 → **288.9**, asli kandha).
+  2. **Walk bahut halka** tha (legs 8°, knee 14°) — dhoti wale character par pair sthir lagte the. Ab **13° hip + 18° knee**, aur **haath pair ke ulte** jhoolte hain (pehle dono ek hi taraf).
+- **Live test (asli character, `start.html` → upload → Send to Walk):** URL `actionanim.html?action=walk&char=auto&name=my-character` ✓ · badge **WALK · LIVE** ✓ · play enabled ✓ · neck y197, shoulders y288.9, A-pose, feet y695 ✓ · **errs 0**.
+- Evidence: `R105-LIVE-WALK-STRIP.png` (live 4 frames), `R105-STUDIO.png`, `R105-WALK-STRIP.png` (before fix), `R104-SAVE-BUTTON.png`.
+- Backups: `rig-backup-105.html`, `actionanim-backup-r105.js`, `actionanim-backup-r105b.js`.
