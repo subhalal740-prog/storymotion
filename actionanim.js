@@ -210,11 +210,19 @@
       if (w > 8 && w < neckW) { neckW = w; neckY = y; }
     }
 
-    /* arms/chest band: neck ke neeche sabse zyada width */
-    let shY = neckY + Hc * 0.06, shW = 0;
+    /* arms/chest band — R105 fix:
+       Pehle yahan "sabse zyada width" wala row liya jata tha. Arms-down (A-pose) me
+       sabse chauda hissa KURTA hota hai (chest ke neeche), isliye shoulder joint
+       ~13% neeche baith jata tha aur walk par kurta beech se phool jata tha.
+       Ab: neck ke baad PEHLA row jo max width ka 92% touch karta hai = shoulder line. */
+    let shW = 0;
     for (let y = neckY + 2; y < neckY + Hc * 0.22; y += 1) {
       const w = smooth(y, 2);
-      if (w > shW) { shW = w; shY = y; }
+      if (w > shW) shW = w;
+    }
+    let shY = neckY + Hc * 0.06;
+    for (let y = neckY + 2; y < neckY + Hc * 0.22; y += 1) {
+      if (smooth(y, 2) >= shW * 0.92) { shY = y; break; }
     }
     const shExt = extAt(shY);
     const cx = Math.round((shExt.lo + shExt.hi) / 2);
@@ -577,11 +585,14 @@
       const a = t * 2 * PI;
       const sw = SIN(a), sw2 = SIN(a + PI);
       const bob = Math.abs(SIN(a * 2));
+      /* R105 · dhoti/lungi wale character par bhi walk saaf dikhe:
+         8° bahut kam tha (pair lagbhag sthir lagte the) — ab 13° swing,
+         ghutna 18° tak, aur haath pair ke ULTE (sw vs sw2) jhoolte hain. */
       return {
-        legL: [sw * 8 * D2R, clamp(-Math.max(0, SIN(a + 1.0)) * 14, -16, 0) * D2R],
-        legR: [sw2 * 8 * D2R, clamp(-Math.max(0, SIN(a + 1.0 + PI)) * 14, -16, 0) * D2R],
-        armL: [sw * 14 * D2R, 10 * D2R],
-        armR: [sw2 * 14 * D2R, 10 * D2R],
+        legL: [sw * 13 * D2R, clamp(-Math.max(0, SIN(a + 1.0)) * 18, -20, 0) * D2R],
+        legR: [sw2 * 13 * D2R, clamp(-Math.max(0, SIN(a + 1.0 + PI)) * 18, -20, 0) * D2R],
+        armL: [sw2 * 15 * D2R, 8 * D2R],
+        armR: [sw * 15 * D2R, 8 * D2R],
         torsoRot: sw * 1.2, torsoSquash: -0.008 * bob,
         headRot: -sw * 0.8, headY: bob * 1.2,
         rootY: -bob * 5, rootX: 0, shadowScale: 1 + bob * 0.05
@@ -1161,6 +1172,26 @@
   if (q.get('action') && ACTIONS.some(a => a.id === q.get('action'))) S.action = q.get('action');
   if (q.get('name')) { S.charName = q.get('name'); $('charName').textContent = q.get('name') + ' · action studio'; }
   markChips();
+
+  /* ---------- R105 · selected putla khud aa jaye ----------
+     Animations page (putlo ka page) se aaya hua character localStorage['hilao.charImg']
+     me hota hai. Pehle Studio khaali khulta tha aur "Upload puppet" dabana padta tha.
+     Ab URL me ?char=auto ho (ya page putla se aaya ho) to wahi character apne aap load
+     ho jata hai. Upload button phir bhi kaam karta hai. */
+  (function autoPuppet() {
+    if (q.get('char') === 'off') return;
+    var src = '';
+    try { src = localStorage.getItem('hilao.charImg') || ''; } catch (e) { return; }
+    if (!src || src.length < 200) return;
+    try {
+      setStatus('run', 'Putla load ho raha hai…', 4);
+      fetch(src).then(function (r) { return r.blob(); }).then(function (blob) {
+        var name = (q.get('name') || 'my-character') + '.png';
+        try { var f = new File([blob], name, { type: blob.type || 'image/png' }); return processFile(f); }
+        catch (e) { blob.name = name; return processFile(blob); }
+      }).catch(function () { setStatus('ok', 'Ready — puppet upload karo', 0); });
+    } catch (e) {}
+  })();
 
   /* debug hook */
   window.__actionStudio = { S, processFile, poseAt, renderNow, exportFrames, saveCurrent, buildRig, analyze };
