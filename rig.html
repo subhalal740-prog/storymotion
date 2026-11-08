@@ -3680,8 +3680,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       g.clearRect(0, 0, c.width, c.height);
       g.drawImage(srcCv, 0, 0, c.width, c.height);
       const k = c._k || 1;
-      g.globalCompositeOperation = 'destination-out';
+      /* "Sirf BG" me preview sirf halka nishaan dikhata hai — character katta hua NAHI dikhta
+         (apply par sirf background jayega). "Kuch bhi" me purana transparent preview. */
+      const preview = mode === 'bg';
+      g.globalCompositeOperation = preview ? 'source-over' : 'destination-out';
       g.lineCap = 'round'; g.lineJoin = 'round';
+      g.strokeStyle = 'rgba(130,240,175,.22)';
+      g.fillStyle = 'rgba(130,240,175,.22)';
       for (const st of strokes) {
         g.lineWidth = Math.max(2, st.r * 2 * k);
         if (st.pts.length === 1) {
