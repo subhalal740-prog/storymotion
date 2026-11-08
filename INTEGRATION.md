@@ -1463,3 +1463,17 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
 - **Test (local + LIVE):** card me painted pixels 50,473 ✓ · 4 frame me pair badalte ✓ · tap → `hilao.html` → `charVisible: true` ✓ · character **kaka** (wahi kapda) ✓ · errs 0 ✓.
 - Evidence: `R112-LIVE-CARD-STRIP.png` (live card), `R112-LIVE-FINAL.png` (live: tap ke baad background par character), `KAKA-CLEAN-12.png` (baked sheet).
 - Backups: `animations-backup-r112.html`; `hilao.html` ka original `/tmp/hilao.html` se dobara bana sakte hain (patch = boot me pickChar block).
+
+## Round 113 — **15-joint rig** Posing Studio me (live `rig.html` `e75949b` 341622 B)
+- User: sirf 6 ring thi aur gardan/kamar par clump hoti thin; poore 15 joint chahiye — Head, Neck, Spine, L/R Shoulder, Elbow, Wrist, Hip, Knee, Ankle — landmark par, labels + manual drag ke saath; **joints sahi hone tak Walk band**; mobile UI same.
+- **JOINTS (15, image-space fractions):** `HD, NK, SP, LS, RS, LE, RE, LW, RW, LH, RH, LK, RK, LA, RA`.
+  - Jagah image ke pixel fraction me (bbox se independent), isliye zoom/scale/resize se nahi khisakti.
+- **Auto-detect (silhouette-based):** `RIG.App.imgData` ke alpha mask se nikalte hain — head centroid, neck (head ke neeche, torso top se pehle), spine (shoulder→hip ka 46%), shoulder (torso top corners se 13% andar), hips (center ±17% torso width), **wrist = torso ke bahar sabse door + neeche wala painted pixel** (T-pose me haath ke end par, latke haath me neeche), elbow = shoulder–wrist ka midpoint, knee = hip+52% leg, ankle = hip+95% leg.
+  - Piece bbox par bharosa **nahi** (pehle arm piece sirf upper-arm tha → wrist galat jagah aa raha tha).
+- **UI (existing mobile design):** naya `JOINT RIG` panel — progress `15/15` + bar, 15 chips (set = green, missing = red, selected = blue outline), `Auto-detect / Manual / Labels ON-OFF`, arrows nudge (▲◀▶▼), `JOINTS DONE`, `RESET JOINTS`. Canvas par har joint green/orange ring + **short code label** (HD, NK, SP…), selected joint ka poora naam **canvas ke upar pill** me (labels overlap na hon).
+- **Manual drag:** joint ko seedha canvas par kheencho (20px hit radius) → wo joint set mark hota hai; ya joint chun kar arrows se 2px steps.
+- **Walk gate (3 layer):** (1) click handler, (2) `startAnim()`, (3) `step()` loop — `jointsGateOk()` = 15/15 ready **AND** `jointsConfirmed` (Joints done dabaya). Block hone par toast + panel par scroll; `#qpRow` dim + note.
+- **Purani rings** joints overlay ke saath halki (alpha .34, radius 10) — clutter gaya.
+- **Test (local + LIVE):** 15 joints detect ✓ · T-pose (haath bahar) aur haath-latke character **dono** par sahi ✓ · drag (14px) se joint khiska ✓ · arrows +2px ✓ · labels ON/OFF ✓ · Walk block (`animOn:false, pose: idle`) ✓ · Joints done ke baad Walk (`cycle: walk`) ✓ · errs **0** ✓.
+- Evidence: `R113-FINAL.png` (dono characters), `R113-LIVE-LOCK.png`, `R113-LIVE-WALK.png`.
+- Backup: `rig-backup-r113.html`; localStorage keys `rigstudio.joints.v1` / `rigstudio.joints.ok.v1`.
