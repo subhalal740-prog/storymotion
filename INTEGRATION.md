@@ -1301,3 +1301,26 @@ Live `9576981` par asli flow chala kar naapa (360×800 + 390×844, dono 0 error)
   - LIVE par bhi same: erased 3,131 · coreKept 100% · pieces 8 · errs 0.
   - Regression: arm-stroke coreKept 100% ✓, halo stroke 1,196 px ✓, nav 5/5 ✓, errs 0 (local + live).
 - Evidence: `R99B-POCKET-PROOF.png` (pehle safed patti / baad me gayab, character same), `R99-CORE-LOCK-PROOF.png` (haath par brush — kuch nahi katta).
+
+## Round 100 — MOBILE SCROLL FIX: canvas par ungli se scroll karne par brush chal raha tha (live `44e7f74`, 298429 B)
+- User: "ungli se page upar scroll karte hain to canvas par lines ban jati hain, page atak jata hai."
+- Wajah: canvas par `touch-action:none` + `pointerdown` me turant `preventDefault()` + `setPointerCapture()` → browser ko scroll karne ka mauka hi nahi milta tha; har touch stroke ban jata tha.
+- Fix (3 layer):
+  1. **CSS:** `#eraseCv` par `touch-action: pan-y` — vertical pan browser khud leta hai (page scroll), horizontal brush ke paas.
+  2. **Gesture gate (naya):** `pointerdown` par sirf gesture record hota hai (`isDrawing=false`). Pehle ~10px par decide:
+     - `|dy| > 10` aur `|dy| > 1.2|dx|` → **SCROLL**: brush band, `isDrawing=false`, adhoora stroke hata do, page scroll ko jaane do.
+     - `|dx| > 8` aur `|dx| ≥ |dy|` → **DRAW**: tabhi stroke shuru + pan-y `preventDefault` (diagonal me brush na chale).
+     - Touch par `pointerdown` me preventDefault **nahi** (mouse par haan).
+  3. `pointercancel` (browser ne scroll ke liye gesture liya) + `window scroll` listener → brush turant band. Chhota tap (<8px) = ek dab (jaan-boojh kar).
+- Hint text me bhi likha: "page scroll karna ho to ungli se seedha upar-neeche kheencho — brush nahi chalega."
+- **Test report (CDP touch events, mobile context 390×780 aur 360×640):**
+  | test | BEFORE (purana) | AFTER (live) |
+  |---|---|---|
+  | canvas par vertical swipe (neeche scroll) | page **0px** scroll, **1 stroke** ban gaya | page **+306px** scroll, **0 stroke** |
+  | wapas upar swipe | 0px, 2 strokes | **−304px**, 0 stroke |
+  | seedha horizontal drag | 1 stroke | 1 stroke (kaam karta hai) |
+  | scroll ke baad thoda side | — | scroll chalta raha, koi stroke nahi |
+  | chhota tap | — | 1 dab |
+  | mouse se draw | chalta | chalta |
+  | regression | — | nav 5/5 ✓, core-lock 100% ✓, eraser apply ✓, walk mirror ✓, `errs 0` |
+- Evidence: `R100-SCROLL-OK.png` (scroll ke baad page neeche aa gaya, `0 strokes`).
