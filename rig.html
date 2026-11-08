@@ -1191,7 +1191,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         </div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px">
           <span class="tag">Ring pakad ke ghumao</span>
-          <label class="sw" style="margin-left:auto"><input type="checkbox" id="ringToggle" checked> Rings</label>
+          <label class="sw" style="margin-left:auto"><input type="checkbox" id="ringToggle"> Rings</label>
           <label class="sw"><input type="checkbox" id="studioAA" checked> AA</label>
         </div>
         <div class="kv" style="margin-top:10px"><span>scale</span><b id="scaleMeta">—</b></div>
@@ -2858,7 +2858,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
      smoothing quality, so rotated edges stay clean.                          */
   const Studio = (function () {
     let cv, ctx, bbox = null, scale = 1, baseScale = 1, zoom = 1, DPR = 1;
-    let ringsOn = true, aaOn = true;
+    let ringsOn = false, aaOn = true;   /* R118e · default OFF — sirf 5px dots dikhein */
     let drag = null, hoverId = null;
 
     function bind(canvas) { cv = canvas; ctx = cv.getContext('2d'); }
@@ -3196,7 +3196,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     ];
     let joints = {};              /* id -> {x,y} image space me */
     let jointsReady = {};         /* id -> true (sahi jagah set hai) */
-    let jointSel = null, labelsOn = true, jointsConfirmed = false, mode = 'auto', jointsVisible = true;
+    let jointSel = null, labelsOn = false, jointsConfirmed = false, mode = 'auto', jointsVisible = true;
     let jDrag = null;
 
     function partById(id) { const l = Layers.order(); for (const p of l) if (p.id === id) return p; return null; }
@@ -5847,7 +5847,19 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     U.toast('pose JSON exported');
   });
 
-  U.$('ringToggle').addEventListener('change', (e) => Studio.setRings(e.target.checked));
+  U.$('ringToggle').addEventListener('change', (e) => {
+    Studio.setRings(e.target.checked);
+    try { localStorage.setItem('rigstudio.rings.v1', e.target.checked ? '1' : '0'); } catch (er) {}
+  });
+  /* R118e · user ki choice yaad rakho (default = OFF = saaf character) */
+  (function restoreRingPref() {
+    try {
+      const v = localStorage.getItem('rigstudio.rings.v1');
+      const on = (v === '1');
+      const el = U.$('ringToggle');
+      if (el) { el.checked = on; Studio.setRings(on); }
+    } catch (er) {}
+  })();
   U.$('studioAA').addEventListener('change', (e) => Studio.setAA(e.target.checked));
 
   document.addEventListener('keydown', (e) => {
