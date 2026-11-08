@@ -2747,13 +2747,18 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     let offset = {};
     RING_IDS.forEach((k) => { offset[k] = { dx: 0, dy: 0 }; });
 
+    /* R121 · per-piece SCALE (front-view "aage aaya" feel — user ka idea).
+       Pair jab saamne aata hai to thoda bada, peeche jata hai to thoda chhota. */
+    let pscale = {};
+    RING_IDS.forEach((k) => { pscale[k] = 1; });
     let hist = [], idx = -1, limit = 80;
     let onChange = () => {};
 
     function capture() {
       const off = {};
       RING_IDS.forEach((k) => { off[k] = { dx: offset[k].dx, dy: offset[k].dy }; });
-      return { v: 3, rotation: Object.assign({}, rotation), knee: Object.assign({}, knee),
+      return { v: 4, rotation: Object.assign({}, rotation), knee: Object.assign({}, knee),
+               scale: Object.assign({}, pscale),
                order: Layers.idsInOrder(),
                root: { x: root.x, y: root.y }, offset: off };
     }
@@ -2762,6 +2767,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       RING_IDS.forEach((k) => { if (typeof rotation[k] !== 'number') rotation[k] = 0; });
       knee = Object.assign({}, snap.knee || {});
       KNEE_IDS.forEach((k) => { if (typeof knee[k] !== 'number') knee[k] = 0; });
+      pscale = Object.assign({}, snap.scale || {});
+      RING_IDS.forEach((k) => { if (typeof pscale[k] !== 'number' || !isFinite(pscale[k])) pscale[k] = 1; });
       root = snap.root ? { x: +snap.root.x || 0, y: +snap.root.y || 0 } : { x: 0, y: 0 };
       RING_IDS.forEach((k) => {
         const o = (snap.offset && snap.offset[k]) || { dx: 0, dy: 0 };
@@ -2799,11 +2806,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       idx = hist.length - 1;
       onChange();
     }
-    function init() { hist = []; idx = -1; RING_IDS.forEach((k) => rotation[k] = 0); KNEE_IDS.forEach((k) => knee[k] = 0); clearRoot(); push('init'); }
+    function init() { hist = []; idx = -1; RING_IDS.forEach((k) => { rotation[k] = 0; pscale[k] = 1; }); KNEE_IDS.forEach((k) => knee[k] = 0); clearRoot(); push('init'); }
     function undo() { if (idx > 0) { idx--; apply(hist[idx].snap); return true; } return false; }
     function redo() { if (idx < hist.length - 1) { idx++; apply(hist[idx].snap); return true; } return false; }
     function reset(render) {
-      RING_IDS.forEach((k) => { rotation[k] = 0; });
+      RING_IDS.forEach((k) => { rotation[k] = 0; pscale[k] = 1; });
       KNEE_IDS.forEach((k) => { knee[k] = 0; });
       clearRoot();
       Layers.resetOrder();
@@ -2820,6 +2827,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function setPair(map) { Object.keys(map).forEach((k) => { rotation[k] = map[k] || 0; }); }
     /* knee: shin ka angle thigh ke relative (rad). Parent chain render me lagti hai. */
     function setKnee(map) { Object.keys(map).forEach((k) => { knee[k] = +map[k] || 0; }); }
+    function setScale(id, v) { pscale[id] = (typeof v === 'number' && isFinite(v)) ? v : 1; }
+    function getScale(id) { return (typeof pscale[id] === 'number') ? pscale[id] : 1; }
+    function setScaleMap(map) { Object.keys(map).forEach((k) => { pscale[k] = (typeof map[k] === 'number' && isFinite(map[k])) ? map[k] : 1; }); }
     function getKnee(id) { return knee[id] || 0; }
     function kneePair(map) { Object.keys(map).forEach((k) => { knee[k] = +map[k] || 0; }); }
     function setMirror(on) { mirrorOn = !!on; }
@@ -2849,6 +2859,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     }
     return { RING_IDS, KNEE_IDS, PARENT, init, push, undo, redo, reset, setAngle, setPair, setMirror, isMirror, get, getRotation,
              setKnee, getKnee, kneePair, capture,
+             setScale, getScale, setScaleMap,
              setRoot, getRoot, setOffset, getOffset, clearRoot,
              history, setOnChange, save, load, exportJSON, importJSON };
   })();
@@ -2998,6 +3009,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         ctx.save();
         const dx = (p.ox !== undefined ? p.ox : p.x), dy = (p.oy !== undefined ? p.oy : p.y);
         const dw = (p.ow !== undefined ? p.ow : p.w), dh = (p.oh !== undefined ? p.oh : p.h);
+        /* R121 · SCALE (perspective): piece apne PIVOT se bada/chhota hota hai.
+           Cloth ko chhod ke — sirf joints wale pieces. Chain (thigh->shin->foot)
+           apne aap sahi rehti hai, kyunki har piece apne parent ke pivot par baithta hai. */
+        const sc2 = (p.kind === 'cloth') ? 1 : (Pose.getScale ? Pose.getScale(p.id) : 1);
         if (p.kind === 'cloth' || !p.pivot) {
           const o = toScreen(dx, dy);
           ctx.drawImage(p.canvas, o.x + rx + ox, o.y + ry + oy, dw * scale, dh * scale);
@@ -3007,6 +3022,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           const own = toScreen(p.pivot.x, p.pivot.y);  /* canvas ka content apne hi pivot se offset hota hai */
           ctx.translate(pv.x + rx + ox, pv.y + ry + oy);
           ctx.rotate(rot);
+          if (sc2 !== 1) ctx.scale(sc2, sc2);
           const o = toScreen(dx, dy);
           ctx.drawImage(p.canvas, o.x - own.x, o.y - own.y, dw * scale, dh * scale);
         }
@@ -3768,7 +3784,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         else if (!armM) fail('sh' + side, 'arm part nahi mila');
         else {
           const inMask = inMaskAt(armM, jS, Math.max(7, (armB ? armB.w : 40) * 0.22));
-          const inTop = armB ? (jS.y >= armB.y0 - 4 && jS.y <= armB.y0 + armB.h * 0.18) : true;
+          /* R121 · T-pose (haath side me faila hua) me arm piece "chhota + chauda"
+             hota hai — shoulder uske top ke 19-25% par baithta hai, 18% ke andar
+             nahi. Limb pieces ke liye 30% tak allow; vertical arm ke liye 18% hi. */
+          const armWide = armB ? (armB.w > armB.h * 1.6) : false;
+          const topFrac = armWide ? 0.30 : 0.18;
+          const inTop = armB ? (jS.y >= armB.y0 - 4 && jS.y <= armB.y0 + armB.h * topFrac) : true;
           const inTorso = boxT ? (jS.x >= boxT.x0 + boxT.w * 0.05 && jS.x <= boxT.x1 - boxT.w * 0.05) : true;
           const bad = [];
           if (!inTop) bad.push('arm ke top par nahi');
@@ -7024,6 +7045,26 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       P.legL = fvClamp(P.legL * FV_LEG);
       P.legR = fvClamp(P.legR * FV_LEG);
     }
+    /* ================= R121 · FRONT-VIEW PERSPECTIVE =================
+       User ka idea: front view me pair "aage" hai ya "peeche" wo SIDE se nahi,
+       SIZE se dikhta hai (jo paas aata hai wo bada). Isliye:
+         • sL.ang > 0  -> ye pair saamne  -> thoda BADA
+         • sL.ang < 0  -> ye pair peeche  -> thoda CHHOTA
+       Scale clamp 0.90–1.06 — bahut halka, taaki character "phoola" na lage.
+       Chain-safe: shin/foot apne parent (thigh) ke pivot par baithte hain.
+       ============================================================== */
+    const SC = { legL: 1, legR: 1, shinL: 1, shinR: 1, armL: 1, armR: 1 };
+    if (FRONTVIEW) {
+      const persp = (ang) => {
+        const n = ang / Math.max(0.06, A);                    /* -1..1 (saamne/peeche) */
+        return Math.max(0.90, Math.min(1.06, 1 + n * 0.065));
+      };
+      SC.legL = persp(sL.ang); SC.legR = persp(sR.ang);
+      SC.shinL = SC.legL;  SC.shinR = SC.legR;               /* ghutna + paer saath badhte hain */
+      /* haath ulte pair ke saath — jitna haath aage, utna bada (natural) */
+      SC.armL = persp(sR.ang) * 0.5 + 0.5;
+      SC.armR = persp(sL.ang) * 0.5 + 0.5;
+    }
     let oyL = dyL, oyR = dyR;
     if (FD < 0) {                                       /* mirror: side swap + sign ulta */
       const swapNeg = (o, a, b) => { const t = o[a]; o[a] = -o[b]; o[b] = -t; };
@@ -7048,6 +7089,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       } else {
         RIG.Pose.setPair(P);
       }
+      if (RIG.Pose.setScaleMap) RIG.Pose.setScaleMap(SC);     /* R121 · perspective */
       /* step offsets + poore character ki position */
       if (RIG.Pose.setOffset) {
         RIG.Pose.setOffset('legL', 0, oyL);
@@ -7115,6 +7157,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       if (RIG.Pose.setKnee) RIG.Pose.setKnee({ shinL: 0, shinR: 0 });
       const lock0 = (ARM_POSTURE === 'down') ? 0 : ARM_DOWN_LOCK;
       RIG.Pose.setMirror(false);
+      if (RIG.Pose.setScaleMap) RIG.Pose.setScaleMap({ legL: 1, legR: 1, shinL: 1, shinR: 1, footL: 1, footR: 1, armL: 1, armR: 1, foreL: 1, foreR: 1 });
       RIG.Pose.setPair({ legL: 0, legR: 0, shinL: 0, shinR: 0, footL: 0, footR: 0,
                          armL: -lock0, armR: lock0, foreL: 0, foreR: 0, torso: 0, head: 0 });
       RIG.Pose.setMirror(true);
