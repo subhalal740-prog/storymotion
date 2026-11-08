@@ -6837,7 +6837,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const sR = legPhase(u + 0.5);
 
     /* R119 · pair zameen se itna hi utha (pehle 136px tak hawa me latakta tha) */
-    const liftAmp = BH * (isRun ? 0.024 : 0.014) * (FRONTVIEW ? 0.45 : 1);
+    /* R120b · front view me pair SIDE me ghum nahi sakta, isliye "kadam" sirf
+       UPAR-NEECHE se dikhta hai. Lift thoda bada (2%) — dono pair 180° ULTE
+       phase me (sR = legPhase(u+0.5)), taaki ek utha ho to doosra zameen par. */
+    const liftAmp = BH * (isRun ? 0.024 : 0.014) * (FRONTVIEW ? 1.9 : 1);
     /* bob — per step: down par neecha, passing par ooncha */
     const bobAmp = BH * (isRun ? 0.012 : 0.007);
     const rise = bobAmp * (0.5 - 0.5 * Math.cos(Math.PI * 2 * 2 * (u - 0.10)));
@@ -6904,6 +6907,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       sL.angJ = toRot('L', sL.ang * (A15 / Math.max(0.06, A)));
       sR.angJ = toRot('R', sR.ang * (A15 / Math.max(0.06, A)));
     }
+    /* R120 · FRONT VIEW me tang ko SIDE me ghumana hi galat hai — pair ek dusre
+       me ghusta hai aur "tang tootne" jaisa dikhta hai. Front view me:
+         • thigh / knee / ankle ka koi side rotation nahi
+         • pair sirf UPAR-NEECHE uthta hai (kadam uthana) + haath swing karte hain
+       Side (profile) view me poora gait pehle jaisa chalta hai. */
+    const NO_TURN = FRONTVIEW;
     const P = {
       legL: LG15 ? sL.angJ : sL.ang, legR: LG15 ? sR.angJ : sR.ang,   /* stance + swing (asli gait) */
       armL: -rest + swingL,
@@ -6973,8 +6982,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         });
       } catch (e) { AR15 = null; }
     }
-    const KN = { shinL: KNEE_SIGN * sL.knee, shinR: KNEE_SIGN * sR.knee };
-    if (LG15) {
+    const KN = { shinL: NO_TURN ? 0 : KNEE_SIGN * sL.knee, shinR: NO_TURN ? 0 : KNEE_SIGN * sR.knee };
+    if (LG15 && !NO_TURN) {
       /* ghutna: shin ki lambai ke hisaab se bend (chhota paer = kam bend) */
       const kScale = Math.max(0.55, Math.min(1.35, ((LG15.L.t2 || 120) / 130)));
       KN.shinL = KNEE_SIGN * sL.knee * kScale;
@@ -6995,10 +7004,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       return Math.max(-0.35, Math.min(0.35, target - shinAbs));
     };
     const FT = { footL: 0, footR: 0 };
-    if (LG15) {
+    if (LG15 && !NO_TURN) {
       FT.footL = footDelta(sL, KN.shinL, P.legL);
       FT.footR = footDelta(sR, KN.shinR, P.legR);
     }
+    if (NO_TURN) { P.legL = 0; P.legR = 0; }        /* R120 · tang seedhi, sirf upar-neeche */
     let oyL = dyL, oyR = dyR;
     if (FD < 0) {                                       /* mirror: side swap + sign ulta */
       const swapNeg = (o, a, b) => { const t = o[a]; o[a] = -o[b]; o[b] = -t; };
@@ -7083,6 +7093,19 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     Anim.on = false; cancelAnimationFrame(Anim.raf);
     try { RIG.Studio.setJointsVisible(true); } catch (e) {}
     try { if (RIG.Pose.clearRoot) RIG.Pose.clearRoot(); } catch (e) {}
+    /* R120 · SAAF STOP — pehle walk ka aakhri pose (cross kiye pair, ghutna
+       muda, paer hawa me) chipka rehta tha. User ko lagta tha "tang toot gayi".
+       Ab stop par pose wapas REST (photo jaisa) ho jata hai. */
+    try {
+      if (RIG.Pose.setKnee) RIG.Pose.setKnee({ shinL: 0, shinR: 0 });
+      const lock0 = (ARM_POSTURE === 'down') ? 0 : ARM_DOWN_LOCK;
+      RIG.Pose.setMirror(false);
+      RIG.Pose.setPair({ legL: 0, legR: 0, shinL: 0, shinR: 0, footL: 0, footR: 0,
+                         armL: -lock0, armR: lock0, foreL: 0, foreR: 0, torso: 0, head: 0 });
+      RIG.Pose.setMirror(true);
+      if (RIG.Pose.setOffset) { RIG.Pose.setOffset('legL', 0, 0); RIG.Pose.setOffset('legR', 0, 0); }
+      if (RIG.Pose.setRoot) RIG.Pose.setRoot(0, 0);
+    } catch (e) {}
     if (!silent) { try { RIG.Studio.render(); } catch (e) {} }
   }
 
