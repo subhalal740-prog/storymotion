@@ -6296,7 +6296,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           /* render convention: piece apni ORIGINAL direction (th0) se r ghumta hai */
           const armRot   = (Math.PI / 2 + A1) - th0;
           const foreTotal = (Math.PI / 2 + A2 + FL) - th0;
-          const foreRot  = foreTotal - armRot;
+          /* R116 · forearm ka rotation ABSOLUTE chahiye (Studio/PivotParent chain use karti hai).
+             Pehle yahan relative (foreTotal - armRot) ja raha tha — arms-down me arm ~0 hone se
+             farq nahi dikhta tha, par T-pose me forearm 90° galat mudta tha. */
+          const foreRot  = foreTotal;
           AR15[armId] = armRot;
           AR15[foreId] = foreRot;
           /* debug: asli joint positions (target) */
