@@ -1516,3 +1516,32 @@ Purana walk **nahi toota**: split na ho to wahi 6-part gait chalti hai (fallback
 
 Evidence: `R114-LIVE-BOTH.png` (live, dono characters), `R114-ZOOM-FINAL2.png` (zoom), `R114-FINAL-WALK.png`, `R114-WALK15-TPOSE.png`.
 Backups: `rig-backup-r113.html`, `rig-backup-r114.html`, `rig-backup-r114b.html`.
+
+---
+
+## R115 · LEG JOINTS → ENGINE (live `e03f60e`, 382,796 B)
+
+**Kya kiya:** Universal Master Ring Rig ke 6 leg joints (hip/knee/ankle × L/R) ab asli leg pieces ke pivots hain, aur walk engine inhi fitted joints se chalti hai.
+
+1. **Joint → pivot sync** — `window.__SYNC_LEG_PIVOTS()`: hipL/R → `legL/legR`, knL/R → `shinL/shinR`, anL/R → `footL/footR` ka asli pivot. Joint drag = pivot move (koi naya rig nahi).
+2. **Foot split** — `splitFeet()` (12 pieces: legL, footL, shinL, armL, foreL, torso, legR, footR, shinR, armR, foreR, head). Cut = knee→ankle line ka 88%, pale (dhoti/anti-alias) pixels shin me rehte hain, shin ko ankle se 8px neeche **skin collar** milta hai (foot shin ke neeche layer) → ghumane par seam/gap nahi.
+3. **Engine** — `step()` me LG15 geometry (hip-knee-ankle ki asli doori, `th0`), thigh swing `A15 = clamp(0.10..0.46, …)`, knee `kScale = clamp(0.55..1.35, t2/130)`, ankle roll (stance flat = 0, swing me 35% shin + clamp ±0.35 rad).
+4. **Chain** — Studio `PARENT` me `footL/footR` (3-level: thigh → shin → foot), `partPivot` recursive, `MIRROR_ID` me foot pair.
+5. **Fallback** — split na ho / purane pieces → wahi 8-piece purana gait (`legL/shinL/...`), bina error.
+
+**Test (headless, 412×915, local + live):**
+
+| Test | Natija |
+|---|---|
+| Knee joint +70px (869,811 → 869,881) | `shinL` pivot **811 → 881** ✓ |
+| Hip joint +40px (878,628 → 878,668) | `legL` pivot **628 → 668** ✓ |
+| Ankle joint +25px (869,962 → 869,987) | `footL` pivot **962 → 987** ✓ |
+| Walk pose values (live, kaka) | legL −0.238 / kneeL −0.064 / footL 0.302 (gair-zero) ✓ |
+| Ankle gap (6 samples) | **0.00 px** (dono pair) ✓ |
+| 8s playback | 434 frames (~54 fps), errs **0** ✓ |
+| 6-part fallback | 8 pieces, `moved:true`, errs 0 ✓ |
+| T-pose character (live) | 12 pieces, sync `ok:6`, 220 frames, maxGap 0 ✓ |
+| Village Kaka (live) | 12 pieces, sync `ok:6`, 207 frames, maxGap 0, errs 0 ✓ |
+
+Evidence: `R115-LIVE-BOTH.png`, `R115-JOINT-PROOF.png`, `R115-WALK-ZOOM.png`, `R115-VS-R114.png`, `R115-TEST-WALK-kaka.mp4`.
+Backup: `gh-upload/rig-backup-r115-pre.html` (R114 live), `rig-backup-r115-final-local.html`.
