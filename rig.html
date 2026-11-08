@@ -6912,7 +6912,17 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
          • thigh / knee / ankle ka koi side rotation nahi
          • pair sirf UPAR-NEECHE uthta hai (kadam uthana) + haath swing karte hain
        Side (profile) view me poora gait pehle jaisa chalta hai. */
+    /* R120c · FRONT VIEW = "GHUMAO, PAR CROSS MAT KARO"
+       Pehle (R120) tang ka turn poora band kar diya tha -> user ne sahi kaha:
+       "sirf paon upar-neeche ho rahe hain". Ab:
+         • leg swing chhoti (0.62x) + HARD CLAMP ±0.15 rad
+           (leg ~150px, pair ke beech gap ~45px -> 0.15 rad se zyada = cross)
+         • ghutna halka (0.40x) — "toota hua" na lage
+         • paer ka roll halka (0.55x)
+       Isse pair ghumta bhi hai aur ek dusre me ghusta bhi nahi. */
     const NO_TURN = FRONTVIEW;
+    const FV_LEG = 0.62, FV_CLAMP = 0.15, FV_KNEE = 0.40, FV_FOOT = 0.55;
+    const fvClamp = (v) => Math.max(-FV_CLAMP, Math.min(FV_CLAMP, v));
     const P = {
       legL: LG15 ? sL.angJ : sL.ang, legR: LG15 ? sR.angJ : sR.ang,   /* stance + swing (asli gait) */
       armL: -rest + swingL,
@@ -6982,10 +6992,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
         });
       } catch (e) { AR15 = null; }
     }
-    const KN = { shinL: NO_TURN ? 0 : KNEE_SIGN * sL.knee, shinR: NO_TURN ? 0 : KNEE_SIGN * sR.knee };
-    if (LG15 && !NO_TURN) {
+    const KN = { shinL: KNEE_SIGN * sL.knee * (NO_TURN ? FV_KNEE : 1),
+                 shinR: KNEE_SIGN * sR.knee * (NO_TURN ? FV_KNEE : 1) };
+    if (LG15) {
       /* ghutna: shin ki lambai ke hisaab se bend (chhota paer = kam bend) */
-      const kScale = Math.max(0.55, Math.min(1.35, ((LG15.L.t2 || 120) / 130)));
+      const kScale = Math.max(0.55, Math.min(1.35, ((LG15.L.t2 || 120) / 130))) * (NO_TURN ? FV_KNEE : 1);
       KN.shinL = KNEE_SIGN * sL.knee * kScale;
       KN.shinR = KNEE_SIGN * sR.knee * kScale;
     }
@@ -7004,11 +7015,15 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       return Math.max(-0.35, Math.min(0.35, target - shinAbs));
     };
     const FT = { footL: 0, footR: 0 };
-    if (LG15 && !NO_TURN) {
-      FT.footL = footDelta(sL, KN.shinL, P.legL);
-      FT.footR = footDelta(sR, KN.shinR, P.legR);
+    if (LG15) {
+      const fs2 = NO_TURN ? FV_FOOT : 1;
+      FT.footL = footDelta(sL, KN.shinL, P.legL) * fs2;
+      FT.footR = footDelta(sR, KN.shinR, P.legR) * fs2;
     }
-    if (NO_TURN) { P.legL = 0; P.legR = 0; }        /* R120 · tang seedhi, sirf upar-neeche */
+    if (NO_TURN) {                                  /* R120c · ghumo, par cross mat karo */
+      P.legL = fvClamp(P.legL * FV_LEG);
+      P.legR = fvClamp(P.legR * FV_LEG);
+    }
     let oyL = dyL, oyR = dyR;
     if (FD < 0) {                                       /* mirror: side swap + sign ulta */
       const swapNeg = (o, a, b) => { const t = o[a]; o[a] = -o[b]; o[b] = -t; };
