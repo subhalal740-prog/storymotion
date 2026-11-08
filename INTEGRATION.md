@@ -1568,3 +1568,25 @@ Backup: `gh-upload/rig-backup-r115-pre.html` (R114 live), `rig-backup-r115-final
 
 Report: `R116-TEST-REPORT.md`. Evidence: `R116-LIVE-MATRIX.png`, `R116-JOINTS-REST.png`, `R116-MOBILE-412.png`, `test116/`.
 Backup: `rig-backup-r116-pre.html`.
+
+## R116-B · SHADED 3D-STYLE CHARACTER (red-shirt man) — aapki di hui image
+
+**Image:** 1182×1330 RGBA, 79% transparent, `testchars/ch-redman-shaded.png`, sha `049994f4a74e67ba`. Rig me kuch nahi badla (live `8ff5817`).
+
+**Sabse zaroori baat:** ye image **neutral pose me nahi** — pehle se mid-stride hai (back shoe top y=1140, front shoe top y=1225). Isliye auto-detect ko ankles ek hi height par rakhne padte hain aur **L ankle dono taangon ke beech khali jagah** me girta hai.
+
+| Check | Natija |
+|---|---|
+| Alignment (auto) | PARTIAL — 15/15 set, dy=0, order sahi; **anL body par nahi** |
+| Walk 8s | PASS — 480 frames @60fps, thigh .311 / knee .740, errs 0 |
+| Run | PASS |
+| Arm↔opposite leg | PASS — −0.901 / −0.800 (control +0.803) |
+| Foot grounding / gaps | gap **0.00 px** PASS, par **footL split fail** → 11 pieces, sync ok:5 |
+| Original PNG | PASS (sha unchanged) |
+| Mobile 412×915 | PASS — overflow 0 |
+
+**Ankles manually set (UI se, user jaisa karega):** 12 pieces, sync **ok:6**, footL 1,137 px, footR 5,940 px, gap 0.00 px → **5.5/6 PASS**.
+
+**Visual:** 3× zoom par black wedge/gap **nahi** (1× par downscale artifact); ~55 px stray fragment har frame me (foot/shin cleanup pending); 3D depth (back shoe upar/chhota) 2D rig preserve nahi kar sakta.
+
+Report: `R116B-REDMAN-TEST-REPORT.md`. Evidence: `R116-REDMAN-SUMMARY.png`, `R116-REDMAN-AUTO-VS-FIXED.png`, `R116-REDMAN-FEET.png`, `R116-REDMAN-MOBILE.png`.
