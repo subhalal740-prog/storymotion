@@ -115,7 +115,7 @@
 .putlaCard .putlaArt img{ max-width:100%; max-height:100%; object-fit:contain; }
   /* R108 · chalta hua putla — sprite sheet (12 frames, horizontal strip) */
   /* R109 · safed putla (AutoDraft jaisa) — canvas par seedha draw hota hai */
-  .putlaArt .spriteCv{ display:block; max-width:100%; max-height:100%; }
+  .putlaArt .spriteCv{ display:block; width:100%; height:100%; object-fit:contain; }
   .putlaLiveBadge{ position:absolute; top:8px; right:8px; font-size:9px; font-weight:800; letter-spacing:.5px;
     padding:3px 7px; border-radius:999px; background:rgba(124,92,255,.9); color:#fff; }
 .putlaCard .putlaLbl{ align-self:flex-start; font-size:10px; line-height:1; color:#c6ccd3; }
@@ -1019,9 +1019,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       return;
     }
     var tex = charImg || charTex;   /* selected character pehle, IDB ka purana tex baad me */
-    /* R109 · user: "ye humko nahi chahiye, only 1 — Walk safed putla bilkul AutoDraft jaisa".
-       Isliye card me hamesha ek SAFED PUTLA walk chalta hai (character ka photo nahi). */
-    var art = '<canvas class="spriteCv" width="320" height="440" role="img" aria-label="walk animation"></canvas>';
+    /* R112 · user: "demo wala real character card par chalta dikhe, tap par
+       background par character aaye". Card me asli chalta hua character
+       (rig se bake kiya 12-frame walk) + label = us character ka naam. */
+    var art = '<canvas class="spriteCv" width="380" height="500" role="img" aria-label="walk animation"></canvas>';
     putlaWrap.innerHTML =
       '<button class="putlaCard" id="putlaTap" type="button" style="position:relative" aria-label="walk animation">' +
         '<span class="putlaLiveBadge">WALK</span>' +
@@ -1031,7 +1032,41 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     var tap = document.getElementById('putlaTap');
     if (tap) tap.onclick = pickPutla;
     if (useBtn) useBtn.disabled = true;
-    startWhiteWalk();
+    startKakaWalk();
+  }
+
+  /* ---------------------------------------------------------------------
+     R112 · CHAR WALK — asli character ka 12-frame walk sheet (rig.html se
+     baked, background transparent). Sheet na mile to safed putla fallback.
+     --------------------------------------------------------------------- */
+  var KAKA_SHEET = 'anim/kaka-walk.png?v=2';
+  var KAKA_N = 12, KAKA_FW = 190, KAKA_FH = 250;
+  var kakaRAF = null;
+
+  function startKakaWalk() {
+    var cv = document.querySelector('#putlaWrap .spriteCv');
+    if (!cv) return;
+    if (kakaRAF) { cancelAnimationFrame(kakaRAF); kakaRAF = null; }
+    if (wwRAF) { cancelAnimationFrame(wwRAF); wwRAF = null; }
+    var ctx = cv.getContext('2d');
+    var img = new Image();
+    var fallback = false;
+    img.onerror = function () { fallback = true; startWhiteWalk(); };
+    img.onload = function () {
+      if (fallback) return;
+      var W = cv.width, H = cv.height;
+      var i = 0, last = performance.now();
+      var STEP = 100;               /* ek frame = 100ms -> 10 fps */
+      function tick(now) {
+        if (!document.body.contains(cv)) { kakaRAF = null; return; }
+        if (now - last >= STEP) { i = (i + 1) % KAKA_N; last = now; }
+        ctx.clearRect(0, 0, W, H);
+        ctx.drawImage(img, i * KAKA_FW, 0, KAKA_FW, KAKA_FH, 0, 0, W, H);
+        kakaRAF = requestAnimationFrame(tick);
+      }
+      kakaRAF = requestAnimationFrame(tick);
+    };
+    img.src = KAKA_SHEET;
   }
 
   /* ---------------------------------------------------------------
@@ -1201,6 +1236,15 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     if (!a) a = { id: 'idle', name: 'Idle' };
     var view2 = (typeof view === 'string' && view) ? view : 'front';
     var tex = charImg || charTex;   /* selected character pehle, IDB ka purana tex baad me */
+    if (!tex) {
+      /* R112 · koi upload nahi hai to card wala hi character background par jaye —
+         taaki tap karte hi character dikhe (khaali na rahe). Yahi demo character
+         (rig se baked, transparent PNG) repo me hai: anim/kaka.png */
+      try {
+        var kc = localStorage.getItem('hilao.demoChar');
+        tex = kc || 'anim/kaka.png?v=2';
+      } catch (e) { tex = 'anim/kaka.png?v=2'; }
+    }
     /* Order 60: editor me character ASLI layer ban kar jata hai (timeline me uski
        apni track), background-ghost nahi. Isliye hilao.sel nahi likhte. */
     try {
