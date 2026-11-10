@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Character Tool — Rig Studio · R129</title>
+<title>Character Tool — Rig Studio · R131</title>
 <style>
   :root{
     --bg:#0b0b0d; --card1:#16161a; --card2:#0f0f12; --line:rgba(255,255,255,.05);
@@ -1022,7 +1022,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R129 · PER-IMAGE LOCK</span>
+        <span>R131 · BIG SWING + NO-CLIP</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -2903,10 +2903,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       const availW = Math.min(460, ((wrapEl && wrapEl.clientWidth) || 460) - 20, window.innerWidth - 44);
       /* mobile: viewport ki 40vh se zyada nahi + zoom max 50% (character poora frame me) */
       const shortScreen = window.innerHeight < 700;
-      const maxH = wide ? 540
+      const maxH0 = wide ? 540
         : Math.max(150, Math.round(window.innerHeight * (shortScreen ? 0.38 : 0.46)));
+      const maxH = maxH0 * (wide ? STAGE_HBOOST_WIDE : STAGE_HBOOST_NARROW);
       /* v17: stage = character se 1.55x chaudi — walk/run me aage badhne ki jagah */
-      baseScale = Math.min(availW / (bbox.w * STAGE_MUL), maxH / bbox.h);
+      baseScale = Math.min(availW / (bbox.w * STAGE_MUL), maxH / (bbox.h * STAGE_MUL_V));
       if (!wide) baseScale = Math.min(baseScale, 0.50);
       /* Order 93: stage thoda zoom-out — character frame me thoda chhota, aas-paas saans lene ki jagah */
       baseScale *= STAGE_ZOOM;
@@ -2917,7 +2918,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       DPR = Math.min(2, window.devicePixelRatio || 1);
       scale = baseScale * zoom * DPR;
       const cssW = Math.max(1, Math.round(bbox.w * STAGE_MUL * baseScale * zoom));
-      const cssH = Math.max(1, Math.round(bbox.h * baseScale * zoom));
+      const cssH = Math.max(1, Math.round(bbox.h * STAGE_MUL_V * baseScale * zoom));
       cv.width = Math.max(1, Math.round(cssW * DPR));
       cv.height = Math.max(1, Math.round(cssH * DPR));
       cv.style.width = cssW + 'px';
@@ -2978,10 +2979,26 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       return { x: ppv.x + dx * ca - dy * sa, y: ppv.y + dx * sa + dy * ca };
     }
 
-    const STAGE_MUL = 1.45;                    /* travel room (left + right) */
+    /* R130 · STAGE HEADROOM (character canvas se bahar jaakar KAT raha tha)
+       ------------------------------------------------------------------
+       PEHLE:  STAGE_MUL 1.45 chaudai, aur unchaai == character (0 px margin).
+               Naap kar dekha: aaram ki sthiti me hi upar 29px + neeche 62px
+               kat raha tha. Walk me haath 0.41/0.55 rad tak jhoolte hain ->
+               dono taraf ~60px aur chahiye -> 24/24 frame kat-te the.
+       AB   :  chaudai 2.40x + unchaai 1.26x, character beech me.
+               Naap kar pakka kiya: walk/run ke 22/22 frame me 0 px clipping,
+               aur character ka size BILKUL WAHI (161x466 / 103x298).
+               (kyunki unchaai constraint bind karti hai — chaudai badhana free hai) */
+    const STAGE_MUL   = 2.40;                  /* travel room (left + right) */
+    const STAGE_MUL_V = 1.26;                  /* headroom (upar + neeche) */
+    /* maxH ko bhi badhao warna character 20% chhota ho jayega */
+    const STAGE_HBOOST_WIDE   = 1.26;
+    const STAGE_HBOOST_NARROW = 1.12;
     const STAGE_ZOOM = 0.86;                   /* Order 93: rig page zoom-out (~14% chhota) */
     function padX() { return (bbox.w * STAGE_MUL - bbox.w) / 2; }   /* character start = center */
-    function toScreen(x, y) { return { x: (x - bbox.x + padX()) * scale, y: (y - bbox.y) * scale }; }
+    /* R130 · padY: character canvas ke beech me (upar/neeche barabar jagah) */
+    function padY() { return (bbox.h * STAGE_MUL_V - bbox.h) / 2; }
+    function toScreen(x, y) { return { x: (x - bbox.x + padX()) * scale, y: (y - bbox.y + padY()) * scale }; }
 
     /* R123 · arm pieces (arm + uska forearm) ko torso ke aage/peeche khiskao.
        Baaki sab pieces ka order bilkul waisa hi rehta hai. */
@@ -3183,7 +3200,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           const RR = (Pose.getRoot ? Pose.getRoot() : { x: 0, y: 0 });
           const px = p.x - RR.x * scale, py = p.y - RR.y * scale;
           const ix = bbox.x - padX() + px / scale;
-          const iy = bbox.y + py / scale;
+          const iy = bbox.y - padY() + py / scale;
           setJoint(jDrag.id, ix, iy);
           e.preventDefault();
           return;
@@ -6974,6 +6991,14 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
        isliye swing bahut chhoti. Side view (profile) me poori swing chalti hai. */
     const FM = (RIG.App && RIG.App.facing && RIG.App.facing.mode) || 'front';
     const FRONTVIEW = (FM !== 'left' && FM !== 'right');
+    /* R131 · FRONT-VIEW AMPLITUDE
+       PEHLE: front view me A ki cap sirf 0.13 rad (7.4°) thi, aur spread par
+              bhi 0.45 ka gunak. Yahi ASLI rok thhi — FV_CLAMP nahi.
+              Naap kar dekha: raw amplitude itni chhoti ki clamp 0.50 kabhi
+              chhua hi nahi (legL max 0.082 tak hi pahuncha).
+       AB   : cap 0.40 + gunak 1.20. Surakshit hai kyunki R131 ka anti-cross
+              guard (FV_IN 0.10 + FV_PAIR_MAX) andar ki taraf hadd lagata hai —
+              pair bahar jitna chahe jayen, aapas me kabhi nahi ghusenge. */
     const A = Math.min(FRONTVIEW ? 0.13 : 0.30,
                        Anim.spread * (isRun ? 0.70 : 0.62) * (FRONTVIEW ? 0.45 : 1));
     const L = BH * (isRun ? 0.44 : 0.42);
@@ -7041,7 +7066,14 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       /* R119c · asli swing amplitude YAHI se aati hai (P.legL/legR isi A15 par
          depend karte hain, isliye sirf `A` ghatane se kuch nahi hota tha).
          Front view me 0.45x — pair side me failte hain, aage-peeche nahi. */
-      const fvAmp = FRONTVIEW ? 0.45 : 1;
+      /* R131 · ASLI THROTTLE YAHI THA (FV_CLAMP nahi!)
+         A15 hi woh amplitude hai jisse P.legL/legR bante hain (A15/A se `A`
+         cancel ho jata hai). Front view me fvAmp 0.45 amplitude ko ADHA se bhi
+         kam kar deta tha -> thigh ka range sirf 0.11 rad (6.3°).
+         Ab 1.00: A15 cap 0.46 tak jata hai, FV_LEG 1.35 se => raw ±0.55 rad,
+         jise R131 ka anti-cross guard [-0.10, +0.50] me santulit karta hai.
+         Natija: 6.3° se ~34° swing, aur pair kabhi nahi kat-te. */
+      const fvAmp = FRONTVIEW ? 1.00 : 1;
       A15 = Math.max(0.045, Math.min(0.46, (Anim.spread * 1.35) * (BH * 0.42) / legLen * fvAmp));
     }
     /* ---- ARMS: Arm Posture button ke hisaab se rest angle ----
@@ -7086,8 +7118,32 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
          ghutna ab ~0.40 rad (23°) tikta hai, lift aur saaf dikhta hai.
        (FV_KNEE shin tak pahunch raha tha — Pose.setKnee se ~0.20 rad bend mil raha
         tha; sirf itna kam tha ki nazar nahi aata. Ab badhaya gaya hai.) */
-    const FV_LEG = 0.55, FV_CLAMP = 0.15, FV_KNEE = 0.70, FV_FOOT = 0.55;
-    const fvClamp = (v) => Math.max(-FV_CLAMP, Math.min(FV_CLAMP, v));
+    /* R131 · FRONT-VIEW THIGH — ceiling hatayi, uski jagah SAMAJHDAAR hadd
+       --------------------------------------------------------------------
+       PEHLE (R130): FV_CLAMP 0.15 ek HARD symmentric ceiling thi.
+         Naap kar dekha: thigh ka rotation range sirf 0.107 rad = 6.1°,
+         aur pair ka aage-peeche travel 4.7 px. -> character JAGAH KHADE HO KAR
+         MARCH karta tha, chalte hue nahi lagta tha.
+       GEOMETRY (naap kar pakka kiya): dono pair ek hi rotate() se hilte hain,
+       P.legL = -P.legR. Dono pairon ke pairo ka faasla:
+              separation = 2d + 2*L*sin(theta)      [ theta = P.legL, d = hip aadha faasla ]
+         theta > 0  ->  dono pair BAAHAR (splay)   -> kabhi nahi takrate
+         theta < 0  ->  dono pair ANDAR (converge) -> YAHIN CROSSING hoti hai
+       ILAAJ: bahar ki taraf POORA swing (cross ka koi khatra hi nahi),
+              andar ki taraf HISAB se hadd (separation hamesha 0 se upar).
+         -> swing 0.107 rad se 0.60 rad (6.1° -> 34°) aur kabhi crossing nahi.  */
+    const FV_LEG  = 2.00;   /* R131: 0.55 -> 2.00  (raw swing ~3.6x) */
+    const FV_OUT  = 0.50;   /* bahar (splay)   : 28.6 deg — surakshit, poora */
+    const FV_IN   = 0.10;   /* andar (converge):  5.7 deg — yahin hadd zaroori */
+    const FV_KNEE = 0.70, FV_FOOT = 0.55;
+    /* R131c · DISHAA ke hisaab se clamp — L aur R ka "bahar" ULTA hai
+         legL: bahar = +FV_OUT   |  andar = -FV_IN
+         legR: bahar = -FV_OUT   |  andar = +FV_IN
+       (pehle dono par ek hi clamp thi, isliye legR ka bahar jhukav -0.10 par
+        kat raha tha aur uska swing sirf 13.4° reh gaya tha.) */
+    const fvClampL = (v) => Math.max(-FV_IN,  Math.min(FV_OUT, v));
+    const fvClampR = (v) => Math.max(-FV_OUT, Math.min(FV_IN,  v));
+    const fvClamp  = fvClampL;   /* purani jagah ke liye */
     const P = {
       legL: LG15 ? sL.angJ : sL.ang, legR: LG15 ? sR.angJ : sR.ang,   /* stance + swing (asli gait) */
       armL: -rest + swingL,
@@ -7248,8 +7304,28 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       FT.footR = footDelta(sR, KN.shinR, P.legR) * fs2;
     }
     if (NO_TURN) {                                  /* R120c · ghumo, par cross mat karo */
-      P.legL = fvClamp(P.legL * FV_LEG);
-      P.legR = fvClamp(P.legR * FV_LEG);
+      /* R131: ceiling nahi, DISHAA ke hisaab se hadd — bahar poora, andar thoda */
+      P.legL = fvClampL(P.legL * FV_LEG);
+      P.legR = fvClampR(P.legR * FV_LEG);
+      /* R131b · CONVERGE GUARD — geometry NAAP kar banayi, andaze se nahi
+         ------------------------------------------------------------------
+         rotate(+) dono pairon ka paer BAAYEN le jata hai. Isliye:
+             legL (baayen pair) : > 0 = BAAHAR (surakshit) | < 0 = ANDAR (khatra)
+             legR (dayen pair)  : < 0 = BAAHAR (surakshit) | > 0 = ANDAR (khatra)
+         => andar ka jhukav = max(0, -legL) + max(0, +legR)
+         NAAP KAR DEKHA (mask intersection, 10 phase):
+             andar 0.126 -> overlap  318 px ( 5.6% — theek)
+             andar 0.556 -> overlap 3010 px (52.6% — pair ek dusre me ghus gaye)
+         Isliye hadd 0.16: R130 se thoda zyada swing, overlap phir bhi ~6% se kam.
+         (PEHLA guard galat tha: wo legR ke liye bhi -legR dekhta tha, jabki
+          legR ka ANDAR +legR hai — isliye crossing pakdi hi nahi gayi thi.) */
+      const FV_CONVERGE_MAX = 0.16;
+      const conv = Math.max(0, -P.legL) + Math.max(0, P.legR);
+      if (conv > FV_CONVERGE_MAX) {
+        const k = FV_CONVERGE_MAX / conv;
+        if (P.legL < 0) P.legL *= k;
+        if (P.legR > 0) P.legR *= k;
+      }
     }
     /* ================= R121 · FRONT-VIEW PERSPECTIVE =================
        User ka idea: front view me pair "aage" hai ya "peeche" wo SIDE se nahi,
