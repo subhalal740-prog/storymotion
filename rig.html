@@ -4181,10 +4181,14 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             const perp = Math.abs(-(x + 0.5 - sx0) * ayj + (y + 0.5 - sy0) * axj);
             /* arm piece me sirf arm ke pixels hain — isliye elbow LINE ke neeche
                sab kuch forearm hai (koi tube filter nahi; curved sleeve safe) */
+            /* R125 · CUT PAR OVERLAP — pehle elbow ki ekdam seedhi line se kat-te
+               the, jisse sleeve ka kapda "phat" kar alag tukda ban jata tha
+               (right hand me dikha). Ab elbow ke aas-paas 7px DONO piece me
+               rahta hai -> na gap, na phata hua kapda. */
             const isFore = (t > tElbowJ);
-            const dst = isFore ? fd : ud;
-            dst[i] = d[i]; dst[i + 1] = d[i + 1]; dst[i + 2] = d[i + 2]; dst[i + 3] = d[i + 3];
-            if (isFore) foN++; else upN++;
+            const OVERLAP = 7;
+            if (t <= tElbowJ + OVERLAP) { ud[i] = d[i]; ud[i + 1] = d[i + 1]; ud[i + 2] = d[i + 2]; ud[i + 3] = d[i + 3]; upN++; }
+            if (t >= tElbowJ - OVERLAP) { fd[i] = d[i]; fd[i + 1] = d[i + 1]; fd[i + 2] = d[i + 2]; fd[i + 3] = d[i + 3]; foN++; }
           }
           uc.putImageData(upImg, 0, 0);
           fc2.putImageData(foImg, 0, 0);
@@ -4213,7 +4217,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
                     seen[q1] = 1; stack.push(q1);
                   }
                 }
-                if (comp.length < 90) {                     /* chhota tukda -> hatao */
+                if (comp.length < 32) {                     /* R125 · 90 tha — sleeve ke chhote tukde bhi bachein */
                   for (let k = 0; k < comp.length; k++) dd[comp[k] * 4 + 3] = 0;
                 }
               }
@@ -6908,7 +6912,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     /* R120b · front view me pair SIDE me ghum nahi sakta, isliye "kadam" sirf
        UPAR-NEECHE se dikhta hai. Lift thoda bada (2%) — dono pair 180° ULTE
        phase me (sR = legPhase(u+0.5)), taaki ek utha ho to doosra zameen par. */
-    const liftAmp = BH * (isRun ? 0.024 : 0.014) * (FRONTVIEW ? 1.9 : 1);
+    const liftAmp = BH * (isRun ? 0.024 : 0.014) * (FRONTVIEW ? 3.0 : 1);   /* R128 · 2.4 -> 3.0 : master par kadam saaf dikhe */
     /* bob — per step: down par neecha, passing par ooncha */
     const bobAmp = BH * (isRun ? 0.012 : 0.007);
     const rise = bobAmp * (0.5 - 0.5 * Math.cos(Math.PI * 2 * 2 * (u - 0.10)));
@@ -6989,7 +6993,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
          • paer ka roll halka (0.55x)
        Isse pair ghumta bhi hai aur ek dusre me ghusta bhi nahi. */
     const NO_TURN = FRONTVIEW;
-    const FV_LEG = 0.62, FV_CLAMP = 0.15, FV_KNEE = 0.40, FV_FOOT = 0.55;
+    /* R126 · FV_LEG 0.62 -> 0.38  : front view me pair ka andar-bahar "kainchi"
+         pulse 31px tha (foot separation 46..77px = idle ka 0.67x..1.13x) -> ab ~19px.
+       FV_KNEE 0.40 -> 0.80          : kam huyi side-motion ki bharपाई ghutne se —
+         ghutna ab ~0.40 rad (23°) tikta hai, lift aur saaf dikhta hai.
+       (FV_KNEE shin tak pahunch raha tha — Pose.setKnee se ~0.20 rad bend mil raha
+        tha; sirf itna kam tha ki nazar nahi aata. Ab badhaya gaya hai.) */
+    const FV_LEG = 0.55, FV_CLAMP = 0.15, FV_KNEE = 0.70, FV_FOOT = 0.55;
     const fvClamp = (v) => Math.max(-FV_CLAMP, Math.min(FV_CLAMP, v));
     const P = {
       legL: LG15 ? sL.angJ : sL.ang, legR: LG15 ? sR.angJ : sR.ang,   /* stance + swing (asli gait) */
@@ -7006,11 +7016,54 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
        Kuch bhi clamp ke bahar nahi jata -> joint separation / distortion nahi.
        ======================================================= */
     let AR15 = null;
+    let ARM_OUTNESS = 0;                 /* R126 · +1 = dono haath outward extreme par */
     if (WALK15.splitMode === 'joints' && WALK15.pieces && WALK15.pieces.armL && WALK15.pieces.foreL) {
       try {
         const jj = RIG.Studio.getJoints();
         AR15 = {};
         const TWO = Math.PI * 2;
+        /* ================= R126 · DONO HAATH BARABAR (2 kaam) =================
+           (1) BONE-CHAIN NORMALIZE — auto-cut me jis haath ka elbow kandhe ke paas
+               hai uski chain chhoti hoti hai (is char: L 474px, R 343px), aur wahi
+               angle bhi uska haath aadha ghumaata hai. Isliye har haath ka swing
+               angle uski ASLI lambai se normalize: gain = avgLen / len.
+           (2) EK HI DRIVE SIGNAL — pehle L <- sR.ang aur R <- sL.ang alag-alag the.
+               stance/swing branch asymmetric hone se angular amplitude alag nikalta
+               tha (L ~0.075 rad, R ~0.048 rad). Ab R ka drive = -L ka drive, yani
+               dono ek hi signal ke mirror -> amplitude BANAVATI roop se barabar. */
+        const REACH = {};
+        ['L', 'R'].forEach(function (side) {
+          const inf = WALK15.pieces['arm' + side];
+          let r = 0;
+          if (inf && inf.sh && inf.el && inf.wr) {
+            r = Math.hypot(inf.el.x - inf.sh.x, inf.el.y - inf.sh.y)
+              + Math.hypot(inf.wr.x - inf.el.x, inf.wr.y - inf.el.y);
+          } else if (inf && inf.len) { r = inf.len; }
+          REACH[side] = (r > 8) ? r : 0;
+        });
+        const rRef = (REACH.L > 8 && REACH.R > 8) ? (REACH.L + REACH.R) * 0.5
+                                                  : (REACH.L || REACH.R || 0);
+        const armGain = (side) => {
+          const r = REACH[side];
+          if (!(r > 8) || !(rRef > 8)) return 1;
+          /* R128 · MASTER: is character ka RIGHT upper-arm 167px hai aur LEFT 209px
+             (source image me right baazu 30px upar judta hai). Reach-based gain se
+             sirf 1.05x milta tha, par haath ka vertical travel 21px vs 41px reh gaya.
+             Isliye R ke liye extra 1.30x — ab dono haath barabar hilte hain. */
+          return Math.max(0.70, Math.min(2.20, rRef / r)) * (side === 'R' ? 1.30 : 1);
+        };
+        const dL = Math.max(-1, Math.min(1, sR.ang / Math.max(0.06, A)));   /* L ka drive */
+        ARM_OUTNESS = -dL;                 /* R ka drive = -dL (neeche mirror) */
+        /* R126b · elbow bend DONO haath ke liye EK HI waveform ----------------
+           Pehle bendBack = max(0,-legN) tha, aur legN dono taraf ULTA tha — yani
+           L aur R ke liye COMPLEMENTARY nikla (jab ek elbow tikta, doosra seedha).
+           Anatomically sahi, par isse elbow ka swing term L ke swing me JUDTA tha
+           aur R ke swing se TAKRATA tha: forearm amplitude ratio 1.02 reh gaya
+           (hona chahiye tha 1.38 = dono ka gain ratio). Ab dono ek hi waveform
+           use karte hain -> mirror poori tarah symmetrical, amplitude ratio = gain
+           ratio. (In-plane swing bhi mirrored hai, isliye dono elbow ka saath
+           tikna usi ke saath consistent hai.)                                */
+        const bendBack = Math.max(0, -dL);
         ['L', 'R'].forEach(function (side) {
           const isL = (side === 'L');
           const armId = 'arm' + side, foreId = 'fore' + side;
@@ -7024,30 +7077,49 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
           /* swing: saamne wale pair ka ULTA (side L -> legR, side R -> legL) */
           const opposite = isL ? sR : sL;
-          const legN = opposite.ang / Math.max(0.06, A);          /* -1..1 */
+          /* R124b · legN ko -1..1 me CLAMP (pehle ±2.3 tak jaata tha, isliye
+             ek haath 77px aur doosra 12px jhoolta tha — motion asymmetric) */
+          /* R126 · R ka drive = L ka ULTA (mirror) -> dono ka amplitude barabar */
+          const g = armGain(side);          /* R126 · chain-lambai normalization */
+          const legN = isL ? dL : -dL;
           const ph = (side === 'L') ? u : (u + 0.5);
           const swing = -legN * Anim.armAmp15 * 0.9 + 0.045 * Math.sin(TWO * ph);
-          /* side sign: screen me left arm ka bahar = -1 */
-          const sideSign = isL ? -1 : 1;
+          /* R124 · HAATH TORSO KE ANDAR/PEECHE MAT JAO ----------------------
+             Purana code har haath ko PI/2 (seedha neeche) ghumata tha. Asli photo
+             me haath thoda BAHAR hote hain (is char: L 103°, R 79°) — isliye
+             unhe seedha neeche karte hi dono haath ANDAR ghus kar kamar/torso
+             ke PEECHE chale jate the ("haath kamar ke piche lukh jata hai").
+             Ab:
+               (1) haath ka NATURAL direction (th0) preserve; sirf T-pose
+                   (horizontal) ko neeche laate hain -> clamp PI/2 ± 0.62 rad (~35°)
+               (2) "bahar" ka sign ULTA tha (andar ja raha tha) — theek kiya
+               (3) swing 0.30 -> 0.40, elbow bend 0.30x, flick symmetric —
+                   dono haath lagbhag barabar hilte hain (L ~62px, R ~30px)  */
+          const DOWN = Math.PI / 2;
+          const restDir = Math.max(DOWN - 0.62, Math.min(DOWN + 0.62, th0));
+          const outSign = isL ? 1 : -1;        /* screen-left arm: bahar = +angle */
+          const sideSign = outSign;            /* purane naam se compatibility */
           const torsoLean = Anim.torso * 0.6;
 
-          /* upper arm ka angle (vertical se) — bahar ki taraf halka */
-          /* haath ko kambal (torso) se CHIPAKNE se bachao: jitna neeche elbow
-             utna haath thoda bahar (tola). Isse sleeve me gap nahi banta. */
-          const outBoard = 0.055;      /* ~3° bahar */
-          const a1 = sideSign * (outBoard + 0.022 * Math.abs(legN)) + swing * 0.30 - torsoLean * 0.35;
+          const outBoard = 0.38;      /* R128 · 0.20 -> 0.38 : master par daayana haath torso me 25% chhup raha tha */
+          /* outBoard ko bhi gain se scale: chhoti haddi wala haath shareer se chipka
+             rehta hai, use door rakhne ke liye thoda zyada angle chahiye (same
+             lateral clearance = reach * sin(angle) -> angle ~ 1/reach). */
+          const a1 = outSign * (outBoard * g + 0.022 * Math.abs(legN) * g) + swing * 0.40 * g - torsoLean * 0.35;
           /* elbow bend: zyada jab haath peeche jaye */
-          const bendBack = Math.max(0, -legN);
-          const a2 = a1 + sideSign * (Anim.elbowBase + Anim.elbowAmp * bendBack);
+          const a2 = a1 + outSign * (Anim.elbowBase + Anim.elbowAmp * bendBack * g) * 0.30;
           /* wrist flick (forearm ka extra rotation) */
-          const flick = sideSign * Anim.wristAmp * Math.sin(TWO * ph + 0.9);
+          /* flick me outSign NAHI — warna ek haath ka flick uske swing se
+             ulta phase me padta tha (L 65px hil-ta, R sirf 13px). Ab dono
+             haath mirror-symmetric hote hain (dono ek saath bahar/andar). */
+          const flick = Anim.wristAmp * Math.sin(TWO * ph + 0.9) * g;
           /* clamp — joint chhoote na, body distort na ho */
           const clampA = (v) => Math.max(-0.95, Math.min(0.95, v));
           const A1 = clampA(a1), A2 = clampA(a2), FL = clampA(flick);
 
           /* render convention: piece apni ORIGINAL direction (th0) se r ghumta hai */
-          const armRot   = (Math.PI / 2 + A1) - th0;
-          const foreTotal = (Math.PI / 2 + A2 + FL) - th0;
+          const armRot   = (restDir + A1) - th0;
+          const foreTotal = (restDir + A2 + FL) - th0;
           /* R116 · forearm ka rotation ABSOLUTE chahiye (Studio/PivotParent chain use karti hai).
              Pehle yahan relative (foreTotal - armRot) ja raha tha — arms-down me arm ~0 hone se
              farq nahi dikhta tha, par T-pose me forearm 90° galat mudta tha. */
@@ -7109,8 +7181,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       SC.legL = persp(sL.ang); SC.legR = persp(sR.ang);
       SC.shinL = SC.legL;  SC.shinR = SC.legR;               /* ghutna + paer saath badhte hain */
       /* haath ulte pair ke saath — jitna haath aage, utna bada (natural) */
-      SC.armL = persp(sR.ang) * 0.5 + 0.5;
-      SC.armR = persp(sL.ang) * 0.5 + 0.5;
+      /* R125 · upper arm ka perspective scale HATA diya (elbow par gap banata tha);
+         ab sirf forearm scale hota hai — depth wahin se dikhti hai. */
     }
     /* ================= R123 · HAATH AAGE / PEECHE (layer order) =================
        Har haath ULTE pair ke saath chalta hai (natural gait):
@@ -7130,24 +7202,45 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       const prevD = (RIG.Pose.getDepth ? RIG.Pose.getDepth() : { armL: 1, armR: 1 });
       const angL = (Anim.armMode === 'fixed') ? 0 : (sR.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55);
       const angR = (Anim.armMode === 'fixed') ? 0 : (sL.ang * (Anim.armAmp / Math.max(0.06, A)) * 0.55);
-      DEPTH.armL = flip(-angL, prevD.armL || 1);
-      DEPTH.armR = flip(-angR, prevD.armR || 1);
+      /* R125 · CONTRALATERAL — asli chal me jab DAYAAN pair aage hota hai to
+         BAYAAN haath aage hota hai. Pehle sign ulta tha (haath usi waqt peeche
+         chala jata tha jab use sabse aage hona chahiye tha). */
+      DEPTH.armL = flip(angL, prevD.armL || 1);
+      DEPTH.armR = flip(angR, prevD.armR || 1);
       /* R123b · jab haath PEECHE jata hai to shirt usko poora dhak leti hai.
          Asli walk me bhi peeche wala haath shareer se thoda BAHAR rehta hai.
          Isliye peeche jaane par haath ko halka bahar khiskao (3% body width) +
          thoda chhota (door hai). Isse haath "gayab" nahi hota. */
       const BW2 = (RIG.App && RIG.App.cut) ? RIG.App.cut.bbox.w : 600;
-      const out = Math.max(4, BW2 * 0.030);
-      const oL = (DEPTH.armL === -1) ? -out : 0;
-      const oR = (DEPTH.armR === -1) ? out : 0;
+      /* R126 · PUSH AB DEPTH SE NAHI, SWING DIRECTION SE --------------------
+         Pehle ye offset tab lagta tha jab haath PEECHE (depth -1) hota tha.
+         Dono haath apne outward extreme par EK HI WAQT hote hain, jabki depth
+         hamesha ulti hoti hai (ek aage to doosra peeche) — isliye ek haath ka
+         push uske swing me JUDTA tha (L 47 -> 76px) aur doosre ka seedha
+         TAKRATA tha (R 44 -> 15px). Ab push usi signal (ARM_OUTNESS) se juda
+         hai jis se swing banta hai: dono haath apne outward extreme par bahar
+         jate hain -> dono ka travel barabar BADHTA hai, kisi ka cancel nahi. */
+      const out = Math.max(3, BW2 * 0.022);
+      /* sirf BAHAR ki taraf (kabhi andar nahi) — andar dhakelne se haath torso
+         ke aur upar chala jata tha (R ka overlap 42% ho gaya tha). */
+      const oL = -out * Math.max(0, ARM_OUTNESS);
+      const oR =  out * Math.max(0, ARM_OUTNESS);
+      /* R125 · AAGE / PICHE ka ehsaas (front view me asli swing aage-piche hi hai):
+           • aage wala haath thoda NEECHE + BADA (nazdeek), peeche wala UPAR + CHHOTA
+           • scale sirf FOREARM par (wo leaf piece hai). Upper arm ko scale karne se
+             elbow par GAP ban jata tha — chain ka pivot scale-aware nahi hai. */
+      const dyA = Math.max(4, BH * 0.0045);          /* ~6px */
+      const oLy = (DEPTH.armL === -1) ? -dyA : dyA;
+      const oRy = (DEPTH.armR === -1) ? -dyA : dyA;
       try {
         if (RIG.Pose.setOffset) {
-          RIG.Pose.setOffset('armL', oL, 0);
-          RIG.Pose.setOffset('armR', oR, 0);
+          RIG.Pose.setOffset('armL', oL, oLy);
+          RIG.Pose.setOffset('armR', oR, oRy);
         }
       } catch (e) {}
-      if (DEPTH.armL === -1) { SC.armL *= 0.955; }
-      if (DEPTH.armR === -1) { SC.armR *= 0.955; }
+      SC.armL = 1; SC.armR = 1;                        /* upper arm kabhi scale nahi */
+      SC.foreL = (DEPTH.armL === -1) ? 0.94 : 1.07;    /* door/chhota  vs  nazdeek/bada */
+      SC.foreR = (DEPTH.armR === -1) ? 0.94 : 1.07;
     }
     let oyL = dyL, oyR = dyR;
     if (FD < 0) {                                       /* mirror: side swap + sign ulta */
@@ -7978,5 +8071,114 @@ a.note, .note{ color: rgba(255,255,255,.55) !important; }
   if(document.readyState==='complete') boot(); else window.addEventListener('load', boot);
 })();
 </script>
+<style id="smRigMobileFix">
+/* ---------- 1 · neeche ka ~160px khaali void hatao ------------------------
+   #mobilePad = 120px khaali spacer + body padding-bottom 40px.
+   .nextBar ab display:none hai (v6inline), isliye ye spacer bekaar hai —
+   user ko bottom par 160px blank dikhta tha.                              */
+@media (max-width:820px){
+  #mobilePad{ display:none !important; height:0 !important; margin:0 !important; padding:0 !important; }
+  body{ padding-bottom:calc(16px + env(safe-area-inset-bottom)) !important; }
+}
+
+/* ---------- 2 · SCROLL FIX — canvas par ungli ho to page bhi ghume --------
+   #posStage / #posStageWrap me touch-action:none tha + pointerdown me
+   preventDefault() → Position page par canvas chhute hi page scroll DEAD.
+   pan-y = vertical swipe → page scroll, horizontal swipe → JS drag.       */
+@media (max-width:820px), (pointer:coarse){
+  #posStage, #posStageWrap{ touch-action:pan-y !important; }
+  #studio, #studioWrap, #eraseCv{ touch-action:pan-y !important; }
+}
+
+/* ---------- 3 · header row — 34px row me 36–40px icon buttons clip -------- */
+@media (max-width:820px){
+  header.top, .top{ height:auto !important; min-height:42px !important; align-items:center !important; }
+}
+
+/* ---------- 4 · 6 part-cards ek hi row (37–52px card, 6.6px label) --------
+   phone par 3 x 2 grid — card bada, naam padhne layak                     */
+@media (max-width:560px){
+  [data-partgrid]{ grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:7px !important; }
+  [data-partgrid] .partCard .ph{ height:56px !important; }
+  [data-partgrid] .partCard canvas{ max-height:52px !important; }
+  [data-partgrid] .partCard .nm{ font-size:9px !important; letter-spacing:.2px !important; }
+  [data-partgrid] .partCard .ok{ width:14px !important; height:14px !important; font-size:9px !important; }
+}
+
+/* ---------- 5 · Preview modal — chhoti screen par scroll ho ---------------
+   .pvWrap me overflow:visible tha → box viewport se bada hone par content
+   cut ho jata tha aur scroll bhi nahi ho sakta tha.                       */
+.pvWrap{ overflow-y:auto !important; -webkit-overflow-scrolling:touch;
+         align-items:start !important;
+         padding:16px 16px calc(16px + env(safe-area-inset-bottom)) !important; }
+.pvBox{ margin:auto !important; max-height:none !important; }
+@media (max-height:640px){ #pvCanvas{ max-height:56vh !important; width:auto !important; } }
+
+/* ---------- 6 · bottom sheet (ring settings) chhoti screen par scroll ----- */
+@media (max-width:820px),(pointer:coarse){
+  .ppSheet{ max-height:86dvh; overflow-y:auto; overscroll-behavior:contain; }
+}
+
+/* ---------- 7 · 320px phones — keyframe info line overflow ho rahi thi ---- */
+@media (max-width:360px){
+  #smRigKeyInfo{ white-space:normal !important; font-size:9.5px !important; line-height:1.3 !important; }
+}
+
+/* ---------- 8 · landscape phone (height kam) — canvas ko thodi jagah ------ */
+@media (max-height:480px) and (orientation:landscape){
+  #studioWrap, #posStageWrap{ max-height:68vh !important; }
+  .smWalk{ margin:0 0 8px !important; }
+}
+
+/* =========================================================================
+   ROUND 2 · aur mobile issues (audit ke baad)
+   ========================================================================= */
+
+/* ---------- 9 · #smRigKeyToast — TAP BLOCKER ------------------------------
+   JS banata hai (bottom:26px, z-index:99) aur opacity 0 karke chhod deta hai.
+   opacity:0 par bhi element hit-test hota hai → ek baar toast aane ke baad
+   bottom-center me ~340x31 px ki invisible dead zone ban jati thi
+   (D-pad / action buttons dabane band).                                    */
+#smRigKeyToast{ pointer-events:none !important;
+  max-width:min(80vw,340px) !important;
+  bottom:calc(26px + env(safe-area-inset-bottom)) !important; }
+
+/* ---------- 10 · tap targets — ungli ke liye kam se kam 34px --------------
+   pehle: .pill 23px · .jnt 25px · .sw 23px · range slider 17px ·
+          #voiceBtn 24px                                                    */
+@media (max-width:820px),(pointer:coarse){
+  .pill, .jnt, .jntBtn, .tag, .chip{
+    min-height:34px !important; padding-top:7px !important; padding-bottom:7px !important;
+    font-size:10.5px !important;
+  }
+  .sw{ min-height:34px !important; align-items:center !important; }
+  .sw input{ width:34px !important; height:20px !important; }
+  .sw input:before{ width:16px !important; height:16px !important; top:2px !important; left:2px !important; }
+  .sw input:checked:before{ left:17px !important; }
+  input[type=range]{ height:34px !important; }
+  input[type=range]::-webkit-slider-thumb{ width:24px !important; height:24px !important; }
+  #voiceBtn{ width:34px !important; height:34px !important; flex:0 0 34px !important; }
+  .layer .acts button, .layer .acts .btn{ min-width:32px !important; min-height:32px !important; }
+  #smRigKeyBar button{ min-height:34px !important; }
+}
+
+/* ---------- 11 · padhne layak text (8–8.5px bahut chhota tha) ------------- */
+@media (max-width:820px){
+  .kv, .kv b, .kv b.wrapok{ font-size:10px !important; }
+  .note, .gateMsg, .upMeta, .hud, .jntLockNote,
+  .tposeWarn p, .tipBar p, .smWarn p, .scrollHint span:last-child,
+  .inspTile i, .smTile .lb, .upPrev span{ font-size:10px !important; line-height:1.45 !important; }
+  #steps .step i{ font-size:9.5px !important; letter-spacing:.2px !important; }
+  .upTT p, .acTT p{ font-size:10px !important; line-height:1.45 !important; }
+  .card h3 span{ font-size:9.5px !important; }
+}
+
+/* ---------- 12 · touch device par hover wale controls hamesha dikhen -------
+   .layer .acts {opacity:.5} + :hover{opacity:1} → touch par hover kabhi nahi
+   hota, isliye layer ke action buttons hamesha "disabled" dikh te the.      */
+@media (hover:none){
+  .layer .acts{ opacity:1 !important; }
+}
+</style>
 </body>
 </html>
