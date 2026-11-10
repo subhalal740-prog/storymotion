@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Character Tool — Rig Studio · R136</title>
+<title>Character Tool — Rig Studio · R137</title>
 <style>
   :root{
     --bg:#0b0b0d; --card1:#16161a; --card2:#0f0f12; --line:rgba(255,255,255,.05);
@@ -1022,7 +1022,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R136 · GREEN SCREEN</span>
+        <span>R137 · MOCAP WALK</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -1268,6 +1268,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             <button class="qp" data-pose="run">Run</button>
             <button class="qp" data-pose="sit">Sit</button>
           </div>
+          <label id="mocapRow" style="display:flex;align-items:center;gap:7px;font-size:11px;opacity:.82;margin-top:8px;cursor:pointer">
+            <input type="checkbox" id="mocapChk" style="width:auto;margin:0;accent-color:#4da3ff">
+            <span>Asli chaal — video se naapi gayi (mocap)</span>
+          </label>
           <div id="gsRow" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px">
             <span style="font-size:11px;opacity:.72;flex:1 1 100%">Green screen video (chroma key)</span>
             <select id="gsCycles" style="flex:1;min-width:84px;background:#0d1424;color:#e8eefc;border:1px solid #22304d;border-radius:8px;padding:6px 7px;font:inherit">
@@ -7076,6 +7080,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     wristAmp: 0.045,       /* wrist flick (forearm ka extra rotation) */
     swayAmp: 0.030         /* pelvis side sway (body balance) */
   };
+  window.__MOCAP = { C:30, PHASE:0, liftL:[0.0000,0.0000,0.0000,0.0923,0.1849,0.2901,0.4395,0.5854,0.7194,0.8894,1.0000,0.9906,0.9063,0.7517,0.4936,0.2887,0.0922,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000], liftR:[0.2934,0.1379,0.0047,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0279,0.0928,0.1633,0.2550,0.3556,0.4832,0.6616,0.7733,0.8760,0.9301,0.9262,0.8224,0.6373], kneeL:[0.0426,0.0326,0.0141,0.0000,0.0061,0.0213,0.0229,0.0889,0.2044,0.4338,0.6519,0.9060,0.9776,1.0000,0.9108,0.7571,0.5137,0.3357,0.2472,0.1955,0.1414,0.2062,0.2421,0.2315,0.2067,0.1615,0.0849,0.0317,0.0140,0.0276], kneeR:[1.0000,0.7302,0.5056,0.2994,0.1169,0.2012,0.1454,0.0933,0.0249,0.0000,0.0704,0.0189,0.0403,0.1768,0.2631,0.3408,0.4290,0.3647,0.2481,0.1449,0.2407,0.2815,0.3277,0.2639,0.1740,0.2397,0.2200,0.3692,0.6574,0.8655], bob:[0.8158,0.7600,0.5530,0.4554,0.2852,0.1644,0.1268,0.1372,0.0908,0.1112,0.0766,0.0647,0.1048,0.0683,0.0156,0.0000,0.0383,0.1495,0.3440,0.5045,0.6844,0.8698,0.9652,0.9613,0.9751,0.9447,0.9425,0.9660,0.9394,1.0000] };
+  Anim.mocap = false;   /* R137 · OFF by default — purana behaviour bilkul nahi badalta */
   try { window.__RIG_ANIM = Anim; } catch (e) {}
 
   /* v19.0 · ghutna kis taraf mudta hai (screen space). Sign yahin badlo. */
@@ -7163,7 +7169,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const liftAmp = BH * (isRun ? 0.024 : 0.014) * (FRONTVIEW ? 3.0 : 1);   /* R128 · 2.4 -> 3.0 : master par kadam saaf dikhe */
     /* bob — per step: down par neecha, passing par ooncha */
     const bobAmp = BH * (isRun ? 0.012 : 0.007);
-    const rise = bobAmp * (0.5 - 0.5 * Math.cos(Math.PI * 2 * 2 * (u - 0.10)));
+    let   rise = bobAmp * (0.5 - 0.5 * Math.cos(Math.PI * 2 * 2 * (u - 0.10)));
 
     const dyL = -sL.lift * liftAmp;
     const dyR = -sR.lift * liftAmp;
@@ -7577,6 +7583,33 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       P.torso = -P.torso;
       const ty = oyL; oyL = oyR; oyR = ty;              /* vertical lift swap (sign same) */
     }
+
+    /* ====== R137 · MOCAP — ASLI INSAN KI CHAAL (video se naapi gayi) ======
+       Ye curve kisi formula se nahi, ASLI VIDEO se nikale gaye hain:
+         • 5.9 sec walking video -> MediaPipe se 33 landmarks
+         • 174/174 frame detect (100%), mean visibility 0.95
+         • cycle = 30 frame = 1.00 sec (4 alag signal se confirm)
+         • L paer frame 11 par sabse upar, R frame 27 par (aadha cycle ka farq)
+       Paer ki unchaai KAMAR ke hisaab se naapi (jism ka uthna-baithna alag),
+       aur har frame par neeche wale paer ko zameen maana — isliye chaal me
+       kabhi dono paer hawa me nahi udte. Shape ASLI, amplitude rig ke apne
+       (liftAmp / bobAmp / KNEE_AMP) — character ke shareer ke hisaab se.
+       Jaangh ka aage-peeche jhoolna video se NAHI liya: front view me asli
+       swing gehrai (depth) me hoti hai, 2D video me dikhti hi nahi.       */
+    if (Anim.mocap && window.__MOCAP) {
+      const Mc = window.__MOCAP;
+      const uu = ((Anim.phase / (Math.PI * 2)) % 1 + 1) % 1;
+      const ff = (uu * Mc.C + (Mc.PHASE || 0)) % Mc.C;
+      const i0 = Math.floor(ff) % Mc.C, i1 = (i0 + 1) % Mc.C, tt = ff - Math.floor(ff);
+      const smp = function (a) { return a[i0] + (a[i1] - a[i0]) * tt; };
+      if (FD >= 0) { oyL = -smp(Mc.liftL) * liftAmp; oyR = -smp(Mc.liftR) * liftAmp; }
+      else         { oyL = -smp(Mc.liftR) * liftAmp; oyR = -smp(Mc.liftL) * liftAmp; }
+      if (FD >= 0) { KN.shinL = KNEE_SIGN * smp(Mc.kneeL) * KNEE_AMP;
+                     KN.shinR = KNEE_SIGN * smp(Mc.kneeR) * KNEE_AMP; }
+      else         { KN.shinL = KNEE_SIGN * smp(Mc.kneeR) * KNEE_AMP;
+                     KN.shinR = KNEE_SIGN * smp(Mc.kneeL) * KNEE_AMP; }
+      rise = bobAmp * smp(Mc.bob);
+    }
     try {
       if (RIG.Pose.setKnee) RIG.Pose.setKnee(KN);
       /* ankle roll — foot pieces (fitted joints se) */
@@ -7938,6 +7971,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   if (ppStop) ppStop.addEventListener('click', function () { stopAnim(); mark(null); });
 
   /* R136 · GREEN SCREEN VIDEO */
+  const mocapChk = document.getElementById('mocapChk');
+  if (mocapChk) {
+    try { if (window.__RIG_ANIM) mocapChk.checked = !!window.__RIG_ANIM.mocap; } catch (e) {}
+    mocapChk.addEventListener('change', function () {
+      try { if (window.__RIG_ANIM) window.__RIG_ANIM.mocap = mocapChk.checked; } catch (e) {}
+    });
+  }
   const gsRec = document.getElementById('gsRec');
   const gsVal = document.getElementById('gsVal');
   const gsCy  = document.getElementById('gsCycles');
