@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Character Tool — Rig Studio · R131</title>
+<title>Character Tool — Rig Studio · R132</title>
 <style>
   :root{
     --bg:#0b0b0d; --card1:#16161a; --card2:#0f0f12; --line:rgba(255,255,255,.05);
@@ -1022,7 +1022,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R131 · BIG SWING + NO-CLIP</span>
+        <span>R132 · STRIDE + PASSING</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -2947,15 +2947,38 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       const extra = ((Pose.getKnee ? Pose.getKnee(p.id) : 0) || 0) + (Pose.get(p.id) || 0);
       return base + extra;
     }
+    /* R132 · STRIDE — pair ka aage-peeche travel
+       --------------------------------------------------------------
+       R115 ka live leg system yahan apne offsets DE deta hai aur
+       Pose.setOffset ko bypass kar jata hai (naap kar dekha: sL.lift
+       hamesha 0, lift 58px R115 ke offsets se aata hai). Isliye stride
+       Pose.setOffset se kabhi lagu hi nahi hota — YAHAN jodna padta hai.
+       Sirf chain root (legL/legR) par: bache (shin/foot) apne aap inherit
+       kar lete hain, kyunki partOff parent ka offset jodta hai.
+       DISHAA hamesha BAHAR — andar dhakelne se pair aapas me kat-te hain
+       (R131 mein naap kar dekha: andar jhukav 0.16 se upar = crossing). */
+    function legStride(id, base) {
+      if (id !== 'legL' && id !== 'legR') return base;
+      const DZ = (Pose.getDepth ? Pose.getDepth() : null);
+      if (!DZ || !bbox) return base;
+      const front = (id === 'legL') ? (DZ.legL === 1) : (DZ.legR === 1);
+      if (!front) return base;
+      const sdX = Math.max(1.5, bbox.w * 0.012);
+      const sdY = Math.max(1.0, bbox.h * 0.0020);
+      return { dx: (base.dx || 0) + (id === 'legL' ? -sdX : sdX), dy: (base.dy || 0) + sdY };
+    }
     function partOff(p) {
       const LV0 = legLive();
-      if (LV0 && LV0.off && LV0.off[p.id]) return LV0.off[p.id];
+      if (LV0 && LV0.off && LV0.off[p.id]) {
+        const o3 = LV0.off[p.id];
+        return legStride(p.id, { dx: o3.dx || 0, dy: o3.dy || 0 });
+      }
       const o = (Pose.getOffset ? Pose.getOffset(p.id) : { dx: 0, dy: 0 }) || { dx: 0, dy: 0 };
       const par = parOf(p.id);
-      if (!par) return { dx: o.dx || 0, dy: o.dy || 0 };
+      if (!par) return legStride(p.id, { dx: o.dx || 0, dy: o.dy || 0 });
       const parItem = Layers.byId(par);
       const po = parItem ? partOff(parItem) : ((Pose.getOffset ? Pose.getOffset(par) : { dx: 0, dy: 0 }) || { dx: 0, dy: 0 });
-      return { dx: (o.dx || 0) + (po.dx || 0), dy: (o.dy || 0) + (po.dy || 0) };
+      return legStride(p.id, { dx: (o.dx || 0) + (po.dx || 0), dy: (o.dy || 0) + (po.dy || 0) });
     }
     function partPivot(p) {
       const LV = legLive();
@@ -3005,13 +3028,22 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function reorderArms(list, DZ) {
       if (!list || !list.length) return list;
       const isArmChain = (id) => (id === 'armL' || id === 'foreL' || id === 'armR' || id === 'foreR');
+      /* R132 · PAIR BHI AB ISI MEIN (pehle sirf haath the)
+         Jo pair AAGE (nazdeek) hai wo sabse UPAR draw hota hai — yahi
+         "passing effect" hai: pair ek dusre ke aage se guzarte hain. */
+      const isLegChain = (id) => (id === 'legL' || id === 'shinL' || id === 'footL' ||
+                                  id === 'legR' || id === 'shinR' || id === 'footR');
       const pick = (ids) => list.filter((p) => ids.indexOf(p.id) >= 0);
       const behind = [], front = [];
       if (DZ.armL === -1) behind.push('armL', 'foreL'); else front.push('armL', 'foreL');
       if (DZ.armR === -1) behind.push('armR', 'foreR'); else front.push('armR', 'foreR');
+      /* undefined = aage (1) — warna pair list se hi gayab ho jayenge */
+      if (DZ.legL === -1) behind.push('legL', 'shinL', 'footL'); else front.push('legL', 'shinL', 'footL');
+      if (DZ.legR === -1) behind.push('legR', 'shinR', 'footR'); else front.push('legR', 'shinR', 'footR');
       const bPieces = pick(behind), fPieces = pick(front);
       if (!bPieces.length && !fPieces.length) return list;
-      const rest = list.filter((p) => !isArmChain(p.id));
+      /* rest me se dono chain hatao — warna do baar draw honge */
+      const rest = list.filter((p) => !isArmChain(p.id) && !isLegChain(p.id));
       const tIdx = rest.findIndex((p) => p.id === 'torso');
       const cut = (tIdx >= 0) ? tIdx : rest.length;
       return rest.slice(0, cut).concat(bPieces, rest.slice(cut), fPieces);
@@ -7370,6 +7402,33 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
          chala jata tha jab use sabse aage hona chahiye tha). */
       DEPTH.armL = flip(angL, prevD.armL || 1);
       DEPTH.armR = flip(angR, prevD.armR || 1);
+      /* R132 · PAIR KI GEHRAI (user ka idea: "front leg always renders on top")
+         sL.ang > 0 = ye pair AAGE,  < 0 = PEECHE. Hysteresis wahi jo haathon
+         ke liye hai, taaki beech-beech me bar-bar na badle. */
+      /* Kaun aage hai — LIFT se, angle se nahi (angle se flip nahi ho raha tha):
+         SWING wala pair aage badh raha hota hai (lift > 0), doosra zameen par.
+         Dono ek saath swing me nahi hote (contralateral), isliye ye seedha hai. */
+      /* Kaun aage hai, ye R115 ke vertical offset se pata chalta hai
+         (sL.lift hamesha 0.000 nikla — asli lift R115 ke offsets se aati hai).
+         Jis pair ka dy ZYADA NEGATIVE hai = wo pair UPAR utha hua = SWING =
+         aage badh raha hai. Doosra zameen par = peeche. */
+      /* Kaun aage hai — dono pair ke ROTATION ke farq se.
+         sL.lift = 0.000 aur R115 ke offsets bhi 0 nikle (naap kar dekha),
+         par thigh ka rotation DONO pair par 25°/26° ghumta hai aur aapas me
+         ulte phase par hai — isliye yahi signal pakka hai. Jis pair ka angle
+         zyada hai wo apne swing ke aage wale hisse me hai = wo AAGE. */
+      const rL = (RIG.Pose.get ? (RIG.Pose.get('legL') || 0) : 0);
+      const rR = (RIG.Pose.get ? (RIG.Pose.get('legR') || 0) : 0);
+      const prevLegL = (prevD.legL === -1) ? -1 : 1;
+      const prevLegR = (prevD.legR === -1) ? -1 : 1;
+      if (rL > rR + 0.02) {                              /* L aage */
+        DEPTH.legL =  1; DEPTH.legR = -1;
+      } else if (rR > rL + 0.02) {                       /* R aage */
+        DEPTH.legL = -1; DEPTH.legR =  1;
+      } else {
+        DEPTH.legL = prevLegL; DEPTH.legR = prevLegR;    /* barabar: jaise tha */
+      }
+      window.__LEGDEPTH = [DEPTH.legL, DEPTH.legR, +rL.toFixed(3), +rR.toFixed(3)];
       /* R123b · jab haath PEECHE jata hai to shirt usko poora dhak leti hai.
          Asli walk me bhi peeche wala haath shareer se thoda BAHAR rehta hai.
          Isliye peeche jaane par haath ko halka bahar khiskao (3% body width) +
@@ -7433,6 +7492,16 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       if (RIG.Pose.setDepth) RIG.Pose.setDepth(DEPTH);        /* R123 · arm aage/peeche */
       /* step offsets + poore character ki position */
       if (RIG.Pose.setOffset) {
+        /* R132 · STRIDE — aage wala pair apni taraf thoda BAHAR + NEECHE.
+           Pehle dx HAMESHA 0 tha (isliye pair ka aage-peeche travel sirf 4.7px
+           tha — "jagah khade ho kar march" wali wajah yahi thi).
+           BAHAR ki taraf isliye: andar dhakelne se pair aapas me kat-te hain
+           (R131 me naap kar dekha — andar jhukav 0.16 se upar = crossing). */
+        /* R132 · stride yahan NAHI lagaya — R115 ka live system partOff() me
+           Pose.setOffset ko override kar deta hai (naap kar dekha), isliye
+           asli stride legStride() me hai (Studio ke partOff ke andar).
+           Yahan dobara lagane se (a) double ho jata aur (b) BW2 scope bahar
+           hone se step() exception kha kar ANIMATION HI BAND ho jati thi. */
         RIG.Pose.setOffset('legL', 0, oyL);
         RIG.Pose.setOffset('legR', 0, oyR);
         /* R123b · arm offsets yahan reset NAHI hote (depth ke hisaab se set hote hain) */
