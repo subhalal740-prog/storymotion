@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Character Tool — Rig Studio · R132</title>
+<title>Character Tool — Rig Studio · R133</title>
 <style>
   :root{
     --bg:#0b0b0d; --card1:#16161a; --card2:#0f0f12; --line:rgba(255,255,255,.05);
@@ -1022,7 +1022,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R132 · STRIDE + PASSING</span>
+        <span>R133 · GROUND + PASSING</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -1198,6 +1198,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
           <span class="tag">Ring pakad ke ghumao</span>
           <label class="sw" style="margin-left:auto"><input type="checkbox" id="ringToggle"> Rings</label>
           <label class="sw"><input type="checkbox" id="studioAA" checked> AA</label>
+          <label class="sw" title="Chalte waqt zameen hil-ti hai — aage badhne ka ehsaas"><input type="checkbox" id="studioGround" checked> Ground</label>
         </div>
         <div class="kv" style="margin-top:10px"><span>scale</span><b id="scaleMeta">—</b></div>
         <div class="kv"><span>state</span><b id="stateMeta">—</b></div>
@@ -2893,6 +2894,44 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     let cv, ctx, bbox = null, scale = 1, baseScale = 1, zoom = 1, DPR = 1;
     let ringsOn = false, aaOn = true;   /* R118e · default OFF — sirf 5px dots dikhein */
     let drag = null, hoverId = null;
+    /* R133 · GROUND — character canvas me jagah hi nahi thi (Anim.travel = 0,
+       "canvas me chalne ki jagah ~80px hi hai"), isliye wo JAGAH KHADE HO KAR
+       march karta tha. Ilaaj: character ko hilaane ki jagah ZAMEEN hilaayein —
+       yahi "treadmill" wala ehsaas hai, aur character canvas ke bahar nahi jata.
+       Procedural hai (koi image load nahi) -> CORS/taint ka koi khatra nahi. */
+    let groundOn = true, groundT = 0;
+    function setGround(v) { groundOn = !!v; render(); }
+    function scrollGround(d) { groundT = (groundT + (d || 0)) % 1; if (groundT < 0) groundT += 1; }
+    function drawGround() {
+      if (!groundOn || !bbox || !ctx) return;
+      const W = cv.width, H = cv.height, D = DPR;
+      /* paer kahan hain — R130 ke padY ke hisaab se (character beech me hai) */
+      const feetY = (padY() + bbox.h) * scale;
+      const top = feetY + 1 * D, bot = H;
+      const band = bot - top;
+      if (band < 8 * D) return;                       /* neeche jagah hi nahi */
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      /* horizon — paer ke theek neeche */
+      ctx.strokeStyle = 'rgba(150,190,255,.26)';
+      ctx.lineWidth = 1.2 * D;
+      ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(W, top); ctx.stroke();
+      /* perspective stripes: t=0 paer ke paas (chhota), t=1 nazdeek (chauda).
+         groundT badhne ke saath ye NEECHE aati hain = character aage chal raha. */
+      const N = 7;
+      for (let i = 0; i < N; i++) {
+        const t = (groundT + i / N) % 1;
+        const y = top + t * band;
+        const halfW = W * (0.10 + 0.55 * t);
+        const a = 0.24 * (1 - t * 0.72);
+        ctx.strokeStyle = 'rgba(150,190,255,' + a.toFixed(3) + ')';
+        ctx.lineWidth = (0.8 + 1.6 * t) * D;
+        ctx.beginPath();
+        ctx.moveTo(W / 2 - halfW, y); ctx.lineTo(W / 2 + halfW, y);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     function bind(canvas) { cv = canvas; ctx = cv.getContext('2d'); }
 
@@ -3083,6 +3122,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     };
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, cv.width, cv.height);
+      drawGround();                        /* R133 · zameen (character ke PEECHE) */
       ctx.imageSmoothingEnabled = aaOn;
       ctx.imageSmoothingQuality = 'high';
 
@@ -4132,6 +4172,8 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function legLive() { return (typeof window.__R115_LIVE === 'function') ? window.__R115_LIVE() : null; }
 
     return { bind, attach, layout, setScene, setZoom, setRings, setAA, render, info,
+             /* R133 · ground */
+             setGround, scrollGround, getGround: function () { return groundOn; },
              /* R113 · joints API */
              JOINTS, autoAllJoints, setJoints, setJoint, getJoints, setJointsReady, getJointsReady,
              setJointSel, setLabels, setJointsConfirmed, syncJointUI,
@@ -6041,6 +6083,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     } catch (er) {}
   })();
   U.$('studioAA').addEventListener('change', (e) => Studio.setAA(e.target.checked));
+  /* R133 · ground toggle */
+  if (U.$('studioGround')) {
+    U.$('studioGround').addEventListener('change', (e) => Studio.setGround(e.target.checked));
+  }
 
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
@@ -7000,6 +7046,16 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const dt = Anim.last ? Math.min(0.05, (ts - Anim.last) / 1000) : 0.016;
     Anim.last = ts;
     Anim.phase += dt * Anim.speed * Math.PI * 2;      /* 1 cycle = 2π */
+    /* R133 · ZAMEEN HILAAO — character ki jagah (travel = 0, canvas chhota).
+       1 cycle me 1 "kadam-pair" aage: phase ke hisaab se, alag loop nahi. */
+    try {
+      if (RIG.Studio && RIG.Studio.scrollGround) {
+        /* NOTE: yahan `isRun` abhi defined NAHI hota (ReferenceError aata tha aur
+               try/catch use chhupa deta tha — isliye zameen hil-ti hi nahi thi).
+               Anim.kind seedha use karo. */
+        RIG.Studio.scrollGround((dt * Anim.speed) * (Anim.kind === 'run' ? 0.34 : 0.22));
+      }
+    } catch (eG) {}
 
     const BW = (RIG.App && RIG.App.cut) ? RIG.App.cut.bbox.w : 800;
     const BH = (RIG.App && RIG.App.cut) ? RIG.App.cut.bbox.h : 1000;
