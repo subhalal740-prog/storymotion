@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Character Tool — Rig Studio · R137</title>
+<title>Character Tool — Rig Studio · R138</title>
 <style>
   :root{
     --bg:#0b0b0d; --card1:#16161a; --card2:#0f0f12; --line:rgba(255,255,255,.05);
@@ -1022,7 +1022,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R137 · MOCAP WALK</span>
+        <span>R138 · AAGE AA RAHA</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -1272,6 +1272,13 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             <input type="checkbox" id="mocapChk" style="width:auto;margin:0;accent-color:#4da3ff">
             <span>Asli chaal — video se naapi gayi (mocap)</span>
           </label>
+          <div id="gaitRow" style="margin-top:8px">
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;opacity:.72">
+              <span>Chaal ka size (kadam kitna bada)</span><b id="gaitVal">1.0×</b>
+            </div>
+            <input type="range" id="gaitSlider" min="50" max="260" value="100" step="5"
+                   style="width:100%;margin-top:4px;accent-color:#4da3ff">
+          </div>
           <div id="gsRow" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px">
             <span style="font-size:11px;opacity:.72;flex:1 1 100%">Green screen video (chroma key)</span>
             <select id="gsCycles" style="flex:1;min-width:84px;background:#0d1424;color:#e8eefc;border:1px solid #22304d;border-radius:8px;padding:6px 7px;font:inherit">
@@ -1280,7 +1287,12 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
               <option value="4">4 cycle</option>
               <option value="8">8 cycle</option>
             </select>
-            <select id="gsFps" style="flex:1;min-width:84px;background:#0d1424;color:#e8eefc;border:1px solid #22304d;border-radius:8px;padding:6px 7px;font:inherit">
+            <select id="gsApp" "style="flex:1;min-width:86px;background:#0d1424;color:#e8eefc;border:1px solid #22304d;border-radius:8px;padding:6px 7px;font:inherit">
+              <option value="0" selected>Jagah par (loop)</option>
+              <option value="0.18">Aage aa raha h. (halka)</option>
+              <option value="0.32">Aage aa raha h. (tez)</option>
+            </select>
+          <select id="gsFps" style="flex:1;min-width:84px;background:#0d1424;color:#e8eefc;border:1px solid #22304d;border-radius:8px;padding:6px 7px;font:inherit">
               <option value="24">24 fps</option>
               <option value="30" selected>30 fps</option>
               <option value="60">60 fps</option>
@@ -7082,6 +7094,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   };
   window.__MOCAP = { C:30, PHASE:0, liftL:[0.0000,0.0000,0.0000,0.0923,0.1849,0.2901,0.4395,0.5854,0.7194,0.8894,1.0000,0.9906,0.9063,0.7517,0.4936,0.2887,0.0922,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000], liftR:[0.2934,0.1379,0.0047,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0000,0.0279,0.0928,0.1633,0.2550,0.3556,0.4832,0.6616,0.7733,0.8760,0.9301,0.9262,0.8224,0.6373], kneeL:[0.0426,0.0326,0.0141,0.0000,0.0061,0.0213,0.0229,0.0889,0.2044,0.4338,0.6519,0.9060,0.9776,1.0000,0.9108,0.7571,0.5137,0.3357,0.2472,0.1955,0.1414,0.2062,0.2421,0.2315,0.2067,0.1615,0.0849,0.0317,0.0140,0.0276], kneeR:[1.0000,0.7302,0.5056,0.2994,0.1169,0.2012,0.1454,0.0933,0.0249,0.0000,0.0704,0.0189,0.0403,0.1768,0.2631,0.3408,0.4290,0.3647,0.2481,0.1449,0.2407,0.2815,0.3277,0.2639,0.1740,0.2397,0.2200,0.3692,0.6574,0.8655], bob:[0.8158,0.7600,0.5530,0.4554,0.2852,0.1644,0.1268,0.1372,0.0908,0.1112,0.0766,0.0647,0.1048,0.0683,0.0156,0.0000,0.0383,0.1495,0.3440,0.5045,0.6844,0.8698,0.9652,0.9613,0.9751,0.9447,0.9425,0.9660,0.9394,1.0000] };
   Anim.mocap = false;   /* R137 · OFF by default — purana behaviour bilkul nahi badalta */
+  Anim.gait = 1;        /* R138 · chaal ka size (1 = purana jaisa) */
   try { window.__RIG_ANIM = Anim; } catch (e) {}
 
   /* v19.0 · ghutna kis taraf mudta hai (screen space). Sign yahin badlo. */
@@ -7141,8 +7154,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
        AB   : cap 0.40 + gunak 1.20. Surakshit hai kyunki R131 ka anti-cross
               guard (FV_IN 0.10 + FV_PAIR_MAX) andar ki taraf hadd lagata hai —
               pair bahar jitna chahe jayen, aapas me kabhi nahi ghusenge. */
+    const GAIT = (Anim.gait && Anim.gait > 0) ? Anim.gait : 1;   /* R138 · chaal ka size */
     const A = Math.min(FRONTVIEW ? 0.13 : 0.30,
-                       Anim.spread * (isRun ? 0.70 : 0.62) * (FRONTVIEW ? 0.45 : 1));
+                       Anim.spread * (isRun ? 0.70 : 0.62) * (FRONTVIEW ? 0.45 : 1)) * GAIT;
     const L = BH * (isRun ? 0.44 : 0.42);
     const STANCE = 0.62;
     const u = ((Anim.phase / (Math.PI * 2)) % 1 + 1) % 1;
@@ -7166,9 +7180,9 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     /* R120b · front view me pair SIDE me ghum nahi sakta, isliye "kadam" sirf
        UPAR-NEECHE se dikhta hai. Lift thoda bada (2%) — dono pair 180° ULTE
        phase me (sR = legPhase(u+0.5)), taaki ek utha ho to doosra zameen par. */
-    const liftAmp = BH * (isRun ? 0.024 : 0.014) * (FRONTVIEW ? 3.0 : 1);   /* R128 · 2.4 -> 3.0 : master par kadam saaf dikhe */
+    const liftAmp = BH * (isRun ? 0.024 : 0.014) * (FRONTVIEW ? 3.0 : 1) * GAIT;   /* R128 · 2.4 -> 3.0 · R138 GAIT */
     /* bob — per step: down par neecha, passing par ooncha */
-    const bobAmp = BH * (isRun ? 0.012 : 0.007);
+    const bobAmp = BH * (isRun ? 0.012 : 0.007) * GAIT;                          /* R138 · GAIT */
     let   rise = bobAmp * (0.5 - 0.5 * Math.cos(Math.PI * 2 * 2 * (u - 0.10)));
 
     const dyL = -sL.lift * liftAmp;
@@ -7673,8 +7687,10 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const cv = document.getElementById('studio');
     if (!cv) throw new Error('studio canvas nahi mila');
     if (!window.MediaRecorder) throw new Error('is browser me MediaRecorder nahi hai');
-    const cycles = Math.max(1, Math.min(8, (opt && +opt.cycles) || 2));
-    const fps    = Math.max(12, Math.min(60, (opt && +opt.fps) || 30));
+    const cycles  = Math.max(1, Math.min(8, (opt && +opt.cycles) || 2));
+    const fps     = Math.max(12, Math.min(60, (opt && +opt.fps) || 30));
+    const appAmt  = Math.max(0, Math.min(0.45, (opt && +opt.approach) || 0));   /* R138 */
+    const zoomWas = (RIG.Studio.getZoom ? RIG.Studio.getZoom() : 1);
     const mime   = pickMime();
 
     /* jod confirm na hon to step() render karega hi nahi (R113 gate) */
@@ -7713,6 +7729,15 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       ts += dtMs;
       step(ts);                                  /* phase aage + render */
       try { cancelAnimationFrame(Anim.raf); } catch (e) {}   /* self-schedule undo */
+      /* R138 · AAGE AA RAHA HAI: character dheere-dheere BADA hota jayega.
+         Front view me "aage badhna" ka matlab hai hamari taraf NAZDEEK aana —
+         isliye zoom badhta hai (poor character ek saath, jod nahi khulte) aur
+         zameen tez bhagti hai. Ye clip LOOP nahi hota (bada hote hote khatam). */
+      if (appAmt > 0 && RIG.Studio.setZoom) {
+        const z = 1 + appAmt * (frames <= 1 ? 1 : (i / (frames - 1)));
+        try { RIG.Studio.setZoom(z); } catch (eZ) {}
+        try { if (RIG.Studio.scrollGround) RIG.Studio.scrollGround(0.02 * appAmt * 8); } catch (eS) {}
+      }
       gx.setTransform(1, 0, 0, 1, 0, 0);
       gx.fillStyle = '#00FF00';
       gx.fillRect(0, 0, gc.width, gc.height);
@@ -7726,6 +7751,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     try { track.stop(); } catch (e) {}
 
     /* sab kuch wapas jaise tha */
+    if (appAmt > 0) { try { RIG.Studio.setZoom(zoomWas || 1); } catch (eZ) {} }
     try { if (groundWas && RIG.Studio.setGround) RIG.Studio.setGround(true); } catch (e) {}
     Anim.kind = wasKind || Anim.kind;
     if (wasOn) { Anim.last = 0; Anim.raf = requestAnimationFrame(step); }
@@ -7735,7 +7761,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     const ext = (mime.indexOf('mp4') >= 0) ? 'mp4' : 'webm';
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'walk-green-' + (wasKind || 'walk') + '-' + cycles + 'cycle.' + ext;
+    a.href = url; a.download = 'walk-green-' + (wasKind || 'walk') + '-' + cycles + 'cycle' + (appAmt > 0 ? '-approach' : '') + '.' + ext;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
     return { bytes: blob.size, ext: ext, frames: frames, fps: fps, cycles: cycles,
@@ -7971,6 +7997,18 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   if (ppStop) ppStop.addEventListener('click', function () { stopAnim(); mark(null); });
 
   /* R136 · GREEN SCREEN VIDEO */
+  /* R138 · chaal ka size */
+  const gaitS = document.getElementById('gaitSlider');
+  const gaitV = document.getElementById('gaitVal');
+  if (gaitS) {
+    try { if (window.__RIG_ANIM) gaitS.value = Math.round((window.__RIG_ANIM.gait || 1) * 100); } catch (e) {}
+    const applyG = function () {
+      const g = (+gaitS.value || 100) / 100;
+      try { if (window.__RIG_ANIM) window.__RIG_ANIM.gait = g; } catch (e) {}
+      if (gaitV) gaitV.textContent = g.toFixed(1) + '\u00D7';
+    };
+    gaitS.addEventListener('input', applyG); applyG();
+  }
   const mocapChk = document.getElementById('mocapChk');
   if (mocapChk) {
     try { if (window.__RIG_ANIM) mocapChk.checked = !!window.__RIG_ANIM.mocap; } catch (e) {}
@@ -7982,12 +8020,14 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   const gsVal = document.getElementById('gsVal');
   const gsCy  = document.getElementById('gsCycles');
   const gsFp  = document.getElementById('gsFps');
+  const gsAp  = document.getElementById('gsApp');
   function gsLabel(t) { if (gsVal) gsVal.textContent = t; }
   if (gsRec) gsRec.addEventListener('click', async function () {
     if (typeof window.__REC_GREEN !== 'function') { gsLabel('REC is browser me uplabdh nahi'); return; }
     gsRec.disabled = true; gsLabel('ban raha hai…');
     try {
-      const r = await window.__REC_GREEN({ cycles: gsCy ? +gsCy.value : 2, fps: gsFp ? +gsFp.value : 30 });
+      const r = await window.__REC_GREEN({ cycles: gsCy ? +gsCy.value : 2, fps: gsFp ? +gsFp.value : 30,
+              approach: gsAp ? +gsAp.value : 0 });
       gsLabel(r.frames + ' frame · ' + (r.bytes / 1024).toFixed(0) + ' KB · .' + r.ext + ' · download ho gaya');
     } catch (e) {
       gsLabel('GALTI: ' + ((e && e.message) || e));
