@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Character Tool — Rig Studio · R134</title>
+<title>Character Tool — Rig Studio · R136</title>
 <style>
   :root{
     --bg:#0b0b0d; --card1:#16161a; --card2:#0f0f12; --line:rgba(255,255,255,.05);
@@ -1022,7 +1022,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R134 · FORWARD ILLUSION</span>
+        <span>R136 · GREEN SCREEN</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -1268,6 +1268,22 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
             <button class="qp" data-pose="run">Run</button>
             <button class="qp" data-pose="sit">Sit</button>
           </div>
+          <div id="gsRow" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px">
+            <span style="font-size:11px;opacity:.72;flex:1 1 100%">Green screen video (chroma key)</span>
+            <select id="gsCycles" style="flex:1;min-width:84px;background:#0d1424;color:#e8eefc;border:1px solid #22304d;border-radius:8px;padding:6px 7px;font:inherit">
+              <option value="1">1 cycle</option>
+              <option value="2" selected>2 cycle</option>
+              <option value="4">4 cycle</option>
+              <option value="8">8 cycle</option>
+            </select>
+            <select id="gsFps" style="flex:1;min-width:84px;background:#0d1424;color:#e8eefc;border:1px solid #22304d;border-radius:8px;padding:6px 7px;font:inherit">
+              <option value="24">24 fps</option>
+              <option value="30" selected>30 fps</option>
+              <option value="60">60 fps</option>
+            </select>
+            <button type="button" class="qp" id="gsRec" style="flex:none;min-width:62px">REC</button>
+          </div>
+          <div id="gsVal" style="font-size:11px;opacity:.82;margin-top:5px;min-height:14px"></div>
           <div class="jntLockNote" id="jntLockNote" hidden>Walk/Run band hai — pehle 15 joints sahi jagah set karo, phir "Joints done" dabao.</div>
         </div>
       </div>
@@ -7602,6 +7618,99 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     Anim.raf = requestAnimationFrame(step);
   }
 
+  /* ============ R136 · GREEN SCREEN WALK VIDEO ============
+     Character ko poore GREEN (#00FF00) par render karke video banata hai,
+     taaki kisi bhi editor me chroma-key karke apni background laga sakein.
+
+     LOOP BILKUL PERFECT (andaza nahi): hum real time ka intazaar nahi karte.
+     step(ts) ko SYNTHETIC timestamp dete hain — har frame ka dt ek hi — isliye
+     phase theek N cycle ke baad wapas 0 par aata hai, aur video ka aakhiri
+     frame pehle se bilkul jud jata hai.                                    */
+  function pickMime() {
+    const list = ['video/mp4;codecs=avc1.42E01E', 'video/mp4',
+                  'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+    for (let i = 0; i < list.length; i++) {
+      try { if (window.MediaRecorder && MediaRecorder.isTypeSupported(list[i])) return list[i]; }
+      catch (e) {}
+    }
+    return '';
+  }
+
+  async function recordGreenScreen(opt) {
+    const cv = document.getElementById('studio');
+    if (!cv) throw new Error('studio canvas nahi mila');
+    if (!window.MediaRecorder) throw new Error('is browser me MediaRecorder nahi hai');
+    const cycles = Math.max(1, Math.min(8, (opt && +opt.cycles) || 2));
+    const fps    = Math.max(12, Math.min(60, (opt && +opt.fps) || 30));
+    const mime   = pickMime();
+
+    /* jod confirm na hon to step() render karega hi nahi (R113 gate) */
+    if (typeof jointsGateOk === 'function' && !jointsGateOk())
+      throw new Error('pehle 15 jod confirm karein (step 4)');
+
+    const gc = document.createElement('canvas');
+    gc.width = cv.width; gc.height = cv.height;
+    const gx = gc.getContext('2d');
+
+    /* ZAMEEN BAND — video me sirf character + green hone chahiye */
+    let groundWas = true;
+    try { groundWas = !(RIG.Studio.getGround && RIG.Studio.getGround() === false);
+          if (RIG.Studio.setGround) RIG.Studio.setGround(false); } catch (e) {}
+
+    const wasOn = !!Anim.on, wasKind = Anim.kind;
+    if (!wasKind) Anim.kind = 'walk';
+    if (!wasOn) Anim.on = true;                 /* step() iske bina chalega hi nahi */
+    try { cancelAnimationFrame(Anim.raf); } catch (e) {}
+    Anim.phase = 0;
+
+    const stream = gc.captureStream(0);
+    const track  = stream.getVideoTracks()[0];
+    const chunks = [];
+    const recOpts = mime ? { mimeType: mime, videoBitsPerSecond: 8000000 } : undefined;
+    const rec = new MediaRecorder(stream, recOpts);
+    rec.ondataavailable = function (e) { if (e.data && e.data.size) chunks.push(e.data); };
+
+    const dtMs = 1000 / fps;
+    const frames = Math.max(2, Math.round((cycles * fps) / Math.max(0.15, Anim.speed)));
+    const done = new Promise(function (res) { rec.onstop = res; });
+    rec.start();
+
+    let ts = 1; Anim.last = 1;                  /* truthy -> pehla dt bhi theek */
+    for (let i = 0; i < frames; i++) {
+      ts += dtMs;
+      step(ts);                                  /* phase aage + render */
+      try { cancelAnimationFrame(Anim.raf); } catch (e) {}   /* self-schedule undo */
+      gx.setTransform(1, 0, 0, 1, 0, 0);
+      gx.fillStyle = '#00FF00';
+      gx.fillRect(0, 0, gc.width, gc.height);
+      gx.drawImage(cv, 0, 0);
+      if (track.requestFrame) track.requestFrame();
+      await new Promise(function (r) { setTimeout(r, dtMs); });
+    }
+
+    rec.stop();
+    await done;
+    try { track.stop(); } catch (e) {}
+
+    /* sab kuch wapas jaise tha */
+    try { if (groundWas && RIG.Studio.setGround) RIG.Studio.setGround(true); } catch (e) {}
+    Anim.kind = wasKind || Anim.kind;
+    if (wasOn) { Anim.last = 0; Anim.raf = requestAnimationFrame(step); }
+    else { Anim.on = false; try { RIG.Studio.render(); } catch (e) {} }
+
+    const blob = new Blob(chunks, { type: mime || 'video/webm' });
+    const ext = (mime.indexOf('mp4') >= 0) ? 'mp4' : 'webm';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'walk-green-' + (wasKind || 'walk') + '-' + cycles + 'cycle.' + ext;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+    return { bytes: blob.size, ext: ext, frames: frames, fps: fps, cycles: cycles,
+             mime: mime || '(default)' };
+  }
+  try { window.__REC_GREEN = recordGreenScreen; } catch (e) {}
+  try { if (window.RIG && RIG.Studio) RIG.Studio.recordGreen = recordGreenScreen; } catch (e) {}
+
   /* R113 · JOINTS GATE — jab tak 15 joints confirm na hon, Walk/Run band.
      Engine level par bhi check (koi bhi rasta ho, walk shuru nahi hogi). */
   function jointsGateOk() {
@@ -7827,6 +7936,25 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   if (ppClose) ppClose.addEventListener('click', closePanel);
   if (ppDone) ppDone.addEventListener('click', closePanel);
   if (ppStop) ppStop.addEventListener('click', function () { stopAnim(); mark(null); });
+
+  /* R136 · GREEN SCREEN VIDEO */
+  const gsRec = document.getElementById('gsRec');
+  const gsVal = document.getElementById('gsVal');
+  const gsCy  = document.getElementById('gsCycles');
+  const gsFp  = document.getElementById('gsFps');
+  function gsLabel(t) { if (gsVal) gsVal.textContent = t; }
+  if (gsRec) gsRec.addEventListener('click', async function () {
+    if (typeof window.__REC_GREEN !== 'function') { gsLabel('REC is browser me uplabdh nahi'); return; }
+    gsRec.disabled = true; gsLabel('ban raha hai…');
+    try {
+      const r = await window.__REC_GREEN({ cycles: gsCy ? +gsCy.value : 2, fps: gsFp ? +gsFp.value : 30 });
+      gsLabel(r.frames + ' frame · ' + (r.bytes / 1024).toFixed(0) + ' KB · .' + r.ext + ' · download ho gaya');
+    } catch (e) {
+      gsLabel('GALTI: ' + ((e && e.message) || e));
+    } finally {
+      gsRec.disabled = false;
+    }
+  });
 
   /* ===== EK HI HANDLER (v15.1) — koi duplicate listener nahi =====
      walk/run -> animation + 1 history entry ('cycle: walk')
