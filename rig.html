@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Character Tool — Rig Studio</title>
+<title>Character Tool — Rig Studio · R129</title>
 <style>
   :root{
     --bg:#0b0b0d; --card1:#16161a; --card2:#0f0f12; --line:rgba(255,255,255,.05);
@@ -1019,6 +1019,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     <div class="brandRow">
       <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="8" width="16" height="11" rx="3.2"/><path d="M12 8V4.6"/><circle cx="12" cy="3.4" r="1.5"/><circle cx="9" cy="13" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="13" r="1.5" fill="currentColor" stroke="none"/><path d="M9.5 16.4h5"/><path d="M2.4 12v3"/><path d="M21.6 12v3"/></svg></span>
       <div class="brand"><b>Character Tool</b><span>Create · Rig · Animate</span></div>
+      <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
+      <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
+        <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
+        <span>R129 · PER-IMAGE LOCK</span>
+      </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/></svg>
@@ -4996,6 +5001,43 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   }
 
   /* ---------------- scan pipeline ---------------- */
+  /* ==================================================================
+     R129 · PER-IMAGE JOINT LOCK  ("ek baar theek karo, hamesha ke liye")
+     ------------------------------------------------------------------
+     PEHLE: har nayi photo upload hote hi purane jod DELETE ho jate the
+            (R113: "naya character = naye joints"). Isliye "setting lock"
+            kabhi kaam nahi karta tha — doosri photo aate hi sab mit jata.
+     AB   : photo ka FINGERPRINT (16x16 downsample ka hash) nikaal kar jod
+            USI photo ke naam se save hote hain.
+              • wahi photo dobara upload  -> jod apne aap wapas
+              • nayi photo                -> naye jod (purane kat-te nahi)
+     ================================================================== */
+  var IMG_FP = null;                       /* abhi load hui photo ka fingerprint */
+  function jKey(fp)    { return 'rigstudio.joints.v1::'    + (fp || 'nofp'); }
+  function jOkKey(fp)  { return 'rigstudio.joints.ok.v1::' + (fp || 'nofp'); }
+
+  /* ImageData se chhota sa 16x16 "naksha" bana kar uska hash —
+     file ka naam badal jaye ya dobara save ho, photo wahi rahe to FP wahi. */
+  function imgFingerprint(data, W, H) {
+    try {
+      var N = 16;
+      var big = document.createElement('canvas'); big.width = W; big.height = H;
+      big.getContext('2d').putImageData(data, 0, 0);
+      var c = document.createElement('canvas'); c.width = N; c.height = N;
+      var cx = c.getContext('2d', { willReadFrequently: true });
+      cx.imageSmoothingEnabled = true; cx.imageSmoothingQuality = 'high';
+      cx.drawImage(big, 0, 0, N, N);
+      var d = cx.getImageData(0, 0, N, N).data;
+      var s = '';
+      for (var i = 0; i < d.length; i += 4) {
+        s += (d[i + 3] < 40) ? '.' : String.fromCharCode(65 + (((d[i] + d[i+1] + d[i+2]) / 3) >> 4));
+      }
+      var h = 5381;
+      for (var k = 0; k < s.length; k++) h = ((h * 33) ^ s.charCodeAt(k)) >>> 0;
+      return 'fp' + N + '_' + W + 'x' + H + '_' + h.toString(36);
+    } catch (e) { return null; }
+  }
+
   async function handleFile(file) {
     if (!file) return;
     U.$('fileName').textContent = file.name + ' · ' + Math.round(file.size / 1024) + ' KB';
@@ -5009,10 +5051,11 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     App.cut = null; App.imgData = null; App.badParts = []; App.badOverride = false; App.cutIssues = [];
     try { applyRigLock([]); } catch (e) {}
     (function () { const ac1 = document.getElementById('acCard1'); if (ac1) ac1.classList.remove('show'); })();
-    /* R113: naya character = naye joints (purane joints hata do) */
+    /* R129 · PER-IMAGE LOCK: ab DELETE nahi karte.
+       finishLoad() me photo ka fingerprint nikal kar USI photo wali
+       setting kholenge. Nayi photo ho to jod khud dobara detect honge. */
     try {
-      localStorage.removeItem('rigstudio.joints.v1');
-      localStorage.removeItem('rigstudio.joints.ok.v1');
+      IMG_FP = null;
       if (window.RIG && RIG.Studio) { RIG.Studio.setJointsReady({}); }
     } catch (e) {}
     /* v15.8: naya character = naya rig — purani animation/pose/history saaf */
@@ -5098,6 +5141,22 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 
   /* v18.2 · upscale ke baad (ya seedha) yeh saara pipeline chalta hai */
   function finishLoad(data, W, H, scaleNote) {
+    /* ---- R129 · PER-IMAGE JOINT LOCK ----
+       Image yahan tayyar hoti hai -> abhi fingerprint nikaal kar jodon ki
+       almari badal do. Wahi photo pehle theek ki ho to jod wapas aa jayenge. */
+    try {
+      IMG_FP = imgFingerprint(data, W, H);
+      if (window.__JOINTS_SET_STORE) window.__JOINTS_SET_STORE(IMG_FP);
+      var _has = false;
+      try { _has = !!localStorage.getItem(jKey(IMG_FP)); } catch (e2) {}
+      if (typeof U !== 'undefined' && U.toast) {
+        U.toast(_has
+          ? 'Is photo ki purani setting mil gayi ✓ — jod wapas aa gaye'
+          : 'Nayi photo — jod dobara lagane honge (ek baar, phir yaad rahega)');
+      }
+      window.__IMG_FP_LOCKED = _has;
+      try { if (window.__R129_PAINT) window.__R129_PAINT(_has); } catch (e4) {}
+    } catch (e3) {}
     /* ---- v17.5 · SOLID BACKGROUND AUTO-REMOVE (client-side chroma key, no API) ----
        Gallery se image aayi -> border se bg colour detect -> flood-fill key -> transparent.
        Solid background nahi mila to yahin REJECT (kharab image par aage kuch nahi hota). */
@@ -6607,6 +6666,16 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function S() { return window.RIG && window.RIG.Studio; }
     var LSKEY = 'rigstudio.joints.v1';
     var LSOK = 'rigstudio.joints.ok.v1';
+    /* R129 · per-image lock: photo ka fingerprint aate hi key badal do */
+    function setJointsStore(fp) {
+      try {
+        LSKEY = 'rigstudio.joints.v1::'    + (fp || 'nofp');
+        LSOK  = 'rigstudio.joints.ok.v1::' + (fp || 'nofp');
+        return true;
+      } catch (e) { return false; }
+    }
+    window.__JOINTS_SET_STORE = setJointsStore;
+    window.__JOINTS_KEYS = function () { return { k: LSKEY, ok: LSOK }; };
 
     function saveJoints() {
       try {
@@ -6768,6 +6837,24 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
   function setMeta(label) { try { var st = document.getElementById('stateMeta'); if (st) st.textContent = label; } catch (e) {} }
 
   /* v11: koi demo auto-load nahi — pehle user apna PNG chunta hai */
+  })();
+
+  /* ---- R129 · badge ki batti: photo ki setting mili to hara, nahi to dhundhla ---- */
+  (function () {
+    function paint(on) {
+      try {
+        var d = document.getElementById('r129lock'); if (!d) return;
+        d.style.opacity = on ? '1' : '.45';
+        d.style.background = on ? '#00ff88' : '#04120a';
+        var b = document.getElementById('r129badge');
+        if (b) b.title = on ? 'Is photo ki purani setting mil gayi — jod wapas aa gaye'
+                            : 'Nayi photo — jod ek baar lagane honge, phir hamesha yaad rahega';
+      } catch (e) {}
+    }
+    window.__R129_PAINT = paint;
+    window.addEventListener('load', function () {
+      setTimeout(function () { paint(window.__IMG_FP_LOCKED === true); }, 500);
+    });
   })();
 
   window.RIG = {
