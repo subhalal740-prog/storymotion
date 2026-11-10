@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Character Tool — Rig Studio · R133</title>
+<title>Character Tool — Rig Studio · R134</title>
 <style>
   :root{
     --bg:#0b0b0d; --card1:#16161a; --card2:#0f0f12; --line:rgba(255,255,255,.05);
@@ -1022,7 +1022,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R133 · GROUND + PASSING</span>
+        <span>R134 · FORWARD ILLUSION</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -2905,30 +2905,62 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
     function drawGround() {
       if (!groundOn || !bbox || !ctx) return;
       const W = cv.width, H = cv.height, D = DPR;
-      /* paer kahan hain — R130 ke padY ke hisaab se (character beech me hai) */
-      const feetY = (padY() + bbox.h) * scale;
-      const top = feetY + 1 * D, bot = H;
-      const band = bot - top;
-      if (band < 8 * D) return;                       /* neeche jagah hi nahi */
+      const feetY = (padY() + bbox.h) * scale;      /* paer kahan hain */
+      /* R134 · VANISHING POINT (user ke code se liya, hamare hisaab se dhalа)
+           - x = canvas ke beech, y = paer se thoda UPAR (kamar ke aas-paas)
+           - hardcoded 180px NAHI (mobile par canvas chhota = horizon beech me
+             aa jata tha). Isliye canvas ke hisaab se.
+         Zameen is lakeer se neeche ki taraf failti hai — character usi par
+         khada hai, aur stripes isi point se nikal kar NEECHE + CHAUDI hoti
+         hain -> yahi "aage chal raha hai" ka asli ehsaas hai. */
+      const vy = Math.min(feetY - 14 * D, H * 0.70);
+      const vx = W / 2;
+      const band = H - vy;
+      if (band < 12 * D) return;
       ctx.save();
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      /* horizon — paer ke theek neeche */
-      ctx.strokeStyle = 'rgba(150,190,255,.26)';
+      /* door ka halka dhundh — TRANSPARENT rakha hai (user ka code poore canvas
+         ko opaque '#050a14' se bhar deta tha, jisse character ek dabbe me band
+         ho jata). Gradient = door dhundhla, paas thoda gehra. */
+      const g = ctx.createLinearGradient(0, vy, 0, H);
+      g.addColorStop(0, 'rgba(20,40,90,0.00)');
+      g.addColorStop(1, 'rgba(20,40,90,0.20)');
+      ctx.fillStyle = g; ctx.fillRect(0, vy, W, band);
+      /* horizon lakeer */
+      ctx.strokeStyle = 'rgba(120,170,255,.22)';
       ctx.lineWidth = 1.2 * D;
-      ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(W, top); ctx.stroke();
-      /* perspective stripes: t=0 paer ke paas (chhota), t=1 nazdeek (chauda).
-         groundT badhne ke saath ye NEECHE aati hain = character aage chal raha. */
-      const N = 7;
-      for (let i = 0; i < N; i++) {
-        const t = (groundT + i / N) % 1;
-        const y = top + t * band;
-        const halfW = W * (0.10 + 0.55 * t);
-        const a = 0.24 * (1 - t * 0.72);
-        ctx.strokeStyle = 'rgba(150,190,255,' + a.toFixed(3) + ')';
-        ctx.lineWidth = (0.8 + 1.6 * t) * D;
+      ctx.beginPath(); ctx.moveTo(0, vy); ctx.lineTo(W, vy); ctx.stroke();
+      /* perspective lines — vanishing point se neeche fan (user ka idea) */
+      const NL = 12;
+      ctx.strokeStyle = 'rgba(110,160,255,.10)';
+      ctx.lineWidth = 1 * D;
+      ctx.beginPath();
+      for (let i = 0; i <= NL; i++) {
+        const tx = (W / NL) * i;
+        ctx.moveTo(vx, vy); ctx.lineTo(tx, H);
+      }
+      ctx.stroke();
+      /* SPEED STRIPES — ek point se nikal kar neeche aati aur chaudi hoti hain.
+         (user ka formula: width = progress * W/2 — meri purani flat stripes se
+          behtar hai, kyunki ye vanishing point par milti hain.) */
+      const NS = 6;
+      for (let i = 0; i < NS; i++) {
+        const t = (groundT + i / NS) % 1;            /* 0 = door, 1 = paas */
+        const y = vy + t * band;                     /* neeche aa rahi hai */
+        const halfW = t * (W / 2);                   /* chaudi hoti ja rahi hai */
+        const a = 0.30 * (1 - t * 0.55);
+        ctx.strokeStyle = 'rgba(120,180,255,' + a.toFixed(3) + ')';
+        ctx.lineWidth = (0.8 + 2.2 * t) * D;
         ctx.beginPath();
-        ctx.moveTo(W / 2 - halfW, y); ctx.lineTo(W / 2 + halfW, y);
+        ctx.moveTo(vx - halfW, y); ctx.lineTo(vx + halfW, y);
         ctx.stroke();
+        /* user ke "tracking dots" — halkе rakhe hain, taaki shor na karein */
+        const rd = (1.0 + 1.8 * t) * D;
+        ctx.fillStyle = 'rgba(100,255,218,' + (0.24 * (1 - t * 0.5)).toFixed(3) + ')';
+        ctx.beginPath();
+        ctx.arc(vx - halfW + 14 * D, y, rd, 0, Math.PI * 2);
+        ctx.arc(vx + halfW - 14 * D, y, rd, 0, Math.PI * 2);
+        ctx.fill();
       }
       ctx.restore();
     }
