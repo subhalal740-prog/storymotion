@@ -1351,7 +1351,7 @@ select{ font-size:11px !important; padding:5px 6px !important; color:#ffffff !im
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R147 · CANVAS OK</span>
+        <span>R148 · VIDEO JAISA</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -7525,7 +7525,10 @@ select{ font-size:11px !important; padding:5px 6px !important; color:#ffffff !im
     const A = Math.min(FRONTVIEW ? 0.13 : 0.30,
                        Anim.spread * (isRun ? 0.70 : 0.62) * (FRONTVIEW ? 0.45 : 1)) * GAIT;
     const L = BH * (isRun ? 0.44 : 0.42);
-    const STANCE = 0.62;
+    /* R148: 0.62 -> 0.53. Reference video me STANCE (paer zameen par)
+       L 56% / R 50% = ausat 53%. Rig 62% tha -> paer zameen par zyada der
+       tikta tha aur chalne ki lay (timing) video se alag thi. */
+    const STANCE = 0.53;
     const u = ((Anim.phase / (Math.PI * 2)) % 1 + 1) % 1;
 
     function legPhase(uu){
@@ -7547,7 +7550,19 @@ select{ font-size:11px !important; padding:5px 6px !important; color:#ffffff !im
     /* R120b · front view me pair SIDE me ghum nahi sakta, isliye "kadam" sirf
        UPAR-NEECHE se dikhta hai. Lift thoda bada (2%) — dono pair 180° ULTE
        phase me (sR = legPhase(u+0.5)), taaki ek utha ho to doosra zameen par. */
-    const liftAmp = BH * (isRun ? 0.024 : 0.014) * (FRONTVIEW ? 3.0 : 1) * GAIT;   /* R128 · 2.4 -> 3.0 · R138 GAIT */
+    /* R148 · PAIR KI UNCHAAI AB REFERENCE VIDEO JITNI
+   --------------------------------------------------
+   User ka hukm: "jesa aapko video diya tha green screen animation wala, waise chalao"
+   Us video (vid/walk.mp4, green screen, 174 frame) se NAAPA:
+       takhna (kamar ke nisbat) vertical travel: L 18.1% / R 16.6% body height
+   Hamara rig       : L  8.8% / R  5.7%   <- PAER UTHATA HI NAHI THA (ghisatna lagta tha)
+   SWEEP kar ke sahi value dhoondhi (body 353px, target ~18%):
+       0.014 ->  8.8% /  5.7%
+       0.030 -> 13.0% / 11.6%
+       0.045 -> 17.6% / 16.2%   <-- REFERENCE SE MILTA
+       0.060 -> 22.1% / 21.0%
+   Isliye 0.014 -> 0.045 (peak lift 14.8px se 47.7px). */
+const liftAmp = BH * (isRun ? 0.0765 : 0.045) * (FRONTVIEW ? 3.0 : 1) * GAIT;
     /* bob — per step: down par neecha, passing par ooncha */
     const bobAmp = BH * (isRun ? 0.012 : 0.007) * GAIT;                          /* R138 · GAIT */
     let   rise = bobAmp * (0.5 - 0.5 * Math.cos(Math.PI * 2 * 2 * (u - 0.10)));
@@ -7658,7 +7673,12 @@ select{ font-size:11px !important; padding:5px 6px !important; color:#ffffff !im
     /* R143: 2.00 -> 1.10. 2.00 par raw conv ~0.224 nikalta tha, jo hadd 0.16 se
        upar tha -> guard lagatar lagti thi -> 49% cycle freeze. Ab peak ~0.123
        rehta hai: guard lagti hi nahi, pair lagatar hiltе hain. */
-    const FV_LEG  = 1.10;
+    /* R148: 1.10 -> 0.75. Reference video me pair ka horizontal travel
+       L 8.0% / R 4.2% body hai; 1.10 par L 13.6% / R 6.0% tha (bahut bahar).
+       Sweep: 0.90->12.7%/5.3%  0.75->12.1%/4.7%  0.60->11.8%/5.9%
+       0.75 sabse kareeb, aur pair uthna (liftAmp 0.045) chalne ki pehchan
+       banaye rakhta hai — isliye kam jhukav se "march" nahi lagega. */
+    const FV_LEG  = 0.75;
     const FV_OUT  = 0.50;   /* bahar (splay)   : 28.6 deg — surakshit, poora */
     const FV_IN   = 0.10;   /* andar (converge):  5.7 deg — yahin hadd zaroori */
     /* R143: ghutna 0.70->0.95, panja 0.55->0.75 — taang ka jhukav kam kiya hai,
