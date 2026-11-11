@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Character Tool — Rig Studio · R139</title>
+<title>Character Tool — Rig Studio · R140</title>
 <style>
   :root{
     --bg:#0b0b0d; --card1:#16161a; --card2:#0f0f12; --line:rgba(255,255,255,.05);
@@ -1134,6 +1134,64 @@ a{color:var(--primary)!important}
 ::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
 </style>
 
+
+<style id="skin140">
+/* ====== R140 · PLAY/WALK HAMESHA NAZAR AAYE — scroll ki zarurat nahi ======
+   User ki asli dikkat: "play/walk ke liye mujhe neeche jana padta hai scroll krke".
+   Ab poora animation block NICHE FIX hai: page upar ho ya niche, ye hamesha
+   dikhega. Upar character, niche control — user ke bheje nakshe jaisa.
+   DOM se kuch nahi hataya — sirf ek div me baandha + CSS.               */
+#animBar{
+  position:fixed!important; left:0; right:0; bottom:0; z-index:950;
+  max-width:460px; margin:0 auto;
+  background:var(--bg-card)!important;
+  border-top:1px solid var(--line)!important;
+  border-radius:16px 16px 0 0!important;
+  padding:9px 11px 11px!important;
+  box-shadow:0 -6px 24px rgba(0,0,0,.5)!important;
+  display:flex; flex-direction:column; gap:6px;
+}
+#animBar #qpRow{margin-top:0!important}
+#animBar #gaitRow,#animBar #gsRow,#animBar #mocapRow{margin-top:0!important}
+#animBar #gsVal{min-height:12px!important;font-size:10.5px!important}
+body{padding-bottom:215px!important}
+
+/* jod ki suchi ab LAMBI nahi — BAJU me (horizontal), user ke nakshe jaisa */
+.jntGrid{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;
+  gap:5px!important;padding-bottom:5px!important}
+.jntGrid>*{flex:0 0 auto!important;margin:0!important}
+.jntGrid::-webkit-scrollbar{height:4px}
+.jntGrid::-webkit-scrollbar-thumb{background:var(--line);border-radius:2px}
+
+/* thodi jagah bachaayein */
+.card{padding:12px!important}
+.jntWrap{padding:9px!important}
+.jntBar{margin:5px 0!important}
+
+/* ---- bar ko chhota karo (476px bahut tha) ---- */
+#animBar{gap:4px!important;padding:7px 9px 9px!important}
+#qpRow .qp{padding:7px 2px!important;font-size:11px!important}
+#animBar #mocapRow{padding:5px 8px!important;font-size:10.5px!important}
+#animBar #gaitRow{padding:5px 8px!important}
+#animBar #gaitRow>div:first-child{font-size:10px!important;margin-bottom:1px!important}
+#animBar #gaitSlider{margin-top:1px!important;height:5px!important}
+#animBar #gsRow{padding:5px 8px!important;gap:5px!important;margin-top:1px!important}
+#animBar #gsRow>span{font-size:10px!important;flex-basis:100%!important;margin-bottom:1px!important}
+#animBar #gsCycles,#animBar #gsFps,#animBar #gsApp{padding:5px 6px!important;font-size:11px!important;min-width:0!important}
+#animBar #gsRec{padding:6px 10px!important;min-width:52px!important}
+#animBar #gsVal{min-height:11px!important;font-size:10px!important;margin-top:2px!important}
+
+/* ---- aur chhota: mocap + chaal ek hi line me ---- */
+#animBar{flex-direction:row!important;flex-wrap:wrap!important;gap:5px!important;align-items:center}
+#animBar #qpRow{flex:1 1 100%!important}
+#animBar #mocapRow{flex:1 1 42%!important;padding:7px 8px!important}
+#animBar #gaitRow{flex:1 1 54%!important}
+#animBar #gaitSlider{height:14px!important}
+#animBar #gsRow{flex:1 1 100%!important}
+#animBar #gsVal{flex:1 1 100%!important}
+body{padding-bottom:165px!important}
+body{padding-bottom:180px!important}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -1149,7 +1207,7 @@ a{color:var(--primary)!important}
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R139 · PRO UI</span>
+        <span>R140 · NO SCROLL</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -1386,7 +1444,8 @@ a{color:var(--primary)!important}
               </div>
             </div>
           </div>
-          <div class="qpRow" id="qpRow">
+          <div id="animBar">
+<div class="qpRow" id="qpRow">
             <button class="qp stop" id="poseStop" data-pose="stop" title="Stop animation" aria-label="Stop">
               <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="6.5" y="5.5" width="4" height="13" rx="1.2"/><rect x="13.5" y="5.5" width="4" height="13" rx="1.2"/></svg>
             </button>
@@ -1427,7 +1486,9 @@ a{color:var(--primary)!important}
             <button type="button" class="qp" id="gsRec" style="flex:none;min-width:62px">REC</button>
           </div>
           <div id="gsVal" style="font-size:11px;opacity:.82;margin-top:5px;min-height:14px"></div>
-          <div class="jntLockNote" id="jntLockNote" hidden>Walk/Run band hai — pehle 15 joints sahi jagah set karo, phir "Joints done" dabao.</div>
+          
+</div>
+<div class="jntLockNote" id="jntLockNote" hidden>Walk/Run band hai — pehle 15 joints sahi jagah set karo, phir "Joints done" dabao.</div>
         </div>
       </div>
 
