@@ -88,7 +88,6 @@
     function loadLayer(name, e) {
         const files = e.target.files;
         if (!files || files.length === 0) return;
-        const file = files[0];
         const reader = new FileReader();
         reader.onload = function(ev) {
             const img = new Image();
@@ -99,7 +98,7 @@
             };
             img.src = ev.target.result;
         };
-        reader.readAsDataURL(file);
+        reader.readAsDataURL(files.item(0));
     }
 
     function resize() {
@@ -132,7 +131,6 @@
         let cosA = Math.cos(currentAngle);
         let sinA = Math.sin(currentAngle);
 
-        // जमीन की परछाई
         ctx.beginPath();
         ctx.ellipse(cx, cy + 115, 38, 7, 0, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(255,255,255,0.08)';
@@ -143,7 +141,6 @@
         let lLegY = cy + 80 + (swing * 14 * cosA);
         let rLegY = cy + 80 - (swing * 14 * cosA);
 
-        // 1. पैर (Legs)
         if (parts.legs) {
             ctx.save();
             ctx.translate(lLegX, lLegY - 35);
@@ -167,7 +164,6 @@
             ctx.beginPath(); ctx.moveTo(cx + (14 * cosA), cy + 38 + bob); ctx.lineTo(rLegX, rLegY + 15); ctx.stroke();
         }
 
-        // 2. बायाँ हाथ (Left Arm)
         let lArmX = cx - (26 * cosA) - (swing * 12 * sinA);
         let lArmY = cy + 25 + bob - (swing * 12 * cosA);
         if (parts.lArm) {
@@ -181,7 +177,6 @@
             ctx.beginPath(); ctx.moveTo(cx - (22 * cosA), cy - 8 + bob); ctx.lineTo(lArmX, lArmY); ctx.stroke();
         }
 
-        // 3. धड़ (Torso)
         if (parts.torso) {
             ctx.save();
             ctx.translate(cx, cy + 12 + bob);
@@ -197,7 +192,6 @@
             ctx.restore();
         }
 
-        // 4. दायाँ हाथ (Right Arm)
         let rArmX = cx + (26 * cosA) + (swing * 12 * sinA);
         let rArmY = cy + 25 + bob + (swing * 12 * cosA);
         if (parts.rArm) {
@@ -211,8 +205,10 @@
             ctx.beginPath(); ctx.moveTo(cx + (22 * cosA), cy - 8 + bob); ctx.lineTo(rArmX, rArmY); ctx.stroke();
         }
 
-        // 5. सिर (Head)
         if (parts.head) {
             ctx.drawImage(parts.head, cx - 22, cy - 60 + bob, 44, 48);
         } else {
             ctx.fillStyle = '#60a5fa';
+            ctx.beginPath(); ctx.arc(cx, cy - 30 + bob, 14, 0, Math.PI * 2); ctx.fill();
+            if (cosA > 0) {
+                ctx.fillStyle = '#fff';
