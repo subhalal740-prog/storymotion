@@ -1207,7 +1207,7 @@ body{padding-bottom:180px!important}
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R144 · NO FREEZE</span>
+        <span>R145 · SAF BAR</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -8840,8 +8840,15 @@ a.note, .note{ color: rgba(255,255,255,.55) !important; }
     const wp=$('smWalkPanel');
     if(wp && wp.hidden){ const wb=document.querySelector('#qpRow .qp[data-pose="walk"]'); if(wb) wb.click(); }
   }
+  /* R145 · KEYFRAME PANEL HATA DIYA  —  user ne kaha: "is key system ko htado"
+     PEHLE boot() me build() + paint() + watch() chalte the:
+        • #smRigKeyBar ban jaata tha  (KEYFRAME · Key+ · Del · Play · timeline · scrub)
+        • watch() har frame check karta tha: #qpRow dikhe to bar ko display:flex
+     AB: na bar banega, na koi rAF loop chalega, na toast.
+     Wapas chahiye to neeche ki setTimeout wali line on kar dena. */
   function boot(){
-    setTimeout(()=>{ try{ build(); paint(); requestAnimationFrame(watch); }catch(e){} }, 1200);
+    try{ var old=document.getElementById('smRigKeyBar');
+         if(old && old.parentNode) old.parentNode.removeChild(old); }catch(e){}
   }
   if(document.readyState==='complete') boot(); else window.addEventListener('load', boot);
 })();
