@@ -1192,6 +1192,135 @@ body{padding-bottom:215px!important}
 body{padding-bottom:165px!important}
 body{padding-bottom:180px!important}
 </style>
+<style id="skin146">
+/* ==========================================================================
+   R146 · PASTED CSS KA "MATLAB" — hamare ASLI selectors par
+   --------------------------------------------------------------------------
+   Jo CSS paste ki gayi thi uske 20 me se 18 selectors is file me hain hi NAHI
+   (.canvas-frame-container, .viewport-area, .action-row, .pose-row, .pose-grid,
+    .control-panel, .bottom-panel, .custom-slider, .custom-select ...).
+   Sirf 2 mile: [type=range] aur select.
+   Isliye CODE COPY nahi kiya — sirf CHAAR IDEA liye:
+     1) canvas bada aur thoda upar      2) buttons chhote + patli safed border
+     3) slider ki line patli            4) select chhota
+   ========================================================================== */
+
+/* ---------- 1 · CANVAS BADA AUR UPAR --------------------------------------
+   Pehle #studioWrap 360x421 tha aur #studio sirf 250x399 — chhota pad raha tha.
+   height = viewport - animBar(194) - upar ka hissa(~241) ; 470px se zyada nahi. */
+#studioWrap{
+  margin-top:-14px !important;
+  height:clamp(170px, calc(100vh  - 462px), 470px) !important;
+  height:clamp(170px, calc(100dvh - 462px), 470px) !important;
+  max-height:none !important;
+  display:flex !important;
+  justify-content:center !important;
+  align-items:center !important;
+}
+#studio{ max-width:100% !important; max-height:100% !important;
+         width:auto !important; height:auto !important; object-fit:contain !important; }
+
+/* ---------- 2 · BUTTONS CHHOTE + PATLI SAFED BORDER ----------------------- */
+#qpRow .qp, .btn.tiny, .jntBtn{
+  font-size:11px !important;
+  padding:6px 10px !important;
+  background-color:rgba(255,255,255,.04) !important;
+  color:#ffffff !important;
+  border:1px solid rgba(255,255,255,.40) !important;
+  border-radius:6px !important;
+  font-weight:500 !important;
+  text-transform:uppercase !important;
+  letter-spacing:.3px !important;
+  height:auto !important;
+  min-height:30px !important;
+}
+/* SELECTED (.qp.on = hamari asli class) — poora safed, text dark */
+#qpRow .qp.on{ background-color:#ffffff !important; color:#0b0f19 !important;
+  border-color:#ffffff !important; font-weight:600 !important; }
+/* REC lal hi rahe — ise safed mat karo */
+#gsRec.qp{ background:#ef4444 !important; border-color:#ef4444 !important; color:#fff !important; }
+#gsRec.qp.on{ background:#ffffff !important; color:#b91c1c !important; border-color:#fff !important; }
+
+/* ---------- 3 · SLIDER KI LINE PATLI (tap-jagah 34px barkarar) ------------
+   Paste me `input[type=range]{height:3px}` tha — phone par wo slider ko ungli
+   se chhune layak nahi chhodta (R140 ne 34px isi liye rakhi thi).
+   Isliye INPUT 34px rakha aur sirf DIKHNE WALI LINE (track) 3px ki. */
+/* R145/R140 me `#animBar #gaitSlider{height:14px!important}` hai — DO id, isliye
+   sirf `input[type=range]` usse HAR nahi paya. Wahi selector yahan bhi likha
+   (ye style </head> se theek pehle hai = baad me aata hai -> yahi jeetega). */
+#animBar #gaitSlider,
+#smWalkSlider, #smSpeedSlider, #eraseSize,
+input[type=range]{ height:34px !important; background:transparent !important; }
+input[type=range]::-webkit-slider-runnable-track{
+  height:3px !important; border-radius:2px !important; background:rgba(255,255,255,.22) !important; }
+input[type=range]::-moz-range-track{
+  height:3px !important; border-radius:2px !important; background:rgba(255,255,255,.22) !important; }
+input[type=range]::-webkit-slider-thumb{
+  width:18px !important; height:18px !important; margin-top:-7.5px !important;
+  border-radius:50% !important; background:#ffffff !important; border:none !important; }
+input[type=range]::-moz-range-thumb{
+  width:18px !important; height:18px !important; border-radius:50% !important;
+  background:#ffffff !important; border:none !important; }
+
+
+/* ---------- 5 · UPAR KI JAGAH BACHAO -> CANVAS KO DO ----------------------
+   Naap kar dekha: #studioWrap se upar 221px kharch ho rahe the
+   (header 57 + steps-rail 38 + pgBack 36 + Undo/Redo 44 + margins).
+   Inhe patla karke ~55px bachaya -> seedha canvas ki height me gaya. */
+header.top{ padding-top:3px !important; padding-bottom:3px !important;
+  min-height:0 !important; height:auto !important; }
+.brandRow{ padding-top:2px !important; padding-bottom:2px !important; }
+.brand{ padding-top:0 !important; padding-bottom:0 !important; }
+#steps.stepRail{ margin-top:3px !important; margin-bottom:3px !important; padding-top:0 !important; padding-bottom:0 !important; }
+button.pgBack{ padding:4px 9px !important; min-height:26px !important; margin:2px 0 !important; font-size:10px !important; }
+.btn.tiny{ padding:4px 9px !important; min-height:26px !important; font-size:10px !important; }
+/* ---------- 4 · SELECT CHHOTA --------------------------------------------- */
+select{ font-size:11px !important; padding:5px 6px !important; color:#ffffff !important;
+  border:1px solid rgba(255,255,255,.20) !important; background-color:#1f2638 !important;
+  border-radius:6px !important; }
+</style>
+<script>
+/* R146 · canvas naye size me FIT karo — #studio ka size JS (Studio.layout)
+   set karta hai, isliye CSS ke baad resize bhejna padta hai. */
+(function(){
+  function refit(){
+    /* R146 · ANDAZA NAHI, NAAP KAR: #studioWrap ki height = animBar ke upar
+       jitni jagah bachhti hai utni. Isse kisi bhi screen (640px se 900px) par
+       canvas kabhi animBar se nahi takrata aur jitni jagah milti hai utna bada
+       hota hai. (Sirf CSS clamp se 360x640 par 92px OVERLAP ho raha tha.) */
+    try{
+      var wrap=document.getElementById('studioWrap');
+      var bar =document.getElementById('animBar');
+      /* DHYAN: #animBar position:FIXED hai -> iska offsetParent HAMESHA null
+         hota hai. Pehle `bar.offsetParent` check kiya tha, wo kabhi sach nahi
+         hua aur height set hi nahi hui. Isliye ab VISIBLE check = height > 0. */
+      if(wrap && bar && bar.getBoundingClientRect().height > 0){
+        var wTop  = wrap.getBoundingClientRect().top;
+        var bTop  = bar.getBoundingClientRect().top;
+        var avail = bTop - wTop - 12;                 /* 12px saans lene ki jagah */
+        /* IMPORTANT: CSS me `height: clamp(...) !important` hai, aur stylesheet
+           ka !important SADHARAN inline style ko HARA deta hai (isliye pehle
+           470px set hone ke bawajood computed 438px dikhta tha).
+           Isliye inline ko bhi 'important' flag ke saath set karna padta hai. */
+        if(avail>140) wrap.style.setProperty('height', Math.min(470, Math.round(avail))+'px', 'important');
+      }
+    }catch(e){}
+    try{ window.dispatchEvent(new Event('resize')); }catch(e){}
+    try{ if(window.RIG&&RIG.Studio&&RIG.Studio.layout) RIG.Studio.layout(); }catch(e){} }
+  /* R146 · refit SIRF 3 baar chala raha tha (600/1600/2600ms) — image upload ko
+     13s lagte hain, isliye tab tak #animBar / #studioWrap abhi bane hi nahi hote
+     aur ghalat height set ho jati thi, phir dobara koi refit nahi hota tha.
+     AB: layout tikne tak baar-baar (700ms x 26 = ~18s), phir ruk jata hai.
+     Har baar seedha Studio.layout() bulaya jata hai (resize event nahi bhejte,
+     warnin doosre handlers bhi bar-bar chalte). */
+  window.addEventListener('load',function(){
+    setTimeout(refit,400); setTimeout(refit,1200);
+    var n=0, iv=setInterval(function(){ refit(); if(++n>26) clearInterval(iv); },700);
+  });
+  window.addEventListener('resize',function(){ setTimeout(refit,150); });
+})();
+</script>
+
 </head>
 <body>
 <div class="wrap">
@@ -1207,7 +1336,7 @@ body{padding-bottom:180px!important}
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R145 · SAF BAR</span>
+        <span>R146 · BIG CANVAS</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -3194,8 +3323,17 @@ body{padding-bottom:180px!important}
       const availW = Math.min(460, ((wrapEl && wrapEl.clientWidth) || 460) - 20, window.innerWidth - 44);
       /* mobile: viewport ki 40vh se zyada nahi + zoom max 50% (character poora frame me) */
       const shortScreen = window.innerHeight < 700;
+      /* R146 · PEHLE: window.innerHeight * 0.46 (fixed) — isse canvas ki height
+         screen ke hisaab se nahi badalti thi aur R146 me #studioWrap bada karne
+         ke baad bhi canvas 401px par atka raha (wrap 465px tha).
+         AB: #studioWrap ki ASLI naapi hui height. R146 ka CSS wrap ko
+         clamp(280px, 100dvh - 435px, 470px) deta hai — yani animBar ke upar
+         jitni jagah bachhti hai utni. Isliye canvas har screen par poora bharta
+         hai aur animBar se kabhi nahi takrata. */
+      const wrapH = (wrapEl && wrapEl.clientHeight) || 0;
       const maxH0 = wide ? 540
-        : Math.max(150, Math.round(window.innerHeight * (shortScreen ? 0.38 : 0.46)));
+        : Math.max(150, Math.round(wrapH > 140 ? wrapH
+                                               : window.innerHeight * (shortScreen ? 0.38 : 0.46)));
       const maxH = maxH0 * (wide ? STAGE_HBOOST_WIDE : STAGE_HBOOST_NARROW);
       /* v17: stage = character se 1.55x chaudi — walk/run me aage badhne ki jagah */
       baseScale = Math.min(availW / (bbox.w * STAGE_MUL), maxH / (bbox.h * STAGE_MUL_V));
