@@ -1351,7 +1351,7 @@ select{ font-size:11px !important; padding:5px 6px !important; color:#ffffff !im
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R148 · VIDEO JAISA</span>
+        <span>R149 · GROUND ULTA</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -7487,7 +7487,20 @@ select{ font-size:11px !important; padding:5px 6px !important; color:#ffffff !im
         /* NOTE: yahan `isRun` abhi defined NAHI hota (ReferenceError aata tha aur
                try/catch use chhupa deta tha — isliye zameen hil-ti hi nahi thi).
                Anim.kind seedha use karo. */
-        RIG.Studio.scrollGround((dt * Anim.speed) * (Anim.kind === 'run' ? 0.34 : 0.22));
+        /* R149 · ZAMEEN KI DISHA ULTI — user ki shikayat:
+             "jidhar character aa raha hai, ground bhi udhar hi chal raha hai"
+           NAAP KAR DEKHA (high-pass + cross-correlation, left kinaara):
+             scrollGround(+) dene se stripe NEECHE (viewer ki taraf) jati thi.
+           BHautiki (physics):
+             camera fixed, character beech me. Character FRONT view hai =
+             "aage" matlab CAMERA KI TARAF aa raha hai. Camera character ke
+             saath chal raha hai, isliye duniya (zameen) ko ULTA — yani
+             DOOR / HORIZON ki taraf — jaana chahiye.
+             => zameen UPAR (horizon ki taraf) jaye, NEECHE nahi.
+           Isliye amount ko NEGATIVE kiya.
+           (scrollGround() khud groundT ko 0..1 me normalize karta hai,
+            isliye negative dene se t negative hokar horizon ke upar nahi jayega.) */
+        RIG.Studio.scrollGround(-(dt * Anim.speed) * (Anim.kind === 'run' ? 0.34 : 0.22));
       }
     } catch (eG) {}
 
