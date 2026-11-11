@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Character Tool — Rig Studio · R138</title>
+<title>Character Tool — Rig Studio · R139</title>
 <style>
   :root{
     --bg:#0b0b0d; --card1:#16161a; --card2:#0f0f12; --line:rgba(255,255,255,.05);
@@ -1007,6 +1007,133 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
 }
 
 </style>
+
+<!-- ================= R139 · PROFESSIONAL SKIN =================
+     User ka bheja hua design (Professional Character Editor AI) hamare
+     ASLI tool par lagaya gaya hai.
+     DHYAAN: wo HTML ek static MOCKUP tha — usme character ki jagah
+     <div class="dummy-character">[ Character Preview Area ]</div> tha.
+     Koi canvas, koi rig, koi animation nahi. Seedha lagane se poora tool
+     mit jata. Isliye sirf DESIGN (rang, gol kone, card, badge) liya gaya
+     hai — DOM ya JS ek bhi line nahi chheri. Isse kuch tootega nahi.   -->
+<style id="skin139">
+:root{
+  --bg-main:#0b0f19; --bg-card:#161b26; --bg-input:#1f2638;
+  --primary:#38bdf8; --primary-hover:#0ea5e9; --success:#10b981;
+  --danger:#ef4444; --text-main:#f3f4f6; --text-muted:#9ca3af;
+  --line:#2e374d; --line-soft:#232d42;
+}
+body{background:var(--bg-main)!important;color:var(--text-main)!important;
+     font-family:'Segoe UI',Roboto,system-ui,sans-serif!important}
+button,input,select{font-family:'Segoe UI',Roboto,system-ui,sans-serif!important}
+
+/* ---- header ---- */
+header.top{background:var(--bg-card)!important;border-bottom:1px solid var(--line)!important}
+header.top .brand b{font-size:15px!important;letter-spacing:.2px}
+header.top .brand span{color:var(--text-muted)!important;font-size:11px!important}
+
+/* ---- status badge (15/15 JOINTS PASS) ---- */
+#r129badge, .badge, .status-badge{
+  background:rgba(16,185,129,.15)!important;color:var(--success)!important;
+  border:1px solid var(--success)!important;border-radius:20px!important;
+  padding:4px 10px!important;font-size:11px!important;font-weight:600!important}
+
+/* ---- cards ---- */
+.card{background:var(--bg-card)!important;border:1px solid var(--line)!important;
+      border-radius:16px!important;box-shadow:0 2px 14px rgba(0,0,0,.28)!important}
+.kv{background:transparent!important;border-bottom:1px dashed var(--line)!important}
+.kv b{color:var(--primary)!important}
+
+/* ---- step bar ---- */
+#steps .step{background:var(--bg-input)!important;border:1px solid var(--line)!important;
+             border-radius:10px!important;color:var(--text-muted)!important}
+#steps .step[aria-current="step"], #steps .step.active, #steps .step.on,
+#steps .step:not([disabled]){color:var(--text-main)!important}
+#steps .step:not([disabled]){border-color:var(--primary)!important;
+  background:rgba(56,189,248,.10)!important;color:var(--primary)!important}
+
+/* ---- studio viewport (character wali jagah) ---- */
+#studio{background:linear-gradient(180deg,#111827 0%,#1f2937 100%)!important;
+        border-radius:12px!important;border:1px solid var(--line-soft)!important;
+        box-shadow:0 6px 22px rgba(0,0,0,.35) inset}
+
+/* ---- buttons: general ---- */
+.btn,.jntBtn,.pill,.qp,.smArmBtn,.ppBtn{
+  background:var(--bg-input)!important;color:var(--text-main)!important;
+  border:1px solid var(--line)!important;border-radius:10px!important;
+  font-weight:500!important;transition:transform .12s, background .18s}
+.btn:active,.jntBtn:active,.pill:active,.qp:active{transform:scale(.97)}
+/* primary = JOINTS DONE */
+#jntDone,.btn-primary{
+  background:var(--primary)!important;color:#04121c!important;border:none!important;
+  font-weight:700!important;box-shadow:0 3px 12px rgba(56,189,248,.28)!important}
+/* active pill / active pose */
+.pill.on,.qp.active,.qp.on,.smArmBtn.on{
+  background:rgba(56,189,248,.15)!important;border-color:var(--primary)!important;
+  color:var(--primary)!important}
+.jntBtn.ghost,.btn.ghost,.ppBtn.ghost{background:transparent!important;
+  border:1px solid var(--line)!important;color:var(--text-muted)!important}
+
+/* ---- joints panel ---- */
+.jntWrap{background:var(--bg-input)!important;border:1px solid var(--line)!important;
+         border-radius:12px!important;padding:12px!important}
+.jntHead{font-size:12px!important;text-transform:uppercase!important;
+         letter-spacing:.6px;color:var(--text-muted)!important}
+.jntStatus{background:rgba(16,185,129,.15)!important;color:var(--success)!important;
+  border:1px solid var(--success)!important;border-radius:20px!important;
+  padding:2px 9px!important;font-size:11px!important;font-weight:600!important}
+.jntBar .bar{background:#0d1424!important;border-radius:99px!important;overflow:hidden}
+.jntBar .bar i{background:linear-gradient(90deg,var(--success),#34d399)!important}
+.jntGrid button,.jntGrid .chip{
+  background:#0d1424!important;border:1px solid var(--line)!important;
+  border-radius:8px!important;color:var(--text-muted)!important;font-size:11px!important}
+.jntGrid button.ok,.jntGrid .chip.ok{color:var(--success)!important;border-color:rgba(16,185,129,.5)!important}
+
+/* ---- sliders (Speed, Chaal ka size, Spread) ---- */
+input[type=range]{-webkit-appearance:none!important;appearance:none!important;
+  background:var(--line)!important;height:6px!important;border-radius:3px!important;
+  outline:none!important;accent-color:var(--primary)!important}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none!important;
+  width:16px!important;height:16px!important;border-radius:50%!important;
+  background:var(--primary)!important;cursor:pointer;
+  box-shadow:0 0 0 3px rgba(56,189,248,.20)!important}
+input[type=range]::-moz-range-thumb{width:16px!important;height:16px!important;
+  border:none!important;border-radius:50%!important;background:var(--primary)!important}
+
+/* ---- selects (cycle / fps / approach) ---- */
+#gsCycles,#gsFps,#gsApp,#smSpeedSlider,select.custom-select,select{
+  background:var(--bg-input)!important;color:var(--text-main)!important;
+  border:1px solid var(--line)!important;border-radius:10px!important}
+
+/* ---- REC button (red) ---- */
+#gsRec{background:var(--danger)!important;color:#fff!important;border:none!important;
+  font-weight:700!important;letter-spacing:.5px!important;
+  box-shadow:0 3px 12px rgba(239,68,68,.30)!important}
+
+/* ---- rows: mocap / gait / green screen ---- */
+#mocapRow,#gaitRow,#gsRow{background:var(--bg-input)!important;
+  border:1px solid var(--line)!important;border-radius:12px!important;padding:9px 11px!important}
+#mocapRow span,#gaitRow span{color:var(--text-muted)!important}
+#gaitVal,#gsVal{color:var(--primary)!important;font-weight:600!important}
+#mocapChk{accent-color:var(--primary)!important;width:15px!important;height:15px!important}
+
+/* ---- info / warning banner ---- */
+.note,.jntLockNote,#saveNote{
+  background:rgba(245,158,11,.10)!important;border:1px solid #f59e0b!important;
+  color:#f59e0b!important;border-radius:10px!important;font-size:12px!important;line-height:1.45}
+
+/* ---- toggles (Rings / AA / Ground) ---- */
+.sw{background:var(--bg-input)!important;border:1px solid var(--line)!important;
+    border-radius:8px!important;padding:5px 9px!important;color:var(--text-muted)!important;font-size:12px!important}
+.sw input[type=checkbox]{accent-color:var(--primary)!important}
+
+/* ---- misc ---- */
+.section-title,.qpRow + div,.smLab{color:var(--text-muted)!important}
+a{color:var(--primary)!important}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:99px}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -1022,7 +1149,7 @@ h1{ font-size:20px !important; letter-spacing:-.4px !important; }
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R138 · AAGE AA RAHA</span>
+        <span>R139 · PRO UI</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
