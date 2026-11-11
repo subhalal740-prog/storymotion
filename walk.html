@@ -19,6 +19,7 @@
         .upload-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
         .u-btn { background: #1c2128; border: 1px dashed #3b82f6; color: #fff; padding: 8px; border-radius: 5px; text-align: center; cursor: pointer; font-size: 10px; display: block; }
         .u-btn.full { grid-column: span 2; border-color: #10b981; }
+        .u-btn.loaded { border-style: solid; border-color: #10b981; color: #10b981; }
         .u-btn input { display: none; }
         .slider-box { display: flex; flex-direction: column; gap: 4px; }
         .s-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
@@ -40,7 +41,6 @@
             <span id="statusTxt" style="color: #10b981;">● AUTO 360°</span>
         </div>
 
-        <!-- दिशा बदलने के बटन -->
         <div class="btn-row">
             <button class="v-btn active" onclick="setMode('auto', this)">360° AUTO</button>
             <button class="v-btn" onclick="setMode('front', this)">FRONT</button>
@@ -48,19 +48,17 @@
             <button class="v-btn" onclick="setMode('back', this)">BACK</button>
         </div>
 
-        <!-- स्पीड कंट्रोल -->
         <div class="slider-box">
             <div class="s-meta"><span>Walk Speed (चाल की गति)</span><span id="spdVal">1.5x</span></div>
             <input type="range" id="spdSl" min="0" max="30" value="15">
         </div>
 
-        <!-- कटे हुए अंग अपलोड करने के बटन -->
         <div class="upload-grid">
-            <label class="u-btn">👤 1. धड़ (TORSO PNG)<input type="file" accept="image/*" onchange="loadLayer('torso', event)"></label>
-            <label class="u-btn">👦 2. सिर (HEAD PNG)<input type="file" accept="image/*" onchange="loadLayer('head', event)"></label>
-            <label class="u-btn">💪 3. बायाँ हाथ (L-ARM)<input type="file" accept="image/*" onchange="loadLayer('lArm', event)"></label>
-            <label class="u-btn">🦾 4. दायाँ हाथ (R-ARM)<input type="file" accept="image/*" onchange="loadLayer('rArm', event)"></label>
-            <label class="u-btn full">🦿 5. पैर (LEGS PNG)<input type="file" accept="image/*" onchange="loadLayer('legs', event)"></label>
+            <label id="lbl-torso" class="u-btn">👤 1. धड़ (TORSO PNG)<input type="file" accept="image/*" onchange="loadLayer('torso', event)"></label>
+            <label id="lbl-head" class="u-btn">👦 2. सिर (HEAD PNG)<input type="file" accept="image/*" onchange="loadLayer('head', event)"></label>
+            <label id="lbl-lArm" class="u-btn">💪 3. बायाँ हाथ (L-ARM)<input type="file" accept="image/*" onchange="loadLayer('lArm', event)"></label>
+            <label id="lbl-rArm" class="u-btn">🦾 4. दायाँ हाथ (R-ARM)<input type="file" accept="image/*" onchange="loadLayer('rArm', event)"></label>
+            <label id="lbl-legs" class="u-btn full">🦿 5. पैर (LEGS PNG)<input type="file" accept="image/*" onchange="loadLayer('legs', event)"></label>
         </div>
     </div>
 </div>
@@ -88,25 +86,31 @@
     }
 
     function loadLayer(name, e) {
-        const file = e.target.files[0];
-        if (!file) return;
+        const files = e.target.files;
+        if (!files || files.length === 0) return;
+        const file = files[0];
         const reader = new FileReader();
-        reader.onload = (ev) => {
+        reader.onload = function(ev) {
             const img = new Image();
-            img.onload = () => { parts[name] = img; };
+            img.onload = function() {
+                parts[name] = img;
+                const lbl = document.getElementById('lbl-' + name);
+                if (lbl) lbl.classList.add('loaded');
+            };
             img.src = ev.target.result;
         };
         reader.readAsDataURL(file);
     }
 
     function resize() {
-        canvas.width = canvas.parentElement.clientWidth;
-        canvas.height = canvas.parentElement.clientHeight;
+        canvas.width = canvas.parentElement.clientWidth || 360;
+        canvas.height = canvas.parentElement.clientHeight || 290;
     }
     window.addEventListener('resize', resize);
     resize();
 
     function loop() {
+        if (canvas.width === 0) resize();
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         let spd = spdSl.value / 10;
@@ -128,13 +132,12 @@
         let cosA = Math.cos(currentAngle);
         let sinA = Math.sin(currentAngle);
 
-        // परछाई
+        // जमीन की परछाई
         ctx.beginPath();
         ctx.ellipse(cx, cy + 115, 38, 7, 0, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fillStyle = 'rgba(255,255,255,0.08)';
         ctx.fill();
 
-        // पैरों की पोजीशन (Cross-body walk)
         let lLegX = cx - (16 * cosA) + (swing * 16 * sinA);
         let rLegX = cx + (16 * cosA) - (swing * 16 * sinA);
         let lLegY = cy + 80 + (swing * 14 * cosA);
@@ -164,7 +167,7 @@
             ctx.beginPath(); ctx.moveTo(cx + (14 * cosA), cy + 38 + bob); ctx.lineTo(rLegX, rLegY + 15); ctx.stroke();
         }
 
-        // 2. बायाँ हाथ (Left Arm - बाएँ पैर के विपरीत)
+        // 2. बायाँ हाथ (Left Arm)
         let lArmX = cx - (26 * cosA) - (swing * 12 * sinA);
         let lArmY = cy + 25 + bob - (swing * 12 * cosA);
         if (parts.lArm) {
@@ -194,7 +197,7 @@
             ctx.restore();
         }
 
-        // 4. दायाँ हाथ (Right Arm - दाएँ पैर के विपरीत)
+        // 4. दायाँ हाथ (Right Arm)
         let rArmX = cx + (26 * cosA) + (swing * 12 * sinA);
         let rArmY = cy + 25 + bob + (swing * 12 * cosA);
         if (parts.rArm) {
@@ -213,6 +216,3 @@
             ctx.drawImage(parts.head, cx - 22, cy - 60 + bob, 44, 48);
         } else {
             ctx.fillStyle = '#60a5fa';
-            ctx.beginPath(); ctx.arc(cx, cy - 30 + bob, 14, 0, Math.PI * 2); ctx.fill();
-            if (cosA > 0) {
-                ctx.fillStyle = '#fff';
