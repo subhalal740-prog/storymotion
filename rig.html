@@ -1217,8 +1217,12 @@ body{padding-bottom:180px!important}
   justify-content:center !important;
   align-items:center !important;
 }
-#studio{ max-width:100% !important; max-height:100% !important;
-         width:auto !important; height:auto !important; object-fit:contain !important; }
+/* R147 · `width:auto;height:auto` HATAYA.
+   Studio.layout() khud cv.style.width / cv.style.height px me set karta hai
+   (bitmap = css size x DPR, "SHARP SYNC"). `auto !important` usse override kar
+   deta tha -> canvas JS ke size chhod kar bitmap ke size par chala jata tha
+   (dekha gaya: css 281.859px vs bitmap 283px). Ab sirf MAX hai, size nahi. */
+#studio{ max-width:100% !important; max-height:100% !important; }
 
 /* ---------- 2 · BUTTONS CHHOTE + PATLI SAFED BORDER ----------------------- */
 #qpRow .qp, .btn.tiny, .jntBtn{
@@ -1305,8 +1309,19 @@ select{ font-size:11px !important; padding:5px 6px !important; color:#ffffff !im
         if(avail>140) wrap.style.setProperty('height', Math.min(470, Math.round(avail))+'px', 'important');
       }
     }catch(e){}
-    try{ window.dispatchEvent(new Event('resize')); }catch(e){}
-    try{ if(window.RIG&&RIG.Studio&&RIG.Studio.layout) RIG.Studio.layout(); }catch(e){} }
+    /* R147 · ASLI WAJAH (blank screen):
+       Studio.layout() canvas ka cv.width / cv.height set karta hai — aur canvas
+       ka size badalte hi BROWSER USKA POORA BITMAP SAAF KAR DETA HAI.
+       R146 me resize-event hata kar sirf layout() bulaaya gaya tha, render()
+       nahi -> canvas ka size to sahi tha (282x448) par usme EK BHI PIXEL NAHI
+       THA (naap kar dekha: 0 opaque pixels = blank).
+       ISLIYE: layout() ke turant baad render() ZAROORI hai. */
+    try{
+      if(window.RIG && RIG.Studio){
+        if(RIG.Studio.layout) RIG.Studio.layout();
+        if(RIG.Studio.render) RIG.Studio.render();       /* <-- yahi galti thi */
+      }
+    }catch(e){} }
   /* R146 · refit SIRF 3 baar chala raha tha (600/1600/2600ms) — image upload ko
      13s lagte hain, isliye tab tak #animBar / #studioWrap abhi bane hi nahi hote
      aur ghalat height set ho jati thi, phir dobara koi refit nahi hota tha.
@@ -1336,7 +1351,7 @@ select{ font-size:11px !important; padding:5px 6px !important; color:#ffffff !im
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R146 · BIG CANVAS</span>
+        <span>R147 · CANVAS OK</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
