@@ -1351,7 +1351,7 @@ select{ font-size:11px !important; padding:5px 6px !important; color:#ffffff !im
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R149 · GROUND ULTA</span>
+        <span>R150 · AAGE PEECHE</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -8042,7 +8042,10 @@ const liftAmp = BH * (isRun ? 0.0765 : 0.045) * (FRONTVIEW ? 3.0 : 1) * GAIT;
        kabhi dono paer hawa me nahi udte. Shape ASLI, amplitude rig ke apne
        (liftAmp / bobAmp / KNEE_AMP) — character ke shareer ke hisaab se.
        Jaangh ka aage-peeche jhoolna video se NAHI liya: front view me asli
-       swing gehrai (depth) me hoti hai, 2D video me dikhti hi nahi.       */
+       swing gehrai (depth) me hoti hai, 2D video me dikhti hi nahi.
+       R150 · YE FAISLA GALAT NIKLA — user ne kaha "spot marching ho rahi hai".
+       Naap kar dekha to sach me horizontal travel 0.00 px tha. Ab niche
+       R150 block me aage-peeche ka jhatka (SWING_X / SWING_Y) lagaya gaya. */
     if (Anim.mocap && window.__MOCAP) {
       const Mc = window.__MOCAP;
       const uu = ((Anim.phase / (Math.PI * 2)) % 1 + 1) % 1;
@@ -8057,6 +8060,36 @@ const liftAmp = BH * (isRun ? 0.0765 : 0.045) * (FRONTVIEW ? 3.0 : 1) * GAIT;
                      KN.shinR = KNEE_SIGN * smp(Mc.kneeL) * KNEE_AMP; }
       rise = bobAmp * smp(Mc.bob);
     }
+
+    /* ====== R150 · PAER KA AAGE-PEECHE JHATKA (forward swing) ======
+       User ki shikayat: "pair sirf upar-neeche ho raha hai, spot marching"
+       NAAP KAR SABOOT (takhna, reference video vid/walk.mp4 se):
+           dono takhno ki 2D doori ka range : reference 13.5% body
+                                              hamara rig  4.0%   <-- PAER KABHI AAGE JATA HI NAHI
+           (x-doori 7.3% aur y-doori 14.8% ULTI DISHA me the — isliye
+            2D doori lagbhag sthir rahi, yahi "marching" ki pehchan hai)
+       BHautiki (perspective): camera saamne, zameen ka vanishing point kamar ke
+       paas. Paer JITNA NAZDEEK (aage), utna:
+            • NEECHE (zameen ki lakeer paas ke paas chaudi-hoti dikhti hai)
+            • BAHAR  (vanishing point se door, radially)
+            • BADA   (perspective scale)
+       Forward position n = sL.ang / A  ->  +1 = bilkul aage, -1 = bilkul peeche
+         stance me n: +1 -> -1 (paer zameen par reh kar peeche sarakta hai)
+         swing  me n: -1 -> +1 (paer uth kar aage jata hai)  == -cos(pi*k)
+       Isse pair ki lakir KE BADLE LOOP banta hai -> marching nahi, CHALAI. */
+    const SWING_X = BH * 0.03;      /* bahar/andar */
+    const SWING_Y = BH * 0.024;      /* neeche = nazdeek, upar = door */
+    const nA = Math.max(1e-6, A);
+    /* mirror (FD<0) me P.legL/legR swap+negate hote hain — wahi yahan */
+    const nL = (FD >= 0) ? ( sL.ang / nA) : (-sR.ang / nA);
+    const nR = (FD >= 0) ? ( sR.ang / nA) : (-sL.ang / nA);
+    /* bayan paer screen par BAYEN taraf -> aage jane par aur BAYEN (-x)
+       dayan paer screen par DAYEN taraf  -> aage jane par aur DAYEN (+x) */
+    const oxL = -nL * SWING_X;
+    const oxR = +nR * SWING_X;
+    oyL += nL * SWING_Y;
+    oyR += nR * SWING_Y;
+
     try {
       if (RIG.Pose.setKnee) RIG.Pose.setKnee(KN);
       /* ankle roll — foot pieces (fitted joints se) */
@@ -8086,8 +8119,8 @@ const liftAmp = BH * (isRun ? 0.0765 : 0.045) * (FRONTVIEW ? 3.0 : 1) * GAIT;
            asli stride legStride() me hai (Studio ke partOff ke andar).
            Yahan dobara lagane se (a) double ho jata aur (b) BW2 scope bahar
            hone se step() exception kha kar ANIMATION HI BAND ho jati thi. */
-        RIG.Pose.setOffset('legL', 0, oyL);
-        RIG.Pose.setOffset('legR', 0, oyR);
+        RIG.Pose.setOffset('legL', oxL, oyL);   /* R150 · dx ab 0 nahi, swing ke saath */
+        RIG.Pose.setOffset('legR', oxR, oyR);
         /* R123b · arm offsets yahan reset NAHI hote (depth ke hisaab se set hote hain) */
       }
       /* body balance — pelvis side sway (har step par halka jhukav) */
