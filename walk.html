@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° Master Rig & Walk Studio</title>
+    <style>
+        :root { --bg: #090a0f; --card: #14161f; --accent: #3b82f6; --text: #ffffff; --muted: #8b949e; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: monospace; font-size: 11px; }
+        body { width: 100%; min-height: 100vh; background: var(--bg); color: var(--text); overflow-y: auto; }
+        .container { width: 100%; max-width: 440px; margin: 0 auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; padding-bottom: 40px; }
+        .canvas-box { width: 100%; height: 290px; background: #000; border: 1px solid #2d3139; border-radius: 8px; position: relative; overflow: hidden; }
+        canvas { width: 100%; height: 100%; display: block; }
+        .panel { background: var(--card); border: 1px solid #2d3139; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .header { display: flex; justify-content: space-between; border-bottom: 1px solid #2d3139; padding-bottom: 6px; color: var(--muted); font-size: 10px; }
+        .btn-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .v-btn { background: #21262d; border: 1px solid #30363d; color: #fff; padding: 8px 4px; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 10px; }
+        .v-btn.active { background: var(--accent); border-color: var(--accent); }
+        .upload-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+        .u-btn { background: #1c2128; border: 1px dashed #3b82f6; color: #fff; padding: 8px; border-radius: 5px; text-align: center; cursor: pointer; font-size: 10px; display: block; }
+        .u-btn.full { grid-column: span 2; border-color: #10b981; }
+        .u-btn input { display: none; }
+        .slider-box { display: flex; flex-direction: column; gap: 4px; }
+        .s-meta { display: flex; justify-content: space-between; color: var(--muted); font-size: 10px; }
+        .s-meta span:last-child { color: var(--accent); }
+        input[type=range] { -webkit-appearance: none; width: 100%; background: #21262d; height: 5px; border-radius: 3px; outline: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="canvas-box">
+        <canvas id="rigCanvas"></canvas>
+    </div>
+
+    <div class="panel">
+        <div class="header">
+            <span>MASTER CHARACTER RIG ENGINE</span>
+            <span id="statusTxt" style="color: #10b981;">● AUTO 360°</span>
+        </div>
+
+        <!-- दिशा बदलने के बटन -->
+        <div class="btn-row">
+            <button class="v-btn active" onclick="setMode('auto', this)">360° AUTO</button>
+            <button class="v-btn" onclick="setMode('front', this)">FRONT</button>
+            <button class="v-btn" onclick="setMode('side', this)">SIDE</button>
+            <button class="v-btn" onclick="setMode('back', this)">BACK</button>
+        </div>
+
+        <!-- स्पीड कंट्रोल -->
+        <div class="slider-box">
+            <div class="s-meta"><span>Walk Speed (चाल की गति)</span><span id="spdVal">1.5x</span></div>
+            <input type="range" id="spdSl" min="0" max="30" value="15">
+        </div>
+
+        <!-- कटे हुए अंग अपलोड करने के बटन -->
+        <div class="upload-grid">
+            <label class="u-btn">👤 1. धड़ (TORSO PNG)<input type="file" accept="image/*" onchange="loadLayer('torso', event)"></label>
+            <label class="u-btn">👦 2. सिर (HEAD PNG)<input type="file" accept="image/*" onchange="loadLayer('head', event)"></label>
+            <label class="u-btn">💪 3. बायाँ हाथ (L-ARM)<input type="file" accept="image/*" onchange="loadLayer('lArm', event)"></label>
+            <label class="u-btn">🦾 4. दायाँ हाथ (R-ARM)<input type="file" accept="image/*" onchange="loadLayer('rArm', event)"></label>
+            <label class="u-btn full">🦿 5. पैर (LEGS PNG)<input type="file" accept="image/*" onchange="loadLayer('legs', event)"></label>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('rigCanvas');
+    const ctx = canvas.getContext('2d');
+    const spdSl = document.getElementById('spdSl');
+
+    let walkTime = 0;
+    let currentAngle = 0;
+    let targetAngle = 0;
+    let viewMode = 'auto';
+
+    let parts = { torso: null, head: null, lArm: null, rArm: null, legs: null };
+
+    function setMode(mode, btn) {
+        viewMode = mode;
+        document.querySelectorAll('.v-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        if (mode === 'front') targetAngle = 0;
+        if (mode === 'side') targetAngle = Math.PI / 2;
+        if (mode === 'back') targetAngle = Math.PI;
+        document.getElementById('statusTxt').innerText = "● " + mode.toUpperCase();
+    }
+
+    function loadLayer(name, e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const img = new Image();
+            img.onload = () => { parts[name] = img; };
+            img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function resize() {
+        canvas.width = canvas.parentElement.clientWidth;
+        canvas.height = canvas.parentElement.clientHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        let spd = spdSl.value / 10;
+        document.getElementById('spdVal').innerText = spd.toFixed(1) + "x";
+
+        walkTime += 0.05 * spd;
+
+        if (viewMode === 'auto') {
+            currentAngle = (currentAngle + 0.015) % (Math.PI * 2);
+        } else {
+            currentAngle += (targetAngle - currentAngle) * 0.12;
+        }
+
+        let cx = canvas.width / 2;
+        let cy = canvas.height * 0.44;
+        let swing = Math.sin(walkTime);
+        let bob = spd > 0 ? Math.abs(Math.sin(walkTime * 2)) * 4 : 0;
+
+        let cosA = Math.cos(currentAngle);
+        let sinA = Math.sin(currentAngle);
+
+        // परछाई
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + 115, 38, 7, 0, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.06)';
+        ctx.fill();
+
+        // पैरों की पोजीशन (Cross-body walk)
+        let lLegX = cx - (16 * cosA) + (swing * 16 * sinA);
+        let rLegX = cx + (16 * cosA) - (swing * 16 * sinA);
+        let lLegY = cy + 80 + (swing * 14 * cosA);
+        let rLegY = cy + 80 - (swing * 14 * cosA);
+
+        // 1. पैर (Legs)
+        if (parts.legs) {
+            ctx.save();
+            ctx.translate(lLegX, lLegY - 35);
+            ctx.rotate(-swing * 0.35 * sinA);
+            ctx.scale(swing > 0 ? 1.06 : 0.94, 1);
+            ctx.drawImage(parts.legs, -14, 0, 28, 65);
+            ctx.restore();
+
+            ctx.save();
+            ctx.translate(rLegX, rLegY - 35);
+            ctx.rotate(swing * 0.35 * sinA);
+            ctx.scale(swing < 0 ? 1.06 : 0.94, 1);
+            ctx.drawImage(parts.legs, -14, 0, 28, 65);
+            ctx.restore();
+        } else {
+            ctx.lineWidth = 10; ctx.lineCap = 'round';
+            ctx.strokeStyle = swing > 0 ? '#2563eb' : '#1d4ed8';
+            ctx.beginPath(); ctx.moveTo(cx - (14 * cosA), cy + 38 + bob); ctx.lineTo(lLegX, lLegY + 15); ctx.stroke();
+
+            ctx.strokeStyle = swing < 0 ? '#2563eb' : '#1d4ed8';
+            ctx.beginPath(); ctx.moveTo(cx + (14 * cosA), cy + 38 + bob); ctx.lineTo(rLegX, rLegY + 15); ctx.stroke();
+        }
+
+        // 2. बायाँ हाथ (Left Arm - बाएँ पैर के विपरीत)
+        let lArmX = cx - (26 * cosA) - (swing * 12 * sinA);
+        let lArmY = cy + 25 + bob - (swing * 12 * cosA);
+        if (parts.lArm) {
+            ctx.save();
+            ctx.translate(cx - (24 * cosA), cy - 8 + bob);
+            ctx.rotate(swing * 0.4 * sinA);
+            ctx.drawImage(parts.lArm, -12, 0, 24, 60);
+            ctx.restore();
+        } else {
+            ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.moveTo(cx - (22 * cosA), cy - 8 + bob); ctx.lineTo(lArmX, lArmY); ctx.stroke();
+        }
+
+        // 3. धड़ (Torso)
+        if (parts.torso) {
+            ctx.save();
+            ctx.translate(cx, cy + 12 + bob);
+            let tW = 68 * Math.max(0.45, Math.abs(cosA)) + 36 * Math.abs(sinA);
+            ctx.drawImage(parts.torso, -tW / 2, -32, tW, 78);
+            ctx.restore();
+        } else {
+            ctx.fillStyle = '#1e40af';
+            ctx.save();
+            ctx.translate(cx, cy + 12 + bob);
+            let defW = 44 * Math.max(0.45, Math.abs(cosA)) + 26 * Math.abs(sinA);
+            ctx.fillRect(-defW / 2, -26, defW, 62);
+            ctx.restore();
+        }
+
+        // 4. दायाँ हाथ (Right Arm - दाएँ पैर के विपरीत)
+        let rArmX = cx + (26 * cosA) + (swing * 12 * sinA);
+        let rArmY = cy + 25 + bob + (swing * 12 * cosA);
+        if (parts.rArm) {
+            ctx.save();
+            ctx.translate(cx + (24 * cosA), cy - 8 + bob);
+            ctx.rotate(-swing * 0.4 * sinA);
+            ctx.drawImage(parts.rArm, -12, 0, 24, 60);
+            ctx.restore();
+        } else {
+            ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.moveTo(cx + (22 * cosA), cy - 8 + bob); ctx.lineTo(rArmX, rArmY); ctx.stroke();
+        }
+
+        // 5. सिर (Head)
+        if (parts.head) {
+            ctx.drawImage(parts.head, cx - 22, cy - 60 + bob, 44, 48);
+        } else {
+            ctx.fillStyle = '#60a5fa';
+            ctx.beginPath(); ctx.arc(cx, cy - 30 + bob, 14, 0, Math.PI * 2); ctx.fill();
+            if (cosA > 0) {
+                ctx.fillStyle = '#fff';
