@@ -1207,7 +1207,7 @@ body{padding-bottom:180px!important}
       <!-- R129 VERSION BADGE: isse turant dikhega ki kaunsi build live hai -->
       <div id="r129badge" style="display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:5px 11px;border-radius:999px;background:linear-gradient(135deg,#00e676,#00b0ff);color:#04120a;font:700 12px/1 system-ui,sans-serif;letter-spacing:.4px;box-shadow:0 2px 10px rgba(0,230,118,.35);white-space:nowrap">
         <span id="r129lock" style="width:8px;height:8px;border-radius:50%;background:#04120a;opacity:.45"></span>
-        <span>R140 · NO SCROLL</span>
+        <span>R142 · 12 PIECES</span>
       </div>
     </div>
     <a class="icoBtn" href="index.html" title="Home" aria-label="Home">
@@ -4754,13 +4754,24 @@ body{padding-bottom:180px!important}
     try {
       if (WALK15.splitMode === 'joints') return 'already';
       const S = Studio;
-      if (!S || S.readyCount < S.JOINTS.length) return 'not-ready';
+      /* R141 · 15/15 PASS hona ZAROORI NAHI.
+         Pehle ye guard `S.readyCount < S.JOINTS.length` tha — yani ek bhi joint WARN
+         hua to poora 12-piece rig (pair + kalaiyan) BLOCK ho jata tha aur 8 piece reh
+         jate the. WARNING sirf "confidence kam" ka matlab hai, position galat nahi.
+         Isliye ab sirf WAHI joints maange jaate hain jinse asal me split hota hai:
+            arms -> kandhe / kohni / kalai     feet -> kamar / ghutna / takhna */
+      if (!S) return 'no-studio';
+      const J0 = (S.getJoints ? S.getJoints() : null);
+      if (!J0) return 'no-joints';
+      const NEED = ['shL','shR','elL','elR','wrL','wrR','hipL','hipR','knL','knR','anL','anR'];
+      const miss = NEED.filter(function (k) { return !(J0[k] && isFinite(J0[k].x) && isFinite(J0[k].y)); });
+      if (miss.length) return 'not-ready:' + miss.join(',');
       const cut = App.cut;
       if (!cut || !cut.pieces) return 'no-cut';
       const base = (window.__RIG_BASE_PIECES || cut.pieces).filter(function (q) { return q && !q.isFore && !q.isFoot; });
       let pieces = splitArms(base.map(function (q) { return q; }));
       pieces = splitFeet(pieces);
-      if (WALK15.splitMode !== 'joints') return 'split-failed';
+      if (WALK15.splitMode !== 'joints' && WALK15.footMode !== 'joints') return 'split-failed';
       cut.pieces = pieces;
       Layers.load(pieces);
       Layers.setOnChange(function () { renderLayers(); Studio.render(); });
@@ -4828,13 +4839,24 @@ body{padding-bottom:180px!important}
     try {
       if (WALK15.splitMode === 'joints') return 'already';
       const S = Studio;
-      if (!S || S.readyCount < S.JOINTS.length) return 'not-ready';
+      /* R141 · 15/15 PASS hona ZAROORI NAHI.
+         Pehle ye guard `S.readyCount < S.JOINTS.length` tha — yani ek bhi joint WARN
+         hua to poora 12-piece rig (pair + kalaiyan) BLOCK ho jata tha aur 8 piece reh
+         jate the. WARNING sirf "confidence kam" ka matlab hai, position galat nahi.
+         Isliye ab sirf WAHI joints maange jaate hain jinse asal me split hota hai:
+            arms -> kandhe / kohni / kalai     feet -> kamar / ghutna / takhna */
+      if (!S) return 'no-studio';
+      const J0 = (S.getJoints ? S.getJoints() : null);
+      if (!J0) return 'no-joints';
+      const NEED = ['shL','shR','elL','elR','wrL','wrR','hipL','hipR','knL','knR','anL','anR'];
+      const miss = NEED.filter(function (k) { return !(J0[k] && isFinite(J0[k].x) && isFinite(J0[k].y)); });
+      if (miss.length) return 'not-ready:' + miss.join(',');
       const cut = App.cut;
       if (!cut || !cut.pieces) return 'no-cut';
       const base = (window.__RIG_BASE_PIECES || cut.pieces).filter(function (q) { return q && !q.isFore && !q.isFoot; });
       let pieces = splitArms(base.map(function (q) { return q; }));
       pieces = splitFeet(pieces);
-      if (WALK15.splitMode !== 'joints') return 'split-failed';
+      if (WALK15.splitMode !== 'joints' && WALK15.footMode !== 'joints') return 'split-failed';
       cut.pieces = pieces;
       Layers.load(pieces);
       Layers.setOnChange(function () { renderLayers(); Studio.render(); });
@@ -7125,10 +7147,14 @@ body{padding-bottom:180px!important}
       try { Sx.recheck(); Sx.syncJointUI(); } catch (e) {}
       var miss = Sx.JOINTS.filter(function (j) { return !Sx.getJointsReady()[j.id]; }).map(function (j) { return j.label; });
       if (miss.length) {
-        U.toast('Ye joints WARN hain (' + miss.length + ') — sahi jagah rakho: ' + miss.slice(0, 4).join(', ') + (miss.length > 4 ? '…' : ''));
+        U.toast(miss.length + ' joint WARN hain (' + miss.slice(0, 4).join(', ') + (miss.length > 4 ? '…' : '') + ') — rig phir bhi ban raha hai');
         Sx.setJointSel((Sx.JOINTS.filter(function (j) { return !Sx.getJointsReady()[j.id]; })[0] || {}).id);
         Sx.syncJointUI(); Sx.render();
-        return;
+        /* R142 · WARN par BLOCK mat karo.
+           Pehle yahan `return` tha — ek bhi joint WARN hua to "Joints done" kuch
+           nahi karta tha: na 12-piece rig (pair/kalaiyan) banta tha, na walk engine.
+           WARNING ka matlab sirf "confidence kam" hai — position sahi hoti hai.
+           Ab rig ban jata hai; WARN bata bhi dete hain taaki chahe to theek kare. */
       }
       Sx.setJointsConfirmed(true);
       saveJoints(); Sx.syncJointUI();
@@ -7137,7 +7163,7 @@ body{padding-bottom:180px!important}
         if (window.__APPLY_LEG_RIG) window.__APPLY_LEG_RIG();
         else if (window.__RESPLIT_ARMS) window.__RESPLIT_ARMS();
       } catch (e) {}
-      U.toast('Sab 15 joints set ✓ — ab Walk/Run chalega');
+      U.toast(miss.length ? ('Rig ready ✓ — ' + miss.length + ' joint abhi WARN hain, drag karke theek kar sakte ho') : 'Sab 15 joints set ✓ — ab Walk/Run chalega');
       setMeta('pose: idle');
     };
     /* nudge arrows */
