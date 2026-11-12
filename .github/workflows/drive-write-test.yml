@@ -1,0 +1,21 @@
+name: Drive Write Test
+on: workflow_dispatch
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Write harmless test file
+        run: |
+          curl -fsSL 'https://drive.google.com/uc?export=download&id=1tGxlRceYSSj9s9vGI0vZrxJlJvLGczcJ' -o /tmp/marker.txt
+          grep -Fx 'Revision: 2 - updated by assistant via Drive connector' /tmp/marker.txt
+          test ! -e storymotion-drive-bridge-proof.txt
+          cp /tmp/marker.txt storymotion-drive-bridge-proof.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add storymotion-drive-bridge-proof.txt
+          git commit -m 'Test Drive bridge'
+          git push
