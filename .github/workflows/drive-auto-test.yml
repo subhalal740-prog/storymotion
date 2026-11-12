@@ -1,5 +1,9 @@
-name: Drive Write Test
-on: workflow_dispatch
+name: Drive Auto Test
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+
 permissions:
   contents: write
 
@@ -8,14 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Write harmless test file
+      - name: Update only the test file
         run: |
           curl -fsSL 'https://drive.google.com/uc?export=download&id=1tGxlRceYSSj9s9vGI0vZrxJlJvLGczcJ' -o /tmp/marker.txt
-          grep -Fx 'Revision: 2 - updated by assistant via Drive connector' /tmp/marker.txt
-          test ! -e storymotion-drive-bridge-proof.txt
+          grep -Fx 'Test ID: storymotion-bridge-20261112-v1' /tmp/marker.txt
           cp /tmp/marker.txt storymotion-drive-bridge-proof.txt
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add storymotion-drive-bridge-proof.txt
-          git commit -m 'Test Drive bridge'
-          git push
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update Drive test'
+            git push
+          fi
