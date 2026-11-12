@@ -1,0 +1,14 @@
+name: Drive Bridge Test
+on: workflow_dispatch
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Drive file
+        run: |
+          curl -fsSL 'https://drive.google.com/uc?export=download&id=1tGxlRceYSSj9s9vGI0vZrxJlJvLGczcJ' -o marker.txt
+          grep -Fx 'Test ID: storymotion-bridge-20261112-v1' marker.txt
+          echo 'PASS: Drive file read successfully'
