@@ -1,30 +1,32 @@
-name: Install Ring Rig
+name: Ring Rig Auto Update
 
 on:
   push:
     branches: [main]
     paths:
       - .github/workflows/install-ring-rig.yml
+  schedule:
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  install:
+  update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
 
-      - name: Add Ring Rig
+      - name: Update Ring Rig
         run: |
-          curl -fL 'https://drive.google.com/uc?export=download&id=1grmbFLcqj505F-4IXEWZvzxDKzSY-gMG' -o Ring_Rig_15_Parts.html
-          echo '47f49472f9684ea57910af5daa30053bb11341177a2ecc0a9fcffbba14d65561  Ring_Rig_15_Parts.html' | sha256sum -c -
-          python3 -c 'from pathlib import Path; p=Path("index.html"); s=p.read_text(encoding="utf-8"); m="\n    </div>\n  </div>\n<section class=\"gallery-screen\""; card="<a target=\"_blank\" rel=\"noopener\" class=\"card span\" href=\"Ring_Rig_15_Parts.html\"><div class=\"top\"><div class=\"ico green\">◎</div><div><p class=\"ttl\">Ring Rig · 15 Parts</p><p class=\"desc\">Character rig, Head Nod aur Matakna controls.</p></div></div><div class=\"meta\"><span class=\"tag live\">Open</span><span class=\"tag\">15 PARTS + HEAD MOTION</span></div><span class=\"arrow\">→</span></a>"; assert s.count(m)==1; p.write_text(s if "href=\"Ring_Rig_15_Parts.html\"" in s else s.replace(m,"\n      "+card+m,1),encoding="utf-8")'
+          python3 -c 'import json,hashlib,re,urllib.request; from pathlib import Path; root="https://drive.google.com/uc?export=download&id="; m=json.load(urllib.request.urlopen(root+"15Ki6VNm4fU-1mcdTf6pGOw1igtO4SDHN",timeout=30)); assert re.fullmatch("[A-Za-z0-9_-]{10,100}",m["file_id"]); b=urllib.request.urlopen(root+m["file_id"],timeout=30).read(); assert 100000<len(b)<5000000 and hashlib.sha256(b).hexdigest()==m["sha256"] and b"headBob" in b and b"headNod" in b; Path("Ring_Rig_15_Parts.html").write_bytes(b)'
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html Ring_Rig_15_Parts.html
-          git diff --cached --quiet || git commit -m "Add Ring Rig to StoryMotion"
-          git push origin HEAD:main 
+          git add Ring_Rig_15_Parts.html
+          if ! git diff --cached --quiet; then
+            git commit -m "Update Ring Rig"
+            git push origin HEAD:main
+          fi
