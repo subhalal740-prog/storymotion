@@ -1,0 +1,30 @@
+name: Install Ring Rig
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/install-ring-rig.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Add Ring Rig
+        run: |
+          curl -fL 'https://drive.google.com/uc?export=download&id=1grmbFLcqj505F-4IXEWZvzxDKzSY-gMG' -o Ring_Rig_15_Parts.html
+          echo '47f49472f9684ea57910af5daa30053bb11341177a2ecc0a9fcffbba14d65561  Ring_Rig_15_Parts.html' | sha256sum -c -
+          python3 -c 'from pathlib import Path; p=Path("index.html"); s=p.read_text(encoding="utf-8"); m="\n    </div>\n  </div>\n<section class=\"gallery-screen\""; card="<a target=\"_blank\" rel=\"noopener\" class=\"card span\" href=\"Ring_Rig_15_Parts.html\"><div class=\"top\"><div class=\"ico green\">◎</div><div><p class=\"ttl\">Ring Rig · 15 Parts</p><p class=\"desc\">Character rig, Head Nod aur Matakna controls.</p></div></div><div class=\"meta\"><span class=\"tag live\">Open</span><span class=\"tag\">15 PARTS + HEAD MOTION</span></div><span class=\"arrow\">→</span></a>"; assert s.count(m)==1; p.write_text(s if "href=\"Ring_Rig_15_Parts.html\"" in s else s.replace(m,"\n      "+card+m,1),encoding="utf-8")'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html Ring_Rig_15_Parts.html
+          git diff --cached --quiet || git commit -m "Add Ring Rig to StoryMotion"
+          git push origin HEAD:main 
